@@ -3,9 +3,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub issues](https://img.shields.io/github/issues/kleneway/pastemax)](https://github.com/kleneway/pastemax/issues)
 
-A modern file viewer application for developers to easily navigate, search, and copy code from repositories. Built with Electron, React, and TypeScript.
+A modern file viewer application for developers to easily navigate, search, and copy code from repositories. Ideal for pasting into ChatGPT or your LLM of choice. Built with Electron, React, and TypeScript.
 
-![PasteMax Screenshot](docs/screenshot.png)
+![PasteMax Screenshot](https://github.com/user-attachments/assets/4115ad31-9c93-4cf8-bd65-4bb5379e0eba)
+
 
 ## Features
 
