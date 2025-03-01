@@ -1,20 +1,51 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const fs = require("fs");
 const path = require("path");
-const ignore = require("ignore");
-const { get_encoding } = require("tiktoken");
+
+// Add handling for the 'ignore' module
+let ignore;
+try {
+  ignore = require("ignore");
+  console.log("Successfully loaded ignore module");
+} catch (err) {
+  console.error("Failed to load ignore module:", err);
+  // Simple fallback implementation for when the ignore module fails to load
+  ignore = {
+    // Simple implementation that just matches exact paths
+    createFilter: () => {
+      return (path) => !excludedFiles.includes(path);
+    },
+  };
+  console.log("Using fallback for ignore module");
+}
+
+// Initialize tokenizer with better error handling
+let tiktoken;
+try {
+  tiktoken = require("tiktoken");
+  console.log("Successfully loaded tiktoken module");
+} catch (err) {
+  console.error("Failed to load tiktoken module:", err);
+  tiktoken = null;
+}
+
 // Import the excluded files list
 const { excludedFiles, binaryExtensions } = require("./excluded-files");
 
-// Initialize the encoder once at startup
+// Initialize the encoder once at startup with better error handling
 let encoder;
 try {
-  encoder = get_encoding("o200k_base"); // gpt-4o encoding
-  console.log("Tiktoken encoder initialized successfully");
+  if (tiktoken) {
+    encoder = tiktoken.get_encoding("o200k_base"); // gpt-4o encoding
+    console.log("Tiktoken encoder initialized successfully");
+  } else {
+    throw new Error("Tiktoken module not available");
+  }
 } catch (err) {
   console.error("Failed to initialize tiktoken encoder:", err);
   // Fallback to a simpler method if tiktoken fails
   console.log("Using fallback token counter");
+  encoder = null;
 }
 
 // Binary file extensions that should be excluded from token counting

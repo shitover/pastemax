@@ -110,6 +110,38 @@ npm run dist
 
 You can customize which files are excluded by default by editing the `excluded-files.js` file. See the [excluded files documentation](docs/excluded-files.md) for more details.
 
+## Troubleshooting
+
+### "Cannot find module 'ignore'" error
+
+If you encounter this error when running the packaged application:
+
+```
+Error: Cannot find module 'ignore'
+Require stack:
+- /Applications/PasteMax.app/Contents/Resources/app.asar/main.js
+```
+
+This is caused by dependencies not being properly included in the package. To fix it:
+
+1. Run the dependency fixer script:
+
+   ```
+   node fix-dependencies.js
+   ```
+
+2. Rebuild the application:
+
+   ```
+   npm run build-electron && npm run dist
+   ```
+
+3. Install the new version
+
+### Other Issues
+
+If you encounter other issues, please [report them on GitHub](https://github.com/kleneway/pastemax/issues).
+
 ## License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
