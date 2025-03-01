@@ -1,0 +1,774 @@
+:root {
+  --primary-color: #000000;
+  --primary-dark: #333333;
+  --secondary-color: #666666;
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --border-color: #e0e0e0;
+  --hover-color: #f5f5f5;
+  --success-color: #000000;
+  --warning-color: #666666;
+  --error-color: #000000;
+  --disabled-color: #cccccc;
+  --icon-color: #555555;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+button:hover {
+  background-color: var(--hover-color);
+}
+
+button:focus {
+  outline: 2px solid black;
+  outline-offset: 1px;
+}
+
+button.primary {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+button.primary:hover {
+  background-color: var(--primary-dark);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type="text"],
+input[type="search"] {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.monospace {
+  font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Main layout structure */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+}
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.selected-folder {
+  padding: 6px 12px;
+  border-radius: 4px;
+  background-color: var(--hover-color);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-folder-btn {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.select-folder-btn:hover {
+  background-color: var(--hover-color);
+}
+
+/* Main content area with sidebar and file display */
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Left sidebar styles */
+.sidebar {
+  width: 300px;
+  min-width: 200px;
+  max-width: 500px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+  background-color: #f8f8f8;
+  position: relative;
+  transition: width 0.1s ease;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.sidebar-folder-path {
+  font-size: 12px;
+  color: var(--secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-actions {
+  display: flex;
+  padding: 12px 16px;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-action-btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.file-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.tree-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--secondary-color);
+  font-size: 14px;
+}
+
+.tree-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 12px;
+  color: var(--secondary-color);
+}
+
+.tree-loading .spinner {
+  width: 24px;
+  height: 24px;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.tree-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.tree-item.selected {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Style for files that are excluded by default */
+.tree-item.excluded-by-default {
+  opacity: 0.75; /* Make excluded files slightly faded */
+}
+
+.tree-item-icon {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.tree-item-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-item-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  cursor: pointer;
+  color: var(--secondary-color);
+  z-index: 2;
+}
+
+.tree-item-toggle svg {
+  transition: transform 0.15s ease-in-out;
+  transform: rotate(0deg);
+}
+
+.tree-item-toggle.expanded svg {
+  transform: rotate(90deg);
+}
+
+.tree-item-indent {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.tree-item-checkbox {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.tree-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-item-tokens {
+  font-size: 11px;
+  color: var(--secondary-color);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.tree-item-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background-color: var(--hover-color);
+  color: var(--secondary-color);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* Badge specifically for excluded files */
+.tree-item-badge.excluded {
+  background-color: #f0f0f0;
+  color: #888888;
+}
+
+/* Content area - right side */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: white;
+  min-width: 0;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.content-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sort-dropdown {
+  position: relative;
+}
+
+.sort-dropdown-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.sort-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  min-width: 180px;
+}
+
+.sort-option {
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sort-option:hover {
+  background-color: var(--hover-color);
+}
+
+.sort-option.active {
+  background-color: var(--hover-color);
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.file-stats {
+  font-size: 14px;
+  color: var(--secondary-color);
+}
+
+.file-list-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 12px;
+}
+
+.file-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--secondary-color);
+  font-size: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.file-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s ease;
+  height: 80px;
+  background-color: white;
+}
+
+.file-card:hover {
+  background-color: var(--hover-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.file-card.selected {
+  border: 2px solid var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.file-card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.file-card-icon {
+  margin-right: 8px;
+  color: var(--icon-color);
+  flex-shrink: 0;
+}
+
+.file-card-name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-card-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.file-card-tokens {
+  color: var(--secondary-color);
+  font-size: 13px;
+}
+
+.file-card-status {
+  font-size: 13px;
+  color: var(--secondary-color);
+}
+
+.file-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.file-card:hover .file-card-actions {
+  opacity: 1;
+}
+
+.file-card-action {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--secondary-color);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.file-card-action:hover {
+  background-color: white;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.file-card-action:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.file-card-select.selected {
+  background-color: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+.copy-button-container {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-weight: 600;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.copy-button.primary {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.copy-button.primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+}
+
+.copy-button.full-width {
+  width: 100%;
+  max-width: 400px;
+}
+
+.copy-button.copied {
+  background-color: #2ecc71 !important; /* Bright green success color */
+  border-color: #2ecc71 !important;
+  color: white !important;
+  transition: all 0.2s ease;
+  animation: flash-success 0.3s;
+}
+
+@keyframes flash-success {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+  }
+}
+
+.copy-button-text {
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.copy-status {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.copy-status.visible {
+  opacity: 1;
+}
+
+.processing-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 16px;
+  height: 100%;
+}
+
+.spinner {
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid var(--primary-color);
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.error-message {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--error-color);
+  padding: 16px 24px;
+  border-radius: 4px;
+  margin: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-loading,
+.empty-tree,
+.empty-list {
+  padding: 16px;
+  text-align: center;
+  color: var(--secondary-color);
+  font-style: italic;
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar.focused {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+}
+
+.search-bar .search-input,
+input[type="search"].search-input,
+input[type="text"].search-input {
+  width: 100%;
+  padding: 8px 32px 8px 36px !important;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  background-color: transparent;
+}
+
+/* Also make the focus selector specific to maintain styles */
+.search-bar .search-input:focus,
+input[type="search"].search-input:focus,
+input[type="text"].search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.search-clear-btn:hover {
+  background-color: var(--hover-color);
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  opacity: 0;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.selected-folder {
+  font-size: 14px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 500px;
+  display: inline-block;
+}
