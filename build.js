@@ -2,26 +2,26 @@
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const readline = require("readline");
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
 async function main() {
   try {
     console.log("📦 Building React app with Vite...");
     execSync("npm run build", { stdio: "inherit" });
-
     console.log("✅ React build completed successfully!");
 
+    // Fix the paths in index.html for Electron compatibility
     const indexHtmlPath = path.join(__dirname, "dist", "index.html");
-
-    // Update paths in the index.html file to work with Electron's file:// protocol
     if (fs.existsSync(indexHtmlPath)) {
       let content = fs.readFileSync(indexHtmlPath, "utf8");
+
+      // Fix asset paths for Electron's file:// protocol
       content = content.replace(/\/assets\//g, "./assets/");
+      content = content.replace(/(src|href)=["']\//g, '$1="./');
+      content = content.replace(
+        /(src|href)=["']\.\.\/assets\//g,
+        '$1="./assets/',
+      );
+
       fs.writeFileSync(indexHtmlPath, content);
       console.log(
         "🔄 Updated asset paths in index.html for Electron compatibility",
@@ -32,26 +32,12 @@ async function main() {
       "🚀 Build process completed! The app is ready to run with Electron.",
     );
 
-    // Ask if we should continue to package the app
-    rl.question("Do you want to package the app now? (y/n) ", (answer) => {
-      if (answer.toLowerCase() === "y") {
-        console.log("📦 Packaging app with electron-builder...");
-        try {
-          execSync("npm run dist", { stdio: "inherit" });
-          console.log("✅ Packaging completed successfully!");
-        } catch (error) {
-          console.error("❌ Packaging failed:", error.message);
-        }
-      } else {
-        console.log(
-          "Skipping packaging. Run 'npm run dist' to package the app later.",
-        );
-      }
-      rl.close();
-    });
+    // Package the app
+    console.log("📦 Packaging application...");
+    execSync("npm run package", { stdio: "inherit" });
+    console.log("✅ Packaging completed!");
   } catch (error) {
     console.error("❌ Build failed:", error.message);
-    rl.close();
     process.exit(1);
   }
 }

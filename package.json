@@ -8,11 +8,11 @@
     "dev:electron": "node dev.js",
     "build": "vite build",
     "build-electron": "node build.js",
+    "package": "vite build && electron-builder --publish=never",
+    "release": "vite build && electron-builder --publish=onTagOrDraft",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "lint:strict": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "preview": "vite preview"
   },
   "keywords": [
     "clipboard",
@@ -27,16 +27,24 @@
   "build": {
     "appId": "com.kleneway.pastemax",
     "productName": "PasteMax",
+    "directories": {
+      "output": "release-builds"
+    },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "src/assets/favicon.svg"
+      "icon": "public/favicon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false
     },
     "win": {
       "target": [
         "nsis",
         "portable"
       ],
-      "icon": "src/assets/favicon.svg"
+      "icon": "public/favicon.ico"
     },
     "linux": {
       "target": [
@@ -45,7 +53,7 @@
         "rpm"
       ],
       "category": "Development",
-      "icon": "src/assets/favicon.svg"
+      "icon": "public/favicon.png"
     },
     "files": [
       "dist/**/*",
@@ -59,9 +67,11 @@
       "node_modules/tiktoken/**",
       "node_modules/gpt-3-encoder/**"
     ],
-    "asar": true
+    "asar": true,
+    "afterSign": "scripts/notarize.js"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.5.0",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",

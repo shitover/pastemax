@@ -138,17 +138,23 @@ function createWindow() {
       });
     }, 1000);
   } else {
-    mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-    console.log("Loading from built files in dist/index.html");
+    const indexPath = path.join(__dirname, "dist", "index.html");
+    console.log(`Loading from built files at ${indexPath}`);
+
+    // Use loadURL with file protocol for better path resolution
+    const indexUrl = `file://${indexPath}`;
+    mainWindow.loadURL(indexUrl);
   }
 
-  // Add error handling for failed loads
+  // Add basic error handling for failed loads
   mainWindow.webContents.on(
     "did-fail-load",
-    (event, errorCode, errorDescription) => {
+    (event, errorCode, errorDescription, validatedURL) => {
       console.error(
-        `Failed to load the application: ${errorDescription} (${errorCode}). Retrying...`,
+        `Failed to load the application: ${errorDescription} (${errorCode})`,
       );
+      console.error(`Attempted to load URL: ${validatedURL}`);
+
       if (isDev) {
         const retryUrl =
           process.env.ELECTRON_START_URL || "http://localhost:3000";
@@ -157,7 +163,10 @@ function createWindow() {
           setTimeout(() => mainWindow.loadURL(retryUrl), 1000);
         });
       } else {
-        mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+        // Retry with explicit file URL
+        const indexPath = path.join(__dirname, "dist", "index.html");
+        const indexUrl = `file://${indexPath}`;
+        mainWindow.loadURL(indexUrl);
       }
     },
   );
