@@ -71,3 +71,97 @@ export function extname(path: string | null | undefined): string {
   const dotIndex = basenameValue.lastIndexOf(".");
   return dotIndex === -1 || dotIndex === 0 ? "" : basenameValue.slice(dotIndex);
 }
+
+/**
+ * Generate an ASCII representation of the file tree for the selected files
+ * @param files Array of selected FileData objects
+ * @param rootPath The root directory path
+ * @returns ASCII string representing the file tree
+ */
+export function generateAsciiFileTree(files: { path: string }[], rootPath: string): string {
+  if (!files.length) return "No files selected.";
+
+  // Normalize the root path for consistent path handling
+  const normalizedRoot = rootPath.replace(/\\/g, "/").replace(/\/$/, "");
+  
+  // Create a tree structure from the file paths
+  interface TreeNode {
+    name: string;
+    isFile: boolean;
+    children: Record<string, TreeNode>;
+  }
+  
+  const root: TreeNode = { name: basename(normalizedRoot), isFile: false, children: {} };
+  
+  // Insert a file path into the tree
+  const insertPath = (filePath: string, node: TreeNode) => {
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    if (!normalizedPath.startsWith(normalizedRoot)) return;
+    
+    const relativePath = normalizedPath.substring(normalizedRoot.length).replace(/^\//, "");
+    if (!relativePath) return;
+    
+    const pathParts = relativePath.split("/");
+    let currentNode = node;
+    
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      const isFile = i === pathParts.length - 1;
+      
+      if (!currentNode.children[part]) {
+        currentNode.children[part] = {
+          name: part,
+          isFile,
+          children: {}
+        };
+      }
+      
+      currentNode = currentNode.children[part];
+    }
+  };
+  
+  // Insert all files into the tree
+  files.forEach(file => insertPath(file.path, root));
+  
+  // Generate ASCII representation
+  const generateAscii = (node: TreeNode, prefix = "", isLast = true, isRoot = true): string => {
+    if (!isRoot) {
+      let result = prefix;
+      result += isLast ? "└── " : "├── ";
+      result += node.name;
+      result += "\n";
+      prefix += isLast ? "    " : "│   ";
+      
+      const children = Object.values(node.children).sort((a, b) => {
+        // Sort by type (directories first) then by name
+        if (a.isFile !== b.isFile) {
+          return a.isFile ? 1 : -1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+      
+      return result + children
+        .map((child, index) =>
+          generateAscii(child, prefix, index === children.length - 1, false)
+        )
+        .join("");
+    } else {
+      // Root node special handling
+      const children = Object.values(node.children).sort((a, b) => {
+        // Sort by type (directories first) then by name
+        if (a.isFile !== b.isFile) {
+          return a.isFile ? 1 : -1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+      
+      return children
+        .map((child, index) =>
+          generateAscii(child, prefix, index === children.length - 1, false)
+        )
+        .join("");
+    }
+  };
+  
+  return generateAscii(root);
+}
