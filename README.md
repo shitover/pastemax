@@ -17,6 +17,7 @@ A modern file viewer application for developers to easily navigate, search, and 
 - **Search Capabilities**: Quickly find files by name or content
 - **Selection Management**: Select multiple files and copy their contents together
 - **Sorting Options**: Sort files by name, size, or token count
+- **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment
 - **Binary File Detection**: Automatic detection and exclusion of binary files
 - **Smart File Exclusion**: Automatically excludes common files like package-lock.json, binary files, and more by default
 
