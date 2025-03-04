@@ -3,6 +3,8 @@ import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
 import { FileData } from "./types/FileTypes";
+import { ThemeProvider } from "./context/ThemeContext";
+import ThemeToggle from "./components/ThemeToggle";
 
 // Access the electron API from the window object
 declare global {
@@ -36,32 +38,33 @@ const App = () => {
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
 
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(
-    savedFolder,
+  const [selectedFolder, setSelectedFolder] = useState(
+    savedFolder as string | null
   );
-  const [allFiles, setAllFiles] = useState<FileData[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>(
-    savedFiles ? JSON.parse(savedFiles) : [],
+  const [allFiles, setAllFiles] = useState([] as FileData[]);
+  const [selectedFiles, setSelectedFiles] = useState(
+    savedFiles ? JSON.parse(savedFiles) : [] as string[]
   );
-  const [sortOrder, setSortOrder] = useState<string>(
-    savedSortOrder || "tokens-desc",
+  const [sortOrder, setSortOrder] = useState(
+    savedSortOrder || "tokens-desc"
   );
-  const [searchTerm, setSearchTerm] = useState<string>(savedSearchTerm || "");
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>(
-    {},
+  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
+  const [expandedNodes, setExpandedNodes] = useState(
+    {} as Record<string, boolean>
   );
-  const [displayedFiles, setDisplayedFiles] = useState<FileData[]>([]);
-  const [copyStatus, setCopyStatus] = useState<boolean>(false);
-  const [processingStatus, setProcessingStatus] = useState<{
-    status: "idle" | "processing" | "complete" | "error";
-    message: string;
-  }>({ status: "idle", message: "" });
+  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
+  const [copyStatus, setCopyStatus] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState(
+    { status: "idle", message: "" } as {
+      status: "idle" | "processing" | "complete" | "error";
+      message: string;
+    }
+  );
   
-  const savedTheme = localStorage.getItem('theme');
-  const [isDarkMode, setIsDarkMode] = useState(savedTheme === 'dark');
+
 
   // State for sort dropdown
-  const [sortDropdownOpen, setSortDropdownOpen] = useState<boolean>(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
@@ -126,10 +129,7 @@ const App = () => {
     sessionStorage.setItem("hasLoadedInitialData", "true");
   }, [isElectron, selectedFolder]);
   
-  // Save theme preference
-  useEffect(() => {
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+
 
   // Listen for folder selection from main process
   useEffect(() => {
@@ -411,109 +411,111 @@ const App = () => {
   };
 
   return (
-    <div className={`app-container ${isDarkMode ? 'dark-mode' : ''}`}>
-      <div className="header">
-        <h1>PasteMax</h1>
-        <div className="folder-info">
-          {selectedFolder ? (
-            <div className="selected-folder">{selectedFolder}</div>
-          ) : (
-            <span>No folder selected</span>
-          )}
-          <button
-            className="select-folder-btn"
-            onClick={openFolder}
-            disabled={processingStatus.status === "processing"}
-          >
-            Select Folder
-          </button>
-          <button onClick={() => setIsDarkMode(!isDarkMode)}>
-            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-          </button>
-        </div>
-      </div>
-
-      {processingStatus.status === "processing" && (
-        <div className="processing-indicator">
-          <div className="spinner"></div>
-          <span>{processingStatus.message}</span>
-        </div>
-      )}
-
-      {processingStatus.status === "error" && (
-        <div className="error-message">Error: {processingStatus.message}</div>
-      )}
-
-      {selectedFolder && (
-        <div className="main-content">
-          <Sidebar
-            selectedFolder={selectedFolder}
-            openFolder={openFolder}
-            allFiles={allFiles}
-            selectedFiles={selectedFiles}
-            toggleFileSelection={toggleFileSelection}
-            toggleFolderSelection={toggleFolderSelection}
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            selectAllFiles={selectAllFiles}
-            deselectAllFiles={deselectAllFiles}
-            expandedNodes={expandedNodes}
-            toggleExpanded={toggleExpanded}
-          />
-          <div className="content-area">
-            <div className="content-header">
-              <div className="content-title">Selected Files</div>
-              <div className="content-actions">
-                <div className="sort-dropdown">
-                  <button
-                    className="sort-dropdown-button"
-                    onClick={toggleSortDropdown}
-                  >
-                    Sort:{" "}
-                    {sortOptions.find((opt) => opt.value === sortOrder)
-                      ?.label || sortOrder}
-                  </button>
-                  {sortDropdownOpen && (
-                    <div className="sort-options">
-                      {sortOptions.map((option) => (
-                        <div
-                          key={option.value}
-                          className={`sort-option ${
-                            sortOrder === option.value ? "active" : ""
-                          }`}
-                          onClick={() => handleSortChange(option.value)}
-                        >
-                          {option.label}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="file-stats">
-                  {selectedFiles.length} files | ~
-                  {calculateTotalTokens().toLocaleString()} tokens
-                </div>
-              </div>
-            </div>
-
-            <FileList
-              files={displayedFiles}
-              selectedFiles={selectedFiles}
-              toggleFileSelection={toggleFileSelection}
-            />
-
-            <div className="copy-button-container">
-              <CopyButton
-                text={getSelectedFilesContent()}
-                className="primary full-width"
+    <ThemeProvider>
+      <div className="app-container">
+        <header className="header">
+          <h1>PasteMax</h1>
+          <div className="header-actions">
+            <ThemeToggle />
+            <div className="folder-info">
+              {selectedFolder ? (
+                <div className="selected-folder">{selectedFolder}</div>
+              ) : (
+                <span>No folder selected</span>
+              )}
+              <button
+                className="select-folder-btn"
+                onClick={openFolder}
+                disabled={processingStatus.status === "processing"}
               >
-                <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
-              </CopyButton>
+                Select Folder
+              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </header>
+
+        {processingStatus.status === "processing" && (
+          <div className="processing-indicator">
+            <div className="spinner"></div>
+            <span>{processingStatus.message}</span>
+          </div>
+        )}
+
+        {processingStatus.status === "error" && (
+          <div className="error-message">Error: {processingStatus.message}</div>
+        )}
+
+        {selectedFolder && (
+          <div className="main-content">
+            <Sidebar
+              selectedFolder={selectedFolder}
+              openFolder={openFolder}
+              allFiles={allFiles}
+              selectedFiles={selectedFiles}
+              toggleFileSelection={toggleFileSelection}
+              toggleFolderSelection={toggleFolderSelection}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              selectAllFiles={selectAllFiles}
+              deselectAllFiles={deselectAllFiles}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+            />
+            <div className="content-area">
+              <div className="content-header">
+                <div className="content-title">Selected Files</div>
+                <div className="content-actions">
+                  <div className="sort-dropdown">
+                    <button
+                      className="sort-dropdown-button"
+                      onClick={toggleSortDropdown}
+                    >
+                      Sort:{" "}
+                      {sortOptions.find((opt) => opt.value === sortOrder)
+                        ?.label || sortOrder}
+                    </button>
+                    {sortDropdownOpen && (
+                      <div className="sort-options">
+                        {sortOptions.map((option) => (
+                          <div
+                            key={option.value}
+                            className={`sort-option ${
+                              sortOrder === option.value ? "active" : ""
+                            }`}
+                            onClick={() => handleSortChange(option.value)}
+                          >
+                            {option.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="file-stats">
+                    {selectedFiles.length} files | ~
+                    {calculateTotalTokens().toLocaleString()} tokens
+                  </div>
+                </div>
+              </div>
+
+              <FileList
+                files={displayedFiles}
+                selectedFiles={selectedFiles}
+                toggleFileSelection={toggleFileSelection}
+              />
+
+              <div className="copy-button-container">
+                <CopyButton
+                  text={getSelectedFilesContent()}
+                  className="primary full-width"
+                >
+                  <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                </CopyButton>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </ThemeProvider>
   );
 };
 
