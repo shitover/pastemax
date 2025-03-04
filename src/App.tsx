@@ -5,6 +5,7 @@ import CopyButton from "./components/CopyButton";
 import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
+import { generateAsciiFileTree } from "./utils/pathUtils";
 
 // Access the electron API from the window object
 declare global {
@@ -59,6 +60,7 @@ const App = () => {
       message: string;
     }
   );
+  const [includeFileTree, setIncludeFileTree] = useState(false);
   
 
 
@@ -350,6 +352,13 @@ const App = () => {
     }
 
     let concatenatedString = "";
+    
+    // Add ASCII file tree if enabled
+    if (includeFileTree && selectedFolder) {
+      const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
+      concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
+    }
+    
     sortedSelected.forEach((file: FileData) => {
       concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
       concatenatedString += file.content;
@@ -503,12 +512,22 @@ const App = () => {
               />
 
               <div className="copy-button-container">
-                <CopyButton
-                  text={getSelectedFilesContent()}
-                  className="primary full-width"
-                >
-                  <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
-                </CopyButton>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", maxWidth: "400px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={includeFileTree}
+                      onChange={() => setIncludeFileTree(!includeFileTree)}
+                    />
+                    <span>Include File Tree</span>
+                  </label>
+                  <CopyButton
+                    text={getSelectedFilesContent()}
+                    className="primary full-width"
+                  >
+                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                  </CopyButton>
+                </div>
               </div>
             </div>
           </div>
