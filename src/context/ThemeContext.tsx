@@ -8,12 +8,16 @@ interface ThemeContextType {
   setTheme: (theme: ThemeType) => void;
 }
 
-// Create context without generic type parameter
-const ThemeContext = createContext(undefined);
+// Create context with proper typing
+const defaultThemeContext: ThemeContextType = {
+  theme: "system",
+  currentTheme: "light",
+  setTheme: () => {},
+};
 
-interface ThemeProviderProps {
-  children: any; // Using any as a temporary solution to fix linter errors
-}
+const ThemeContext = createContext(defaultThemeContext);
+
+type ThemeProviderProps = { children: JSX.Element | JSX.Element[] };
 
 export const ThemeProvider = ({ children }: ThemeProviderProps): JSX.Element => {
   // Initialize theme from localStorage or default to "system"
@@ -79,5 +83,5 @@ export const useTheme = () => {
   if (context === undefined) {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
-  return context as ThemeContextType;
+  return context;
 }; 

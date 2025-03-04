@@ -53,7 +53,6 @@ const App = () => {
     {} as Record<string, boolean>
   );
   const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
-  const [copyStatus, setCopyStatus] = useState(false);
   const [processingStatus, setProcessingStatus] = useState(
     { status: "idle", message: "" } as {
       status: "idle" | "processing" | "complete" | "error";
