@@ -31,7 +31,10 @@
     "electron",
     "file-viewer"
   ],
-  "author": "kleneway",
+  "author": {
+    "name": "kleneway",
+    "email": "kleneway@notreal.com"
+  },
   "license": "MIT",
   "description": "A modern file viewer application for developers to easily navigate, search, and copy code from repositories.",
   "build": {
