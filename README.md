@@ -7,6 +7,8 @@ A modern file viewer application for developers to easily navigate, search, and 
 
 ![PasteMax Screenshot](https://github.com/user-attachments/assets/4115ad31-9c93-4cf8-bd65-4bb5379e0eba)
 
+## Video
+![YouTube Link](https://youtu.be/YV-pZSDNnPo)
 
 ## Features
 
