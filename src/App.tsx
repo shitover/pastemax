@@ -56,6 +56,9 @@ const App = () => {
     status: "idle" | "processing" | "complete" | "error";
     message: string;
   }>({ status: "idle", message: "" });
+  
+  const savedTheme = localStorage.getItem('theme');
+  const [isDarkMode, setIsDarkMode] = useState(savedTheme === 'dark');
 
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState<boolean>(false);
@@ -107,21 +110,26 @@ const App = () => {
   // Load initial data from saved folder
   useEffect(() => {
     if (!isElectron || !selectedFolder) return;
-
+  
     // Use a flag in sessionStorage to ensure we only load data once per session
     const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
     if (hasLoadedInitialData === "true") return;
-
+  
     console.log("Loading saved folder on startup:", selectedFolder);
     setProcessingStatus({
       status: "processing",
       message: "Loading files from previously selected folder...",
     });
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
-
+  
     // Mark that we've loaded the initial data
     sessionStorage.setItem("hasLoadedInitialData", "true");
   }, [isElectron, selectedFolder]);
+  
+  // Save theme preference
+  useEffect(() => {
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   // Listen for folder selection from main process
   useEffect(() => {
@@ -403,7 +411,7 @@ const App = () => {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isDarkMode ? 'dark-mode' : ''}`}>
       <div className="header">
         <h1>PasteMax</h1>
         <div className="folder-info">
@@ -418,6 +426,9 @@ const App = () => {
             disabled={processingStatus.status === "processing"}
           >
             Select Folder
+          </button>
+          <button onClick={() => setIsDarkMode(!isDarkMode)}>
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
         </div>
       </div>
