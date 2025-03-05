@@ -19,7 +19,7 @@ console.log("🚀 Starting development environment...");
 process.env.NODE_ENV = "development";
 
 // Default port
-let vitePort = 5173;
+let vitePort = 3000;
 
 // Start Vite dev server
 console.log("📦 Starting Vite dev server...");
