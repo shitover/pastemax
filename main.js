@@ -286,7 +286,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       if (!isLoadingDirectory) return results;
 
       const fullPath = path.join(dir, dirent.name);
-      // Ensure path is relative to root and normalized
+      // Ensure path is relative to root and normalized for ignore checks
       const relativePath = path.relative(rootDir, fullPath).split(path.sep).join('/');
 
       // Skip PasteMax app directories
@@ -318,7 +318,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
         if (!isLoadingDirectory) return null;
 
         const fullPath = path.join(dir, dirent.name);
-        // Ensure path is relative to root and normalized
+        // Ensure path is relative to root and normalized for ignore checks
         const relativePath = path.relative(rootDir, fullPath).split(path.sep).join('/');
 
         // Skip files in PasteMax app directories
@@ -343,7 +343,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (stats.size > MAX_FILE_SIZE) {
             return {
               name: dirent.name,
-              path: relativePath,
+              path: fullPath, // Store full path
+              relativePath: relativePath, // Keep relative path for UI/display
               tokenCount: 0,
               size: stats.size,
               content: "",
@@ -356,7 +357,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (isBinaryFile(fullPath)) {
             return {
               name: dirent.name,
-              path: relativePath,
+              path: fullPath, // Store full path
+              relativePath: relativePath, // Keep relative path for UI/display
               tokenCount: 0,
               size: stats.size,
               content: "",
@@ -371,7 +373,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           
           return {
             name: dirent.name,
-            path: relativePath,
+            path: fullPath, // Store full path
+            relativePath: relativePath, // Keep relative path for UI/display
             content: fileContent,
             tokenCount: countTokens(fileContent),
             size: stats.size,
@@ -382,7 +385,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           console.error(`Error reading file ${fullPath}:`, err);
           return {
             name: dirent.name,
-            path: relativePath,
+            path: fullPath, // Store full path
+            relativePath: relativePath, // Keep relative path for UI/display
             tokenCount: 0,
             size: 0,
             isBinary: false,
@@ -460,8 +464,8 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
 
     // Process the files to ensure they're serializable
     const serializedFiles = files.map(file => ({
-      path: file.path,
-      relativePath: path.relative(folderPath, file.path),
+      path: file.path, // Keep the full path
+      relativePath: file.relativePath, // Use the relative path for display
       name: file.name,
       size: file.size,
       isDirectory: file.isDirectory,
