@@ -19,13 +19,13 @@ const MAX_DIRECTORY_LOAD_TIME = 60000; // 60 seconds timeout
  */
 function normalizePath(filePath) {
   if (!filePath) return filePath;
-  
+
   // Handle Windows UNC paths
   if (process.platform === 'win32' && filePath.startsWith('\\\\')) {
     // Preserve the UNC path format but normalize separators
     return '\\\\' + filePath.slice(2).replace(/\\/g, '/');
   }
-  
+
   return filePath.replace(/\\/g, '/');
 }
 
