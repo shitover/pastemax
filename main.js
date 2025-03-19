@@ -365,6 +365,7 @@ function countTokens(text) {
  * - Handles binary files and large files appropriately
  * - Respects .gitignore and custom exclusion patterns
  * - Provides progress updates to the UI
+ * - Handles cross-platform path issues including UNC paths
  * 
  * @param {string} dir - The directory to process
  * @param {string} rootDir - The root directory (used for relative path calculations)
@@ -399,14 +400,15 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       // Calculate relative path safely
       const relativePath = safeRelativePath(rootDir, fullPath);
 
-      // Skip PasteMax app directories
-      if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
-        console.log('Skipping app directory:', fullPath);
+      // Skip PasteMax app directories and invalid paths
+      if (fullPath.includes('.app') || fullPath === app.getAppPath() || 
+          !isValidPath(relativePath) || relativePath.startsWith('..')) {
+        console.log('Skipping directory:', fullPath);
         continue;
       }
 
-      // Only check ignore patterns if the path is inside the root directory
-      if (!relativePath.startsWith('..') && !ignoreFilter.ignores(relativePath)) {
+      // Only process if not ignored
+      if (!ignoreFilter.ignores(relativePath)) {
         const subResults = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window);
         if (!isLoadingDirectory) return results;
         results = results.concat(subResults);
@@ -431,14 +433,10 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
         // Calculate relative path safely
         const relativePath = safeRelativePath(rootDir, fullPath);
 
-        // Skip files in PasteMax app directories
-        if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
-          console.log('Skipping app file:', fullPath);
-          return null;
-        }
-
-        // Only check ignore patterns if the path is inside the root directory
-        if (relativePath.startsWith('..')) {
+        // Skip PasteMax app files and invalid paths
+        if (fullPath.includes('.app') || fullPath === app.getAppPath() || 
+            !isValidPath(relativePath) || relativePath.startsWith('..')) {
+          console.log('Skipping file:', fullPath);
           return null;
         }
 
@@ -453,7 +451,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (stats.size > MAX_FILE_SIZE) {
             return {
               name: dirent.name,
-              path: fullPath,
+              path: normalizePath(fullPath),
               relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
@@ -467,7 +465,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (isBinaryFile(fullPath)) {
             return {
               name: dirent.name,
-              path: fullPath,
+              path: normalizePath(fullPath),
               relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
@@ -483,7 +481,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           
           return {
             name: dirent.name,
-            path: fullPath,
+            path: normalizePath(fullPath),
             relativePath: relativePath,
             content: fileContent,
             tokenCount: countTokens(fileContent),
@@ -495,13 +493,15 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           console.error(`Error reading file ${fullPath}:`, err);
           return {
             name: dirent.name,
-            path: fullPath,
+            path: normalizePath(fullPath),
             relativePath: relativePath,
             tokenCount: 0,
             size: 0,
             isBinary: false,
             isSkipped: true,
-            error: "Could not read file"
+            error: err.code === 'EPERM' ? "Permission denied" : 
+                   err.code === 'ENOENT' ? "File not found" : 
+                   "Could not read file"
           };
         }
       });
@@ -612,7 +612,7 @@ ipcMain.on("cancel-directory-loading", (event) => {
 
 /**
  * Determines if a file should be excluded based on gitignore patterns and default rules.
- * Normalizes paths for consistent cross-platform behavior.
+ * Handles cross-platform path issues including UNC paths and network shares.
  * 
  * @param {string} filePath - The full path of the file to check
  * @param {string} rootDir - The root directory for relative path calculation
@@ -626,9 +626,43 @@ function shouldExcludeByDefault(filePath, rootDir) {
   // Calculate relative path safely
   const relativePath = safeRelativePath(rootDir, filePath);
   
-  // Don't process paths outside the root directory
-  if (relativePath.startsWith('..') || !isValidPath(relativePath)) {
+  // Don't process paths outside the root directory or invalid paths
+  if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
     return true;
+  }
+
+  // Handle Windows-specific paths
+  if (process.platform === 'win32') {
+    // Skip system files and folders
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
+      return true;
+    }
+    
+    // Skip Windows system directories
+    if (filePath.toLowerCase().includes('\\windows\\') || 
+        filePath.toLowerCase().includes('\\system32\\')) {
+      return true;
+    }
+  }
+
+  // Handle macOS-specific paths
+  if (process.platform === 'darwin') {
+    // Skip macOS system files
+    if (filePath.includes('/.Spotlight-') || 
+        filePath.includes('/.Trashes') || 
+        filePath.includes('/.fseventsd')) {
+      return true;
+    }
+  }
+
+  // Handle Linux-specific paths
+  if (process.platform === 'linux') {
+    // Skip Linux system directories
+    if (filePath.startsWith('/proc/') || 
+        filePath.startsWith('/sys/') || 
+        filePath.startsWith('/dev/')) {
+      return true;
+    }
   }
 
   const ig = ignore().add(excludedFiles);

@@ -331,8 +331,10 @@ const App = (): JSX.Element => {
     const getFilesInFolder = (currentPath: string): FileData[] => {
       return allFiles.filter((file: FileData) => {
         const normalizedFilePath = normalizePath(file.path);
-        const isInFolder = normalizedFilePath.startsWith(currentPath);
-        const isSelectable = !file.isBinary && !file.isSkipped;
+        // Use path.startsWith for directory containment check
+        const isInFolder = normalizedFilePath.startsWith(normalizedFolderPath + "/") || 
+                         arePathsEqual(normalizedFilePath, normalizedFolderPath);
+        const isSelectable = !file.isBinary && !file.isSkipped && !file.excludedByDefault;
         return isInFolder && isSelectable;
       });
     };
