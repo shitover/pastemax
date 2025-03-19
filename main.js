@@ -8,6 +8,92 @@ let isLoadingDirectory = false;
 let loadingTimeoutId = null;
 const MAX_DIRECTORY_LOAD_TIME = 60000; // 60 seconds timeout
 
+/**
+ * Enhanced path handling functions for cross-platform compatibility
+ */
+
+/**
+ * Normalize file paths to use forward slashes regardless of OS
+ * This ensures consistent path formatting between main and renderer processes
+ * Also handles UNC paths on Windows
+ */
+function normalizePath(filePath) {
+  if (!filePath) return filePath;
+  
+  // Handle Windows UNC paths
+  if (process.platform === 'win32' && filePath.startsWith('\\\\')) {
+    // Preserve the UNC path format but normalize separators
+    return '\\\\' + filePath.slice(2).replace(/\\/g, '/');
+  }
+  
+  return filePath.replace(/\\/g, '/');
+}
+
+/**
+ * Get the platform-specific path separator
+ */
+function getPathSeparator() {
+  return path.sep;
+}
+
+/**
+ * Ensures a path is absolute and normalized for the current platform
+ * @param {string} inputPath - The path to normalize
+ * @returns {string} - Normalized absolute path
+ */
+function ensureAbsolutePath(inputPath) {
+  if (!path.isAbsolute(inputPath)) {
+    inputPath = path.resolve(inputPath);
+  }
+  return normalizePath(inputPath);
+}
+
+/**
+ * Safely joins paths across different platforms
+ * @param {...string} paths - Path segments to join
+ * @returns {string} - Normalized joined path
+ */
+function safePathJoin(...paths) {
+  const joined = path.join(...paths);
+  return normalizePath(joined);
+}
+
+/**
+ * Safely calculates relative path between two paths
+ * Handles different OS path formats and edge cases
+ * @param {string} from - Base path
+ * @param {string} to - Target path
+ * @returns {string} - Normalized relative path
+ */
+function safeRelativePath(from, to) {
+  // Normalize both paths to use the same separator format
+  from = normalizePath(from);
+  to = normalizePath(to);
+  
+  // Handle Windows drive letter case-insensitivity
+  if (process.platform === 'win32') {
+    from = from.toLowerCase();
+    to = to.toLowerCase();
+  }
+  
+  let relativePath = path.relative(from, to);
+  return normalizePath(relativePath);
+}
+
+/**
+ * Checks if a path is a valid path for the current OS
+ * @param {string} pathToCheck - Path to validate
+ * @returns {boolean} - True if path is valid
+ */
+function isValidPath(pathToCheck) {
+  try {
+    path.parse(pathToCheck);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 // Add handling for the 'ignore' module
 let ignore;
 try {
@@ -23,22 +109,6 @@ try {
     },
   };
   console.log("Using fallback for ignore module");
-}
-
-/**
- * Normalize file paths to use forward slashes regardless of OS
- * This ensures consistent path formatting between main and renderer processes
- */
-function normalizePath(filePath) {
-  if (!filePath) return filePath;
-  return filePath.replace(/\\/g, '/');
-}
-
-/**
- * Get the platform-specific path separator
- */
-function getPathSeparator() {
-  return os.platform() === 'win32' ? '\\' : '/';
 }
 
 // Initialize tokenizer with better error handling
@@ -205,21 +275,56 @@ ipcMain.on("open-folder", async (event) => {
   }
 });
 
-// Function to parse .gitignore file if it exists
+/**
+ * Parse .gitignore file if it exists and create an ignore filter
+ * Handles path normalization for cross-platform compatibility
+ * 
+ * @param {string} rootDir - The root directory containing .gitignore
+ * @returns {object} - Configured ignore filter
+ */
 function loadGitignore(rootDir) {
   const ig = ignore();
-  const gitignorePath = path.join(rootDir, ".gitignore");
+  
+  // Ensure root directory path is absolute and normalized
+  rootDir = ensureAbsolutePath(rootDir);
+  const gitignorePath = safePathJoin(rootDir, ".gitignore");
 
   if (fs.existsSync(gitignorePath)) {
-    const gitignoreContent = fs.readFileSync(gitignorePath, "utf8");
-    ig.add(gitignoreContent);
+    try {
+      const gitignoreContent = fs.readFileSync(gitignorePath, "utf8");
+      // Split content into lines and normalize path separators
+      const normalizedPatterns = gitignoreContent
+        .split(/\r?\n/)
+        .map(pattern => pattern.trim())
+        .filter(pattern => pattern && !pattern.startsWith('#'))
+        .map(pattern => normalizePath(pattern));
+
+      ig.add(normalizedPatterns);
+    } catch (err) {
+      console.error("Error reading .gitignore:", err);
+    }
   }
 
   // Add some default ignores that are common
-  ig.add([".git", "node_modules", ".DS_Store"]);
+  ig.add([
+    ".git",
+    "node_modules",
+    ".DS_Store",
+    // Add Windows-specific files to ignore
+    "Thumbs.db",
+    "desktop.ini",
+    // Add common IDE files
+    ".idea",
+    ".vscode",
+    // Add common build directories
+    "dist",
+    "build",
+    "out"
+  ]);
 
-  // Add the excludedFiles patterns for gitignore-based exclusion
-  ig.add(excludedFiles);
+  // Normalize and add the excludedFiles patterns
+  const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
+  ig.add(normalizedExcludedFiles);
 
   return ig;
 }
@@ -267,7 +372,9 @@ function countTokens(text) {
 async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
   if (!isLoadingDirectory) return [];
   
-  rootDir = rootDir || dir;
+  // Ensure absolute and normalized paths
+  dir = ensureAbsolutePath(dir);
+  rootDir = ensureAbsolutePath(rootDir || dir);
   ignoreFilter = ignoreFilter || loadGitignore(rootDir);
 
   let results = [];
@@ -285,9 +392,9 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
     for (const dirent of directories) {
       if (!isLoadingDirectory) return results;
 
-      const fullPath = path.join(dir, dirent.name);
-      // Ensure path is relative to root and normalized for ignore checks
-      const relativePath = path.relative(rootDir, fullPath).split(path.sep).join('/');
+      const fullPath = safePathJoin(dir, dirent.name);
+      // Calculate relative path safely
+      const relativePath = safeRelativePath(rootDir, fullPath);
 
       // Skip PasteMax app directories
       if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
@@ -317,9 +424,9 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       const chunkPromises = chunk.map(async (dirent) => {
         if (!isLoadingDirectory) return null;
 
-        const fullPath = path.join(dir, dirent.name);
-        // Ensure path is relative to root and normalized for ignore checks
-        const relativePath = path.relative(rootDir, fullPath).split(path.sep).join('/');
+        const fullPath = safePathJoin(dir, dirent.name);
+        // Calculate relative path safely
+        const relativePath = safeRelativePath(rootDir, fullPath);
 
         // Skip files in PasteMax app directories
         if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
@@ -343,8 +450,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (stats.size > MAX_FILE_SIZE) {
             return {
               name: dirent.name,
-              path: fullPath, // Store full path
-              relativePath: relativePath, // Keep relative path for UI/display
+              path: fullPath,
+              relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
               content: "",
@@ -357,8 +464,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           if (isBinaryFile(fullPath)) {
             return {
               name: dirent.name,
-              path: fullPath, // Store full path
-              relativePath: relativePath, // Keep relative path for UI/display
+              path: fullPath,
+              relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
               content: "",
@@ -373,8 +480,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           
           return {
             name: dirent.name,
-            path: fullPath, // Store full path
-            relativePath: relativePath, // Keep relative path for UI/display
+            path: fullPath,
+            relativePath: relativePath,
             content: fileContent,
             tokenCount: countTokens(fileContent),
             size: stats.size,
@@ -385,8 +492,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           console.error(`Error reading file ${fullPath}:`, err);
           return {
             name: dirent.name,
-            path: fullPath, // Store full path
-            relativePath: relativePath, // Keep relative path for UI/display
+            path: fullPath,
+            relativePath: relativePath,
             tokenCount: 0,
             size: 0,
             isBinary: false,
@@ -509,10 +616,15 @@ ipcMain.on("cancel-directory-loading", (event) => {
  * @returns {boolean} True if the file should be excluded
  */
 function shouldExcludeByDefault(filePath, rootDir) {
-  const relativePath = path.relative(rootDir, filePath).split(path.sep).join('/');
+  // Ensure paths are absolute and normalized
+  filePath = ensureAbsolutePath(filePath);
+  rootDir = ensureAbsolutePath(rootDir);
+  
+  // Calculate relative path safely
+  const relativePath = safeRelativePath(rootDir, filePath);
   
   // Don't process paths outside the root directory
-  if (relativePath.startsWith('..')) {
+  if (relativePath.startsWith('..') || !isValidPath(relativePath)) {
     return true;
   }
 
