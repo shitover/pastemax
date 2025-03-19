@@ -1,8 +1,8 @@
 :root {
   --background-primary: #ffffff;
   --background-secondary: #f8f8f8;
-  --background-selected: rgba(0, 0, 0, 0.06);
-  --accent-blue: #0e639c;
+  --background-selected: rgba(0,0,0,0.06);
+  --accent-blue: #0E639C;
   --border-color: #e0e0e0;
   --hover-color: #f5f5f5;
   --text-primary: #000000;
@@ -17,20 +17,20 @@
 }
 
 .dark-mode {
-  --background-primary: #1e1e1e;
+  --background-primary: #1E1E1E;
   --background-secondary: #252526;
-  --background-selected: #2a2d2e;
-  --accent-blue: #0e639c;
-  --border-color: #3e3e42;
+  --background-selected: #2A2D2E;
+  --accent-blue: #0E639C;
+  --border-color: #3E3E42;
   --hover-color: #333333;
-  --text-primary: #e8e8e8;
-  --text-secondary: #bbbbbb;
+  --text-primary: #E8E8E8;
+  --text-secondary: #BBBBBB;
   --text-disabled: #808080;
-  --icon-color: #cccccc;
+  --icon-color: #CCCCCC;
   --success-color: #2ecc71;
   --warning-color: #f39c12;
   --error-color: #e74c3c;
-  --primary-button-background: #0e639c;
+  --primary-button-background: #0E639C;
   --primary-button-text: #ffffff;
 }
 
@@ -654,31 +654,42 @@ input[type="search"]:focus {
 
 .processing-indicator {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  gap: 16px;
-  height: 100%;
-  color: var(--text-secondary);
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .spinner {
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-secondary);
+  border-top-color: transparent;
   border-radius: 50%;
-  border-top: 3px solid var(--accent-blue);
-  width: 24px;
-  height: 24px;
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
+  to {
     transform: rotate(360deg);
   }
+}
+
+.cancel-btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  background-color: var(--error-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.cancel-btn:hover {
+  opacity: 0.9;
 }
 
 .error-message {
@@ -863,28 +874,4 @@ input[type="text"].search-input:focus {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.user-instructions-container {
-  padding: 16px 10px 10px 10px;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-instructions textarea {
-  color: var(--text-primary);
-  line-height: 1.5;
-  font-size: 1rem;
-  border-top: --border-color;
-  border-radius: 4px;
-  padding: 10px;
-}
-
-.user-instructions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0px 4px 16px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--background-primary);
 }

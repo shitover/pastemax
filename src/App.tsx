@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
-import UserInstructions from "./components/UserInstructions";
 import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
@@ -17,7 +16,7 @@ declare global {
         on: (channel: string, func: (...args: any[]) => void) => void;
         removeListener: (
           channel: string,
-          func: (...args: any[]) => void
+          func: (...args: any[]) => void,
         ) => void;
       };
     };
@@ -33,7 +32,14 @@ const STORAGE_KEYS = {
   EXPANDED_NODES: "pastemax-expanded-nodes",
 };
 
-const App = () => {
+const App = (): JSX.Element => {
+  // Clear saved folder on startup (temporary, for testing)
+  useEffect(() => {
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+    localStorage.removeItem("hasLoadedInitialData");
+    sessionStorage.removeItem("hasLoadedInitialData");
+  }, []);
+
   // Load initial state from localStorage if available
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
@@ -45,36 +51,38 @@ const App = () => {
   );
   const [allFiles, setAllFiles] = useState([] as FileData[]);
   const [selectedFiles, setSelectedFiles] = useState(
-    savedFiles ? JSON.parse(savedFiles) : ([] as string[])
+    savedFiles ? JSON.parse(savedFiles) : [] as string[]
   );
-  const [sortOrder, setSortOrder] = useState(savedSortOrder || "tokens-desc");
+  const [sortOrder, setSortOrder] = useState(
+    savedSortOrder || "tokens-desc"
+  );
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
   const [expandedNodes, setExpandedNodes] = useState(
     {} as Record<string, boolean>
   );
   const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
-  const [processingStatus, setProcessingStatus] = useState({
-    status: "idle",
-    message: "",
-  } as {
-    status: "idle" | "processing" | "complete" | "error";
-    message: string;
-  });
+  const [processingStatus, setProcessingStatus] = useState(
+    { status: "idle", message: "" } as {
+      status: "idle" | "processing" | "complete" | "error";
+      message: string;
+    }
+  );
   const [includeFileTree, setIncludeFileTree] = useState(false);
+  
+
 
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
-  // NEW: State for user instructions
-  const [userInstructions, setUserInstructions] = useState("");
-
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
+
+  const [isSafeMode, setIsSafeMode] = useState(false);
 
   // Load expanded nodes state from localStorage
   useEffect(() => {
     const savedExpandedNodes = localStorage.getItem(
-      STORAGE_KEYS.EXPANDED_NODES
+      STORAGE_KEYS.EXPANDED_NODES,
     );
     if (savedExpandedNodes) {
       try {
@@ -98,7 +106,7 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEYS.SELECTED_FILES,
-      JSON.stringify(selectedFiles)
+      JSON.stringify(selectedFiles),
     );
   }, [selectedFiles]);
 
@@ -112,24 +120,64 @@ const App = () => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
 
-  // Load initial data from saved folder
-  useEffect(() => {
-    if (!isElectron || !selectedFolder) return;
+  // Add a function to cancel directory loading
+  const cancelDirectoryLoading = useCallback(() => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("cancel-directory-loading");
+      setProcessingStatus({
+        status: "idle",
+        message: "Directory loading cancelled",
+      });
+    }
+  }, [isElectron]);
 
+  // Add this new useEffect for safe mode detection
+  useEffect(() => {
+    if (!isElectron) return;
+    
+    const handleStartupMode = (mode: { safeMode: boolean }) => {
+      setIsSafeMode(mode.safeMode);
+    
+      // If we're in safe mode, don't auto-load the previously selected folder
+      if (mode.safeMode) {
+        console.log("Starting in safe mode - not loading saved folder");
+        localStorage.removeItem("hasLoadedInitialData");
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      }
+    };
+    
+    window.electron.ipcRenderer.on("startup-mode", handleStartupMode);
+    
+    return () => {
+      window.electron.ipcRenderer.removeListener("startup-mode", handleStartupMode);
+    };
+  }, [isElectron]);
+
+  // Modify the existing useEffect for loading initial data
+  useEffect(() => {
+    // Temporarily disable auto-loading to test our changes
+    return;
+    
+    /* Commented out for testing
+    if (!isElectron || !selectedFolder || isSafeMode) return;
+    
     // Use a flag in sessionStorage to ensure we only load data once per session
     const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
     if (hasLoadedInitialData === "true") return;
-
+    
     console.log("Loading saved folder on startup:", selectedFolder);
     setProcessingStatus({
       status: "processing",
-      message: "Loading files from previously selected folder...",
+      message: "Loading files from previously selected folder... (Press ESC to cancel)",
     });
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
-
+    
     // Mark that we've loaded the initial data
     sessionStorage.setItem("hasLoadedInitialData", "true");
-  }, [isElectron, selectedFolder]);
+    */
+  }, [isElectron, selectedFolder, isSafeMode]);
+  
+
 
   // Listen for folder selection from main process
   useEffect(() => {
@@ -174,7 +222,7 @@ const App = () => {
       const selectablePaths = files
         .filter(
           (file: FileData) =>
-            !file.isBinary && !file.isSkipped && !file.excludedByDefault // Respect the excludedByDefault flag
+            !file.isBinary && !file.isSkipped && !file.excludedByDefault, // Respect the excludedByDefault flag
         )
         .map((file: FileData) => file.path);
 
@@ -193,21 +241,21 @@ const App = () => {
     window.electron.ipcRenderer.on("file-list-data", handleFileListData);
     window.electron.ipcRenderer.on(
       "file-processing-status",
-      handleProcessingStatus
+      handleProcessingStatus,
     );
 
     return () => {
       window.electron.ipcRenderer.removeListener(
         "folder-selected",
-        handleFolderSelected
+        handleFolderSelected,
       );
       window.electron.ipcRenderer.removeListener(
         "file-list-data",
-        handleFileListData
+        handleFileListData,
       );
       window.electron.ipcRenderer.removeListener(
         "file-processing-status",
-        handleProcessingStatus
+        handleProcessingStatus,
       );
     };
   }, [isElectron, sortOrder, searchTerm]);
@@ -226,7 +274,7 @@ const App = () => {
   const applyFiltersAndSort = (
     files: FileData[],
     sort: string,
-    filter: string
+    filter: string,
   ) => {
     let filtered = files;
 
@@ -236,7 +284,7 @@ const App = () => {
       filtered = files.filter(
         (file) =>
           file.name.toLowerCase().includes(lowerFilter) ||
-          file.path.toLowerCase().includes(lowerFilter)
+          file.path.toLowerCase().includes(lowerFilter),
       );
     }
 
@@ -290,7 +338,6 @@ const App = () => {
         normalizePath(file.path).startsWith(normalizedFolderPath) && 
         !file.isBinary && 
         !file.isSkipped,
-
     );
 
     if (isSelected) {
@@ -311,7 +358,6 @@ const App = () => {
       setSelectedFiles((prev: string[]) => {
         const newSelection = prev.filter(
           (path: string) =>
-
             !filesInFolder.some((file: FileData) => arePathsEqual(normalizePath(file.path), path)),
         );
         return newSelection;
@@ -345,8 +391,7 @@ const App = () => {
     }, 0);
   };
 
-  // Concatenate selected files content for copying,
-  // and add user instructions (wrapped in tags) at the bottom if provided.
+  // Concatenate selected files content for copying
   const getSelectedFilesContent = () => {
     // Sort selected files according to current sort order
     const [sortKey, sortDir] = sortOrder.split("-");
@@ -371,23 +416,19 @@ const App = () => {
     }
 
     let concatenatedString = "";
-
+    
     // Add ASCII file tree if enabled
     if (includeFileTree && selectedFolder) {
       const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
       concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
     }
-
+    
     sortedSelected.forEach((file: FileData) => {
       concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
       concatenatedString += file.content;
     });
 
-    // Wrap user instructions if any and add to the bottom
-    const userInstructionsBlock = userInstructions.trim()
-      ? `\n<user_instructions>\n${userInstructions}\n</user_instructions>\n\n`
-      : "";
-    return concatenatedString + userInstructionsBlock;
+    return concatenatedString;
   };
 
   // Handle select all files
@@ -411,7 +452,7 @@ const App = () => {
   const deselectAllFiles = () => {
     const displayedPaths = displayedFiles.map((file: FileData) => file.path);
     setSelectedFiles((prev: string[]) =>
-      prev.filter((path: string) => !displayedPaths.includes(path))
+      prev.filter((path: string) => !displayedPaths.includes(path)),
     );
   };
 
@@ -434,7 +475,7 @@ const App = () => {
       // Save to localStorage
       localStorage.setItem(
         STORAGE_KEYS.EXPANDED_NODES,
-        JSON.stringify(newState)
+        JSON.stringify(newState),
       );
 
       return newState;
@@ -442,7 +483,7 @@ const App = () => {
   };
 
   return (
-    <ThemeProvider>
+    <ThemeProvider children={
       <div className="app-container">
         <header className="header">
           <h1>PasteMax</h1>
@@ -469,6 +510,12 @@ const App = () => {
           <div className="processing-indicator">
             <div className="spinner"></div>
             <span>{processingStatus.message}</span>
+            <button
+              className="cancel-btn"
+              onClick={cancelDirectoryLoading}
+            >
+              Cancel
+            </button>
           </div>
         )}
 
@@ -534,33 +581,9 @@ const App = () => {
                 toggleFileSelection={toggleFileSelection}
               />
 
-              {/* Render the user instructions textbox */}
-              <div className="user-instructions-container">
-                <UserInstructions
-                  instructions={userInstructions}
-                  setInstructions={setUserInstructions}
-                />
-              </div>
-
               <div className="copy-button-container">
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "12px",
-                    width: "100%",
-                    maxWidth: "400px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor: "pointer",
-                    }}
-                  >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", maxWidth: "400px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                     <input
                       type="checkbox"
                       checked={includeFileTree}
@@ -572,9 +595,7 @@ const App = () => {
                     text={getSelectedFilesContent()}
                     className="primary full-width"
                   >
-                    <span>
-                      COPY ALL SELECTED ({selectedFiles.length} files)
-                    </span>
+                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
                   </CopyButton>
                 </div>
               </div>
@@ -582,7 +603,7 @@ const App = () => {
           </div>
         )}
       </div>
-    </ThemeProvider>
+    } />
   );
 };
 
