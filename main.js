@@ -150,8 +150,11 @@ const BINARY_EXTENSIONS = [
   ".bmp",
   ".tiff",
   ".ico",
+  ".icns",
   ".webp",
   ".svg",
+  ".heic",
+  ".heif",
   // Audio/Video
   ".mp3",
   ".mp4",
