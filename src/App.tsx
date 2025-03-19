@@ -155,10 +155,6 @@ const App = (): JSX.Element => {
 
   // Modify the existing useEffect for loading initial data
   useEffect(() => {
-    // Temporarily disable auto-loading to test our changes
-    return;
-    
-    /* Commented out for testing
     if (!isElectron || !selectedFolder || isSafeMode) return;
     
     // Use a flag in sessionStorage to ensure we only load data once per session
@@ -174,10 +170,8 @@ const App = (): JSX.Element => {
     
     // Mark that we've loaded the initial data
     sessionStorage.setItem("hasLoadedInitialData", "true");
-    */
   }, [isElectron, selectedFolder, isSafeMode]);
   
-
 
   // Listen for folder selection from main process
   useEffect(() => {
@@ -330,37 +324,43 @@ const App = (): JSX.Element => {
 
   // Toggle folder selection (select/deselect all files in folder)
   const toggleFolderSelection = (folderPath: string, isSelected: boolean) => {
-    // Normalize the folder path
+    // Normalize the folder path for cross-platform compatibility
     const normalizedFolderPath = normalizePath(folderPath);
     
-    const filesInFolder = allFiles.filter(
-      (file: FileData) =>
-        normalizePath(file.path).startsWith(normalizedFolderPath) && 
-        !file.isBinary && 
-        !file.isSkipped,
-    );
+    // Get all files under this folder and its subfolders
+    const getFilesInFolder = (currentPath: string): FileData[] => {
+      return allFiles.filter((file: FileData) => {
+        const normalizedFilePath = normalizePath(file.path);
+        const isInFolder = normalizedFilePath.startsWith(currentPath);
+        const isSelectable = !file.isBinary && !file.isSkipped;
+        return isInFolder && isSelectable;
+      });
+    };
 
+    // Get all files in this folder and its subfolders
+    const filesInFolder = getFilesInFolder(normalizedFolderPath);
+    
     if (isSelected) {
-      // Add all files from this folder that aren't already selected
-      const filePaths = filesInFolder.map((file: FileData) => normalizePath(file.path));
-      
+      // Add all files from this folder and subfolders that aren't already selected
       setSelectedFiles((prev: string[]) => {
-        const newSelection = [...prev];
-        filePaths.forEach((path: string) => {
-          if (!newSelection.some(p => arePathsEqual(p, path))) {
-            newSelection.push(path);
-          }
+        const newSelection = new Set(prev); // Use Set to avoid duplicates
+        
+        filesInFolder.forEach((file: FileData) => {
+          const normalizedFilePath = normalizePath(file.path);
+          newSelection.add(normalizedFilePath);
         });
-        return newSelection;
+        
+        return Array.from(newSelection);
       });
     } else {
-      // Remove all files from this folder
+      // Remove all files from this folder and its subfolders
       setSelectedFiles((prev: string[]) => {
-        const newSelection = prev.filter(
-          (path: string) =>
-            !filesInFolder.some((file: FileData) => arePathsEqual(normalizePath(file.path), path)),
-        );
-        return newSelection;
+        return prev.filter((path: string) => {
+          const normalizedPath = normalizePath(path);
+          return !filesInFolder.some((file: FileData) => 
+            arePathsEqual(normalizePath(file.path), normalizedPath)
+          );
+        });
       });
     }
   };
