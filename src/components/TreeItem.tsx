@@ -21,8 +21,12 @@ const TreeItem = ({
   // Recursive function to check if all files in a directory are selected
   const areAllFilesInDirectorySelected = (node: TreeNode): boolean => {
     if (node.type === "file") {
+      // Skip binary, skipped or excluded files
+      if (node.fileData && (node.fileData.isBinary || node.fileData.isSkipped || node.fileData.excludedByDefault)) {
+        return true; // Consider these as "selected" for the "all files selected" check
+      }
       return selectedFiles.some((selectedPath) =>
-        arePathsEqual(selectedPath, node.path),
+        arePathsEqual(selectedPath, node.path)
       );
     }
 
@@ -31,8 +35,22 @@ const TreeItem = ({
       node.children &&
       node.children.length > 0
     ) {
-      return node.children.every((child) =>
-        areAllFilesInDirectorySelected(child),
+      // Get all selectable children (non-binary, non-skipped files)
+      const selectableChildren = node.children.filter(
+        child => 
+          !(child.type === "file" && 
+            child.fileData && 
+            (child.fileData.isBinary || child.fileData.isSkipped || child.fileData.excludedByDefault))
+      );
+      
+      // If there are no selectable children, consider it "all selected"
+      if (selectableChildren.length === 0) {
+        return true;
+      }
+      
+      // Check if all selectable children are selected
+      return selectableChildren.every((child) =>
+        areAllFilesInDirectorySelected(child)
       );
     }
 
@@ -42,8 +60,12 @@ const TreeItem = ({
   // Recursive function to check if any file in a directory is selected
   const isAnyFileInDirectorySelected = (node: TreeNode): boolean => {
     if (node.type === "file") {
+      // Skip binary, skipped or excluded files
+      if (node.fileData && (node.fileData.isBinary || node.fileData.isSkipped || node.fileData.excludedByDefault)) {
+        return false; // These files don't count for the "any files selected" check
+      }
       return selectedFiles.some((selectedPath) =>
-        arePathsEqual(selectedPath, node.path),
+        arePathsEqual(selectedPath, node.path)
       );
     }
 
@@ -52,7 +74,23 @@ const TreeItem = ({
       node.children &&
       node.children.length > 0
     ) {
-      return node.children.some((child) => isAnyFileInDirectorySelected(child));
+      // Get all selectable children (non-binary, non-skipped files)
+      const selectableChildren = node.children.filter(
+        child => 
+          !(child.type === "file" && 
+            child.fileData && 
+            (child.fileData.isBinary || child.fileData.isSkipped || child.fileData.excludedByDefault))
+      );
+      
+      // If there are no selectable children, consider it "none selected"
+      if (selectableChildren.length === 0) {
+        return false;
+      }
+      
+      // Check if any selectable child is selected
+      return selectableChildren.some((child) => 
+        isAnyFileInDirectorySelected(child)
+      );
     }
 
     return false;

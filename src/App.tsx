@@ -328,19 +328,26 @@ const App = (): JSX.Element => {
     const normalizedFolderPath = normalizePath(folderPath);
     
     // Get all files under this folder and its subfolders
-    const getFilesInFolder = (currentPath: string): FileData[] => {
+    const getFilesInFolder = (): FileData[] => {
       return allFiles.filter((file: FileData) => {
+        if (file.isBinary || file.isSkipped || file.excludedByDefault) {
+          return false;
+        }
+        
         const normalizedFilePath = normalizePath(file.path);
-        // Use path.startsWith for directory containment check
-        const isInFolder = normalizedFilePath.startsWith(normalizedFolderPath + "/") || 
-                         arePathsEqual(normalizedFilePath, normalizedFolderPath);
-        const isSelectable = !file.isBinary && !file.isSkipped && !file.excludedByDefault;
-        return isInFolder && isSelectable;
+        
+        // Check if this file is in the selected folder or its subfolders
+        // 1. Either the file is directly in this folder (paths are equal)
+        // 2. Or the file is in a subfolder (path starts with folder path followed by a slash)
+        const isInFolder = arePathsEqual(normalizedFilePath, normalizedFolderPath) || 
+                          normalizedFilePath.startsWith(normalizedFolderPath + '/');
+                          
+        return isInFolder;
       });
     };
 
     // Get all files in this folder and its subfolders
-    const filesInFolder = getFilesInFolder(normalizedFolderPath);
+    const filesInFolder = getFilesInFolder();
     
     if (isSelected) {
       // Add all files from this folder and subfolders that aren't already selected
@@ -348,8 +355,7 @@ const App = (): JSX.Element => {
         const newSelection = new Set(prev); // Use Set to avoid duplicates
         
         filesInFolder.forEach((file: FileData) => {
-          const normalizedFilePath = normalizePath(file.path);
-          newSelection.add(normalizedFilePath);
+          newSelection.add(normalizePath(file.path));
         });
         
         return Array.from(newSelection);
@@ -357,11 +363,10 @@ const App = (): JSX.Element => {
     } else {
       // Remove all files from this folder and its subfolders
       setSelectedFiles((prev: string[]) => {
-        return prev.filter((path: string) => {
+        const filePaths = filesInFolder.map(file => normalizePath(file.path));
+        return prev.filter(path => {
           const normalizedPath = normalizePath(path);
-          return !filesInFolder.some((file: FileData) => 
-            arePathsEqual(normalizePath(file.path), normalizedPath)
-          );
+          return !filePaths.includes(normalizedPath);
         });
       });
     }
