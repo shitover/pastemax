@@ -875,3 +875,18 @@ input[type="text"].search-input:focus {
   align-items: center;
   gap: 16px;
 }
+
+.tree-item.disabled-item {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.tree-item.disabled-item .tree-item-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background-color: var(--hover-color);
+  color: var(--text-secondary);
+  margin-left: 6px;
+  white-space: nowrap;
+}

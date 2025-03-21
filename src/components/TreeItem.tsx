@@ -130,23 +130,34 @@ const TreeItem = ({
 
   const handleCheckboxChange = (e: any) => {
     e.stopPropagation();
+    // Get the checked value directly from the event target
+    const isChecked = e.target.checked;
+    
+    console.log('Checkbox clicked:', { 
+      type, 
+      path, 
+      isChecked,
+      isDirectory: type === "directory",
+      isFile: type === "file"
+    });
+    
     if (type === "file") {
       toggleFileSelection(path);
     } else if (type === "directory") {
-      toggleFolderSelection(path, e.target.checked);
+      console.log('Calling toggleFolderSelection with:', path, isChecked);
+      toggleFolderSelection(path, isChecked);
     }
   };
 
-  // Check if file is binary or otherwise unselectable
-  const isDisabled = fileData ? fileData.isBinary || fileData.isSkipped : false;
-
-  // Check if the file is excluded by default (but still selectable)
-  const isExcludedByDefault = fileData?.excludedByDefault || false;
+  // Check if file is binary, skipped, or excluded by default (unselectable)
+  const isDisabled = fileData 
+    ? fileData.isBinary || fileData.isSkipped || fileData.excludedByDefault 
+    : false;
 
   return (
     <div
       className={`tree-item ${isSelected ? "selected" : ""} ${
-        isExcludedByDefault ? "excluded-by-default" : ""
+        isDisabled ? "disabled-item" : ""
       }`}
       style={{ marginLeft: `${level * 16}px` }}
       onClick={handleItemClick}
@@ -186,14 +197,12 @@ const TreeItem = ({
           </span>
         )}
 
-        {isDisabled && fileData && (
+        {fileData && isDisabled && (
           <span className="tree-item-badge">
-            {fileData.isBinary ? "Binary" : "Skipped"}
+            {fileData.isBinary ? "Binary" : 
+             fileData.isSkipped ? "Skipped" : 
+             "Excluded"}
           </span>
-        )}
-
-        {!isDisabled && isExcludedByDefault && (
-          <span className="tree-item-badge excluded">Excluded</span>
         )}
       </div>
     </div>

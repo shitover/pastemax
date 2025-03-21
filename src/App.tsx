@@ -324,51 +324,55 @@ const App = (): JSX.Element => {
 
   // Toggle folder selection (select/deselect all files in folder)
   const toggleFolderSelection = (folderPath: string, isSelected: boolean) => {
+    console.log('toggleFolderSelection called with:', { folderPath, isSelected });
+    
     // Normalize the folder path for cross-platform compatibility
     const normalizedFolderPath = normalizePath(folderPath);
+    console.log('Normalized folder path:', normalizedFolderPath);
     
-    // Get all files under this folder and its subfolders
-    const getFilesInFolder = (): FileData[] => {
-      return allFiles.filter((file: FileData) => {
-        if (file.isBinary || file.isSkipped || file.excludedByDefault) {
-          return false;
-        }
-        
-        const normalizedFilePath = normalizePath(file.path);
-        
-        // Check if this file is in the selected folder or its subfolders
-        // 1. Either the file is directly in this folder (paths are equal)
-        // 2. Or the file is in a subfolder (path starts with folder path followed by a slash)
-        const isInFolder = arePathsEqual(normalizedFilePath, normalizedFolderPath) || 
-                          normalizedFilePath.startsWith(normalizedFolderPath + '/');
-                          
-        return isInFolder;
-      });
+    // Simple function to check if a file is in the given folder or its subfolders
+    const isFileInFolder = (filePath: string, folderPath: string): boolean => {
+      const normalizedFilePath = normalizePath(filePath);
+      
+      // File is in folder if:
+      // 1. File path equals folder path (exact match)
+      // 2. File path starts with folder path + '/' (subfolder)
+      return arePathsEqual(normalizedFilePath, folderPath) || 
+             normalizedFilePath.startsWith(folderPath + '/');
     };
-
-    // Get all files in this folder and its subfolders
-    const filesInFolder = getFilesInFolder();
+    
+    // Filter all files to get only those in this folder (and subfolders) that are selectable
+    const filesInFolder = allFiles.filter((file: FileData) => 
+      !file.isBinary && 
+      !file.isSkipped && 
+      !file.excludedByDefault &&
+      isFileInFolder(file.path, normalizedFolderPath)
+    );
+    
+    console.log('Found', filesInFolder.length, 'selectable files in folder');
+    
+    // If no selectable files were found, do nothing
+    if (filesInFolder.length === 0) {
+      console.log('No selectable files found in folder, nothing to do');
+      return;
+    }
+    
+    // Extract just the paths from the files
+    const folderFilePaths = filesInFolder.map((file: FileData) => normalizePath(file.path));
+    console.log('File paths in folder:', folderFilePaths);
     
     if (isSelected) {
-      // Add all files from this folder and subfolders that aren't already selected
+      // Adding files - create a new Set with all existing + new files
       setSelectedFiles((prev: string[]) => {
-        const newSelection = new Set(prev); // Use Set to avoid duplicates
-        
-        filesInFolder.forEach((file: FileData) => {
-          newSelection.add(normalizePath(file.path));
-        });
-        
-        return Array.from(newSelection);
+        const existingSelection = new Set(prev);
+        folderFilePaths.forEach((path: string) => existingSelection.add(path));
+        return Array.from(existingSelection);
       });
     } else {
-      // Remove all files from this folder and its subfolders
-      setSelectedFiles((prev: string[]) => {
-        const filePaths = filesInFolder.map(file => normalizePath(file.path));
-        return prev.filter(path => {
-          const normalizedPath = normalizePath(path);
-          return !filePaths.includes(normalizedPath);
-        });
-      });
+      // Removing files - filter out any file that's in our folder
+      setSelectedFiles((prev: string[]) => 
+        prev.filter((path: string) => !folderFilePaths.includes(normalizePath(path)))
+      );
     }
   };
 
