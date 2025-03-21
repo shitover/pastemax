@@ -61,7 +61,7 @@ release-builds/
 dist/
 
 # # Repomix
-# repomix-output.xml
-# repomix.config.json
-# .repomixignore
+repomix-output.xml
+repomix.config.json
+.repomixignore
 
