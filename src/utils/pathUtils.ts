@@ -2,6 +2,46 @@
  * Browser-compatible path utilities to replace Node.js path module
  */
 
+// Cache the OS detection result
+let cachedOS: 'windows' | 'mac' | 'linux' | 'unknown' | null = null;
+
+/**
+ * Detects the operating system
+ * 
+ * @returns The detected operating system ('windows', 'mac', 'linux', or 'unknown')
+ */
+export function detectOS(): 'windows' | 'mac' | 'linux' | 'unknown' {
+  if (cachedOS !== null) {
+    return cachedOS;
+  }
+
+  if (typeof window !== 'undefined' && window.navigator) {
+    const platform = window.navigator.platform.toLowerCase();
+    
+    if (platform.includes('win')) {
+      cachedOS = 'windows';
+    } else if (platform.includes('mac')) {
+      cachedOS = 'mac';
+    } else if (platform.includes('linux')) {
+      cachedOS = 'linux';
+    } else {
+      cachedOS = 'unknown';
+    }
+  } else {
+    cachedOS = 'unknown';
+  }
+  
+  return cachedOS;
+}
+
+/**
+ * Checks if the current OS is Windows
+ * @returns true if running on Windows
+ */
+export function isWindows(): boolean {
+  return detectOS() === 'windows';
+}
+
 /**
  * Normalizes a file path to use forward slashes regardless of operating system
  * This helps with path comparison across different platforms
@@ -17,35 +57,70 @@ export function normalizePath(filePath: string): string {
 }
 
 /**
- * Detects the operating system
- * 
- * @returns The detected operating system ('windows', 'mac', 'linux', or 'unknown')
- */
-export function detectOS(): 'windows' | 'mac' | 'linux' | 'unknown' {
-  if (typeof window !== 'undefined' && window.navigator) {
-    const platform = window.navigator.platform.toLowerCase();
-    
-    if (platform.includes('win')) {
-      return 'windows';
-    } else if (platform.includes('mac')) {
-      return 'mac';
-    } else if (platform.includes('linux')) {
-      return 'linux';
-    }
-  }
-  
-  return 'unknown';
-}
-
-/**
- * Compares two paths for equality, handling different OS path separators
+ * Compares two paths for equality, handling different OS path separators and case sensitivity
  * 
  * @param path1 First path to compare
  * @param path2 Second path to compare
  * @returns True if the paths are equivalent, false otherwise
  */
 export function arePathsEqual(path1: string, path2: string): boolean {
-  return normalizePath(path1) === normalizePath(path2);
+  const normalized1 = normalizePath(path1);
+  const normalized2 = normalizePath(path2);
+  
+  // On Windows, paths are case-insensitive
+  if (isWindows()) {
+    return normalized1.toLowerCase() === normalized2.toLowerCase();
+  }
+  
+  return normalized1 === normalized2;
+}
+
+/**
+ * Join path segments together, handling different OS path separators
+ * @param segments The path segments to join
+ * @returns The joined path
+ */
+export function join(...segments: (string | null | undefined)[]): string {
+  const normalizedSegments = segments
+    .filter(Boolean)
+    .map((seg) => normalizePath(String(seg)))
+    .map(seg => seg.replace(/^\/+|\/+$/g, '')); // Remove leading/trailing slashes
+    
+  return normalizedSegments.join('/');
+}
+
+/**
+ * Checks if a path is absolute
+ * @param path The path to check
+ * @returns True if the path is absolute
+ */
+export function isAbsolute(path: string): boolean {
+  const normalized = normalizePath(path);
+  
+  // Windows paths (e.g., C:/, D:/)
+  if (/^[a-z]:/i.test(normalized)) {
+    return true;
+  }
+  
+  // Unix-like paths
+  return normalized.startsWith('/');
+}
+
+/**
+ * Checks if one path is a subpath of another
+ * @param parent The potential parent path
+ * @param child The potential child path
+ * @returns True if child is a subpath of parent
+ */
+export function isSubPath(parent: string, child: string): boolean {
+  const normalizedParent = normalizePath(parent);
+  const normalizedChild = normalizePath(child);
+  
+  if (isWindows()) {
+    return normalizedChild.toLowerCase().startsWith(normalizedParent.toLowerCase() + '/');
+  }
+  
+  return normalizedChild.startsWith(normalizedParent + '/');
 }
 
 /**
@@ -56,17 +131,9 @@ export function arePathsEqual(path1: string, path2: string): boolean {
 export function basename(path: string | null | undefined): string {
   if (!path) return "";
 
-  // Ensure path is a string
-  const pathStr = String(path);
-
-  // Handle both forward and backslashes
-  const normalizedPath = pathStr.replace(/\\/g, "/");
-  // Remove trailing slashes
-  const trimmedPath = normalizedPath.endsWith("/")
-    ? normalizedPath.slice(0, -1)
-    : normalizedPath;
-  // Get the last part after the final slash
-  const parts = trimmedPath.split("/");
+  const normalizedPath = normalizePath(String(path));
+  const trimmedPath = normalizedPath.replace(/\/+$/, ''); // Remove trailing slashes
+  const parts = trimmedPath.split('/');
   return parts[parts.length - 1] || "";
 }
 
@@ -78,31 +145,10 @@ export function basename(path: string | null | undefined): string {
 export function dirname(path: string | null | undefined): string {
   if (!path) return ".";
 
-  // Ensure path is a string
-  const pathStr = String(path);
-
-  // Handle both forward and backslashes
-  const normalizedPath = pathStr.replace(/\\/g, "/");
-  // Remove trailing slashes
-  const trimmedPath = normalizedPath.endsWith("/")
-    ? normalizedPath.slice(0, -1)
-    : normalizedPath;
-  // Get everything before the final slash
+  const normalizedPath = normalizePath(String(path));
+  const trimmedPath = normalizedPath.replace(/\/+$/, ''); // Remove trailing slashes
   const lastSlashIndex = trimmedPath.lastIndexOf("/");
   return lastSlashIndex === -1 ? "." : trimmedPath.slice(0, lastSlashIndex);
-}
-
-/**
- * Join path segments together
- * @param segments The path segments to join
- * @returns The joined path
- */
-export function join(...segments: (string | null | undefined)[]): string {
-  return segments
-    .filter(Boolean)
-    .map((seg) => String(seg))
-    .join("/")
-    .replace(/\/+/g, "/"); // Replace multiple slashes with a single one
 }
 
 /**

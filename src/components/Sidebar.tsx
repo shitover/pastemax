@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { SidebarProps, TreeNode } from "../types/FileTypes";
 import SearchBar from "./SearchBar";
 import TreeItem from "./TreeItem";
+import { normalizePath, join, isSubPath, arePathsEqual } from "../utils/pathUtils";
 
 const Sidebar = ({
   selectedFolder,
@@ -75,15 +76,17 @@ const Sidebar = ({
         allFiles.forEach((file) => {
           if (!file.path) return;
 
-          const relativePath =
-            selectedFolder && file.path.startsWith(selectedFolder)
-              ? file.path
-                  .substring(selectedFolder.length)
-                  .replace(/^\/|^\\/, "")
-              : file.path;
+          // Normalize both the selectedFolder and file.path
+          const normalizedSelectedFolder = selectedFolder ? normalizePath(selectedFolder) : '';
+          const normalizedFilePath = normalizePath(file.path);
+          
+          // Get the relative path by removing the selectedFolder prefix if it exists
+          const relativePath = normalizedSelectedFolder && isSubPath(normalizedSelectedFolder, normalizedFilePath)
+            ? normalizedFilePath.substring(normalizedSelectedFolder.length + 1) // +1 for the trailing slash
+            : normalizedFilePath;
 
-          const parts = relativePath.split(/[/\\]/);
-          let currentPath = selectedFolder || "";
+          const parts = relativePath.split('/');
+          let currentPath = '';
           let current = fileMap;
 
           // Build the path in the tree
@@ -91,14 +94,20 @@ const Sidebar = ({
             const part = parts[i];
             if (!part) continue;
 
-            currentPath = currentPath ? `${currentPath}/${part}` : part;
+            // Build the current path segment
+            currentPath = currentPath ? join(currentPath, part) : part;
+            
+            // For directory paths, prepend selectedFolder only for the full path
+            const fullPath = normalizedSelectedFolder
+              ? join(normalizedSelectedFolder, currentPath)
+              : currentPath;
             
             if (i === parts.length - 1) {
               // This is a file
               current[part] = {
                 id: `node-${file.path}`,
                 name: part,
-                path: file.path,
+                path: file.path, // Keep the original file path
                 type: "file",
                 level: i,
                 fileData: file,
@@ -107,9 +116,9 @@ const Sidebar = ({
               // This is a directory
               if (!current[part]) {
                 current[part] = {
-                  id: `node-${currentPath}`,
+                  id: `node-${fullPath}`,
                   name: part,
-                  path: currentPath,
+                  path: fullPath,
                   type: "directory",
                   level: i,
                   children: {},

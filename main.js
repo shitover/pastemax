@@ -155,6 +155,8 @@ const BINARY_EXTENSIONS = [
   ".svg",
   ".heic",
   ".heif",
+  ".pdf",
+  ".psd",
   // Audio/Video
   ".mp3",
   ".mp4",
