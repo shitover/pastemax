@@ -37,7 +37,7 @@ function ensureSerializable(data) {
 contextBridge.exposeInMainWorld("electron", {
   send: (channel, data) => {
     // whitelist channels
-    const validChannels = ["open-folder", "request-file-list", "debug-file-selection", "cancel-directory-loading"];
+    const validChannels = ["open-folder", "request-file-list"];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
       const serializedData = ensureSerializable(data);
@@ -49,13 +49,14 @@ contextBridge.exposeInMainWorld("electron", {
       "folder-selected",
       "file-list-data",
       "file-processing-status",
-      "startup-mode"
     ];
     if (validChannels.includes(channel)) {
-      // Remove any existing listeners to avoid duplicates
-      ipcRenderer.removeAllListeners(channel);
-      // Add the new listener
-      ipcRenderer.on(channel, (event, ...args) => func(...args));
+      // Deliberately strip event as it includes `sender`
+      ipcRenderer.on(channel, (event, ...args) => {
+        // Convert args to serializable form
+        const serializedArgs = args.map(ensureSerializable);
+        func(...serializedArgs);
+      });
     }
   },
   // For backward compatibility (but still ensure serialization)
@@ -79,14 +80,10 @@ contextBridge.exposeInMainWorld("electron", {
       return wrapper;
     },
     removeListener: (channel, func) => {
-      const validChannels = [
-        "folder-selected",
-        "file-list-data",
-        "file-processing-status",
-        "startup-mode"
-      ];
-      if (validChannels.includes(channel)) {
-        ipcRenderer.removeListener(channel, (event, ...args) => func(...args));
+      try {
+        ipcRenderer.removeListener(channel, func);
+      } catch (err) {
+        console.error(`Error removing listener for channel ${channel}:`, err);
       }
     },
   },

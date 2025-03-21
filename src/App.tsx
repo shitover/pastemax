@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
@@ -32,14 +32,7 @@ const STORAGE_KEYS = {
   EXPANDED_NODES: "pastemax-expanded-nodes",
 };
 
-const App = (): JSX.Element => {
-  // Clear saved folder on startup (temporary, for testing)
-  useEffect(() => {
-    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
-    localStorage.removeItem("hasLoadedInitialData");
-    sessionStorage.removeItem("hasLoadedInitialData");
-  }, []);
-
+const App = () => {
   // Load initial state from localStorage if available
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
@@ -76,8 +69,6 @@ const App = (): JSX.Element => {
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
-
-  const [isSafeMode, setIsSafeMode] = useState(false);
 
   // Load expanded nodes state from localStorage
   useEffect(() => {
@@ -120,62 +111,24 @@ const App = (): JSX.Element => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
 
-  // Add a function to cancel directory loading
-  const cancelDirectoryLoading = useCallback(() => {
-    if (isElectron) {
-      window.electron.ipcRenderer.send("cancel-directory-loading");
-      setProcessingStatus({
-        status: "idle",
-        message: "Directory loading cancelled",
-      });
-    }
-  }, [isElectron]);
-
-  // Add this new useEffect for safe mode detection
+  // Load initial data from saved folder
   useEffect(() => {
-    if (!isElectron) return;
-    
-    const handleStartupMode = (mode: { safeMode: boolean }) => {
-      setIsSafeMode(mode.safeMode);
-    
-      // If we're in safe mode, don't auto-load the previously selected folder
-      if (mode.safeMode) {
-        console.log("Starting in safe mode - not loading saved folder");
-        localStorage.removeItem("hasLoadedInitialData");
-        localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
-      }
-    };
-    
-    window.electron.ipcRenderer.on("startup-mode", handleStartupMode);
-    
-    return () => {
-      window.electron.ipcRenderer.removeListener("startup-mode", handleStartupMode);
-    };
-  }, [isElectron]);
-
-  // Modify the existing useEffect for loading initial data
-  useEffect(() => {
-    // Temporarily disable auto-loading to test our changes
-    return;
-    
-    /* Commented out for testing
-    if (!isElectron || !selectedFolder || isSafeMode) return;
-    
+    if (!isElectron || !selectedFolder) return;
+  
     // Use a flag in sessionStorage to ensure we only load data once per session
     const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
     if (hasLoadedInitialData === "true") return;
-    
+  
     console.log("Loading saved folder on startup:", selectedFolder);
     setProcessingStatus({
       status: "processing",
-      message: "Loading files from previously selected folder... (Press ESC to cancel)",
+      message: "Loading files from previously selected folder...",
     });
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
-    
+  
     // Mark that we've loaded the initial data
     sessionStorage.setItem("hasLoadedInitialData", "true");
-    */
-  }, [isElectron, selectedFolder, isSafeMode]);
+  }, [isElectron, selectedFolder]);
   
 
 
@@ -483,7 +436,7 @@ const App = (): JSX.Element => {
   };
 
   return (
-    <ThemeProvider children={
+    <ThemeProvider>
       <div className="app-container">
         <header className="header">
           <h1>PasteMax</h1>
@@ -510,12 +463,6 @@ const App = (): JSX.Element => {
           <div className="processing-indicator">
             <div className="spinner"></div>
             <span>{processingStatus.message}</span>
-            <button
-              className="cancel-btn"
-              onClick={cancelDirectoryLoading}
-            >
-              Cancel
-            </button>
           </div>
         )}
 
@@ -603,7 +550,7 @@ const App = (): JSX.Element => {
           </div>
         )}
       </div>
-    } />
+    </ThemeProvider>
   );
 };
 
