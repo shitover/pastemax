@@ -5,7 +5,6 @@ import TreeItem from "./TreeItem";
 
 const Sidebar = ({
   selectedFolder,
-  openFolder,
   allFiles,
   selectedFiles,
   toggleFileSelection,
@@ -16,8 +15,8 @@ const Sidebar = ({
   deselectAllFiles,
   expandedNodes,
   toggleExpanded,
-}: SidebarProps) => {
-  const [fileTree, setFileTree] = useState<TreeNode[]>([]);
+}: Omit<SidebarProps, 'openFolder'>) => {
+  const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
   const [isTreeBuildingComplete, setIsTreeBuildingComplete] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
@@ -27,14 +26,14 @@ const Sidebar = ({
   const MAX_SIDEBAR_WIDTH = 500;
 
   // Handle mouse down for resizing
-  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleResizeStart = (e: any) => {
     e.preventDefault();
     setIsResizing(true);
   };
 
   // Handle resize effect
   useEffect(() => {
-    const handleResize = (e: globalThis.MouseEvent) => {
+    const handleResize = (e: any) => {
       if (isResizing) {
         const newWidth = e.clientX;
         if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
@@ -84,7 +83,7 @@ const Sidebar = ({
               : file.path;
 
           const parts = relativePath.split(/[/\\]/);
-          let currentPath = "";
+          let currentPath = selectedFolder || "";
           let current = fileMap;
 
           // Build the path in the tree
@@ -94,19 +93,12 @@ const Sidebar = ({
 
             currentPath = currentPath ? `${currentPath}/${part}` : part;
             
-            // Use the original file.path for files to avoid path duplication
-            const fullPath = i === parts.length - 1 
-              ? file.path // For files, use the original path
-              : (selectedFolder 
-                  ? `${selectedFolder}/${currentPath}` 
-                  : currentPath); // For directories
-
             if (i === parts.length - 1) {
               // This is a file
               current[part] = {
-                id: `node-${fullPath}`,
+                id: `node-${file.path}`,
                 name: part,
-                path: file.path, // Use the original file path
+                path: file.path,
                 type: "file",
                 level: i,
                 fileData: file,
@@ -115,9 +107,9 @@ const Sidebar = ({
               // This is a directory
               if (!current[part]) {
                 current[part] = {
-                  id: `node-${fullPath}`,
+                  id: `node-${currentPath}`,
                   name: part,
-                  path: fullPath,
+                  path: currentPath,
                   type: "directory",
                   level: i,
                   children: {},
@@ -224,7 +216,7 @@ const Sidebar = ({
     };
 
     setFileTree((prevTree: TreeNode[]) => applyExpandedState(prevTree));
-  }, [expandedNodes]);
+  }, [expandedNodes, fileTree.length]);
 
   // Flatten the tree for rendering with proper indentation
   const flattenTree = (nodes: TreeNode[]): TreeNode[] => {

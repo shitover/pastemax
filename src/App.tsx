@@ -371,7 +371,7 @@ const App = (): JSX.Element => {
     } else {
       // Removing files - filter out any file that's in our folder
       setSelectedFiles((prev: string[]) => 
-        prev.filter((path: string) => !folderFilePaths.includes(normalizePath(path)))
+        prev.filter((path: string) => !isFileInFolder(path, normalizedFolderPath))
       );
     }
   };
@@ -538,7 +538,6 @@ const App = (): JSX.Element => {
           <div className="main-content">
             <Sidebar
               selectedFolder={selectedFolder}
-              openFolder={openFolder}
               allFiles={allFiles}
               selectedFiles={selectedFiles}
               toggleFileSelection={toggleFileSelection}
