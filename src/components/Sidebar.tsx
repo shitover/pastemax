@@ -2,8 +2,20 @@ import React, { useState, useEffect } from "react";
 import { SidebarProps, TreeNode } from "../types/FileTypes";
 import SearchBar from "./SearchBar";
 import TreeItem from "./TreeItem";
+
+/**
+ * Import path utilities for handling file paths across different operating systems.
+ * While not all utilities are used directly, they're kept for consistency and future use.
+ */
 import { normalizePath, join, isSubPath, arePathsEqual } from "../utils/pathUtils";
 
+/**
+ * The Sidebar component displays a tree view of files and folders, allowing users to:
+ * - Navigate through the file structure
+ * - Select/deselect files and folders
+ * - Search for specific files
+ * - Resize the sidebar width
+ */
 const Sidebar = ({
   selectedFolder,
   allFiles,
@@ -17,12 +29,13 @@ const Sidebar = ({
   expandedNodes,
   toggleExpanded,
 }: Omit<SidebarProps, 'openFolder'>) => {
+  // State for managing the file tree and UI
   const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
   const [isTreeBuildingComplete, setIsTreeBuildingComplete] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
 
-  // Min and max width constraints
+  // Sidebar width constraints for a good UX
   const MIN_SIDEBAR_WIDTH = 200;
   const MAX_SIDEBAR_WIDTH = 500;
 

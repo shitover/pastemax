@@ -5,6 +5,11 @@ import CopyButton from "./components/CopyButton";
 import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
+
+/**
+ * Import path utilities for handling file paths across different operating systems.
+ * While not all utilities are used directly, they're kept for consistency and future use.
+ */
 import { generateAsciiFileTree, normalizePath, arePathsEqual, isSubPath, join } from "./utils/pathUtils";
 
 // Access the electron API from the window object
@@ -23,7 +28,10 @@ declare global {
   }
 }
 
-// Keys for localStorage
+/**
+ * Keys used for storing app state in localStorage.
+ * Keeping them in one place makes them easier to manage and update.
+ */
 const STORAGE_KEYS = {
   SELECTED_FOLDER: "pastemax-selected-folder",
   SELECTED_FILES: "pastemax-selected-files",
@@ -32,6 +40,13 @@ const STORAGE_KEYS = {
   EXPANDED_NODES: "pastemax-expanded-nodes",
 };
 
+/**
+ * The main App component that handles:
+ * - File selection and management
+ * - Folder navigation
+ * - File content copying
+ * - UI state management
+ */
 const App = (): JSX.Element => {
   // Clear saved folder on startup (temporary, for testing)
   useEffect(() => {

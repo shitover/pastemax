@@ -1,8 +1,10 @@
 /**
- * Browser-compatible path utilities to replace Node.js path module
+ * A collection of path utilities that work in both browser and desktop environments.
+ * These functions handle the tricky bits of working with file paths across different
+ * operating systems (Windows, Mac, Linux) so you don't have to worry about it.
  */
 
-// Cache the OS detection result
+// Cache OS detection to avoid checking multiple times
 let cachedOS: 'windows' | 'mac' | 'linux' | 'unknown' | null = null;
 
 /**
@@ -35,8 +37,8 @@ export function detectOS(): 'windows' | 'mac' | 'linux' | 'unknown' {
 }
 
 /**
- * Checks if the current OS is Windows
- * @returns true if running on Windows
+ * Quick check if we're running on Windows.
+ * Useful when we need to handle Windows-specific path quirks.
  */
 export function isWindows(): boolean {
   return detectOS() === 'windows';
@@ -76,33 +78,31 @@ export function arePathsEqual(path1: string, path2: string): boolean {
 }
 
 /**
- * Join path segments together, handling different OS path separators
- * @param segments The path segments to join
- * @returns The joined path
+ * Combines multiple path segments into a single path, handling any OS differences.
+ * For example: join('folder', 'subfolder', 'file.txt') -> 'folder/subfolder/file.txt'
  */
 export function join(...segments: (string | null | undefined)[]): string {
   const normalizedSegments = segments
     .filter(Boolean)
     .map((seg) => normalizePath(String(seg)))
-    .map(seg => seg.replace(/^\/+|\/+$/g, '')); // Remove leading/trailing slashes
+    .map(seg => seg.replace(/^\/+|\/+$/g, '')); // Clean up extra slashes
     
   return normalizedSegments.join('/');
 }
 
 /**
- * Checks if a path is absolute
- * @param path The path to check
- * @returns True if the path is absolute
+ * Checks if a path is absolute (starts from the root) rather than relative.
+ * Handles both Windows paths (C:/, D:/) and Unix-style paths (/usr/local).
  */
 export function isAbsolute(path: string): boolean {
   const normalized = normalizePath(path);
   
-  // Windows paths (e.g., C:/, D:/)
+  // Check for Windows drive letters
   if (/^[a-z]:/i.test(normalized)) {
     return true;
   }
   
-  // Unix-like paths
+  // Check for Unix-style root
   return normalized.startsWith('/');
 }
 
@@ -138,9 +138,8 @@ export function basename(path: string | null | undefined): string {
 }
 
 /**
- * Extract the directory name from a path string
- * @param path The path to extract the directory from
- * @returns The directory (everything except the last part)
+ * Gets the directory part of a path (everything except the last part).
+ * For example: dirname('/path/to/file.txt') -> '/path/to'
  */
 export function dirname(path: string | null | undefined): string {
   if (!path) return ".";
@@ -152,9 +151,8 @@ export function dirname(path: string | null | undefined): string {
 }
 
 /**
- * Get the file extension
- * @param path The path to get the extension from
- * @returns The file extension including the dot
+ * Gets the file extension, including the dot.
+ * For example: extname('script.ts') -> '.ts'
  */
 export function extname(path: string | null | undefined): string {
   if (!path) return "";

@@ -4,6 +4,14 @@ import { TreeItemProps, TreeNode } from "../types/FileTypes";
 import { ChevronRight, File, Folder } from "lucide-react";
 import { arePathsEqual } from "../utils/pathUtils";
 
+/**
+ * TreeItem represents a single item (file or folder) in the file tree.
+ * It handles:
+ * - File/folder selection with checkboxes
+ * - Folder expansion/collapse
+ * - Visual indicators for selection state
+ * - Special cases for binary/skipped/excluded files
+ */
 const TreeItem = ({
   node,
   selectedFiles,
@@ -14,14 +22,19 @@ const TreeItem = ({
   const { id, name, path, type, level, isExpanded, fileData } = node;
   const checkboxRef = useRef(null);
 
+  // Check if this file is in the selected files list
   const isSelected =
     type === "file" &&
     selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, path));
 
-  // Recursive function to check if all files in a directory are selected
+  /**
+   * Checks if all selectable files in a directory are selected.
+   * A file is considered "selectable" if it's not binary, skipped, or excluded.
+   * Empty directories or those with only unselectable files count as "fully selected".
+   */
   const areAllFilesInDirectorySelected = (node: TreeNode): boolean => {
     if (node.type === "file") {
-      // Skip binary, skipped or excluded files
+      // Unselectable files don't affect the directory's selection state
       if (node.fileData && (node.fileData.isBinary || node.fileData.isSkipped || node.fileData.excludedByDefault)) {
         return true; // Consider these as "selected" for the "all files selected" check
       }
@@ -30,12 +43,8 @@ const TreeItem = ({
       );
     }
 
-    if (
-      node.type === "directory" &&
-      node.children &&
-      node.children.length > 0
-    ) {
-      // Get all selectable children (non-binary, non-skipped files)
+    if (node.type === "directory" && node.children && node.children.length > 0) {
+      // Only consider files that can be selected
       const selectableChildren = node.children.filter(
         child => 
           !(child.type === "file" && 
@@ -57,7 +66,10 @@ const TreeItem = ({
     return false;
   };
 
-  // Recursive function to check if any file in a directory is selected
+  /**
+   * Checks if any selectable file in a directory is selected.
+   * Used to determine if a directory is partially selected.
+   */
   const isAnyFileInDirectorySelected = (node: TreeNode): boolean => {
     if (node.type === "file") {
       // Skip binary, skipped or excluded files
@@ -69,12 +81,7 @@ const TreeItem = ({
       );
     }
 
-    if (
-      node.type === "directory" &&
-      node.children &&
-      node.children.length > 0
-    ) {
-      // Get all selectable children (non-binary, non-skipped files)
+    if (node.type === "directory" && node.children && node.children.length > 0) {
       const selectableChildren = node.children.filter(
         child => 
           !(child.type === "file" && 
@@ -115,6 +122,7 @@ const TreeItem = ({
     }
   }, [isDirectoryPartiallySelected]);
 
+  // Event Handlers
   const handleToggle = (e: any) => {
     e.stopPropagation();
     toggleExpanded(id);
@@ -130,7 +138,6 @@ const TreeItem = ({
 
   const handleCheckboxChange = (e: any) => {
     e.stopPropagation();
-    // Get the checked value directly from the event target
     const isChecked = e.target.checked;
     
     console.log('Checkbox clicked:', { 
@@ -162,6 +169,7 @@ const TreeItem = ({
       style={{ marginLeft: `${level * 16}px` }}
       onClick={handleItemClick}
     >
+      {/* Expand/collapse arrow for directories */}
       {type === "directory" && (
         <div
           className={`tree-item-toggle ${isExpanded ? "expanded" : ""}`}
@@ -172,8 +180,10 @@ const TreeItem = ({
         </div>
       )}
 
+      {/* Spacing for files to align with directories */}
       {type === "file" && <div className="tree-item-indent"></div>}
 
+      {/* Selection checkbox */}
       <input
         type="checkbox"
         className="tree-item-checkbox"
@@ -184,6 +194,7 @@ const TreeItem = ({
         onClick={(e) => e.stopPropagation()}
       />
 
+      {/* Item content (icon, name, and metadata) */}
       <div className="tree-item-content">
         <div className="tree-item-icon">
           {type === "directory" ? <Folder size={16} /> : <File size={16} />}
@@ -191,12 +202,14 @@ const TreeItem = ({
 
         <div className="tree-item-name">{name}</div>
 
+        {/* Show token count for files that have it */}
         {fileData && fileData.tokenCount > 0 && (
           <span className="tree-item-tokens">
             (~{fileData.tokenCount.toLocaleString()})
           </span>
         )}
 
+        {/* Show badge for unselectable files */}
         {fileData && isDisabled && (
           <span className="tree-item-badge">
             {fileData.isBinary ? "Binary" : 
@@ -209,4 +222,4 @@ const TreeItem = ({
   );
 };
 
-export default TreeItem;
+export default TreeItem; 
