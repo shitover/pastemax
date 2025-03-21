@@ -2,12 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## v1.2.0
 
-## [Unreleased]
+### Added
+- Added enhanced logging for file selection and deselection actions.
+- Expanded the ignore list to include additional binary file types.
 
-## [1.1.0] - 2024-03-21
+### Fixed
+- Fixed app reloading issue caused by testing configuration being merged into main.
+- Fixed issue where Windows paths were duplicated, making folders unrecognizable.
+
+### Improved
+- Improved folder selection to automatically select/deselect all files within the folder.
+- Optimized repository and project loading for better performance.
+- Improved path normalization for better cross-platform compatibility.
+
+## 2024-03-21
 
 ### Added
 - Enhanced cross-platform path handling system
@@ -71,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved file filtering performance
 - Enhanced error recovery and graceful degradation
 
-## [1.0.0] - 2024-03-01
+## 2024-03-01
 
 ### Added
 - Initial release

@@ -60,7 +60,7 @@ Thumbs.db
 release-builds/
 dist/
 
-# # Repomix
+# Repomix
 repomix-output.xml
 repomix.config.json
 .repomixignore
