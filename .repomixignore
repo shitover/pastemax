@@ -1,0 +1,24 @@
+# Add patterns to ignore here, one per line
+# Example:
+# *.log
+# tmp/
+
+release-builds/*
+node_modules/*
+docs/*
+dist/*
+scripts/*
+.git/*
+.github/*
+
+KnownIssue.md
+CHANGELOG.md
+commit-message.txt
+CONTRIBUTING.md
+LICENSE
+README.docker.md
+README.md
+RELEASE.md
+repomix.config.json
+.repomixignore
+.gitignore
