@@ -25,7 +25,7 @@
   --background-secondary: #252526;
   --background-selected: #2A2D2E;
   --accent-blue: #0E639C;
-  --border-color: #3E3E42;
+  --border-color: #333333;
   --hover-color: #333333;
   --text-primary: #E8E8E8;
   --text-secondary: #BBBBBB;
@@ -36,6 +36,53 @@
   --error-color: #e74c3c;
   --primary-button-background: #0E639C;
   --primary-button-text: #ffffff;
+  color-scheme: dark;
+}
+
+/* Override specific elements in dark mode for better contrast */
+.dark-mode .file-card {
+  border: 1px solid #333333;
+  background-color: #252526;
+}
+
+.dark-mode .file-card:hover {
+  background-color: #2C2C2C;
+  border-color: #444444;
+}
+
+.dark-mode .file-card.selected {
+  border: 2px solid var(--accent-blue);
+  background-color: #2D3233;
+}
+
+.dark-mode .content-header,
+.dark-mode .user-instructions-container,
+.dark-mode .copy-button-container,
+.dark-mode .header {
+  border-color: #333333;
+}
+
+.dark-mode .sidebar {
+  border-right-color: #333333;
+}
+
+.dark-mode .sidebar-header,
+.dark-mode .sidebar-search,
+.dark-mode .sidebar-actions {
+  border-color: #333333;
+}
+
+.dark-mode button,
+.dark-mode input[type="text"],
+.dark-mode input[type="search"],
+.dark-mode .search-bar,
+.dark-mode .user-instructions textarea,
+.dark-mode .sort-options {
+  border-color: #333333;
+}
+
+.dark-mode .processing-indicator {
+  border-color: #333333;
 }
 
 * {
@@ -423,13 +470,9 @@ input[type="search"]:focus {
   color: var(--text-primary);
 }
 
+/* Remove the red underline from content titles */
 .content-title::after {
-  content: '';
-  display: block;
-  width: 100%;
-  height: 2px;
-  background-color: var(--error-color);
-  margin-top: 4px;
+  content: none;
 }
 
 .content-actions {
@@ -879,7 +922,7 @@ input[type="text"].search-input:focus {
 
 /* For dark mode, adjust active segment appearance */
 .dark-mode .theme-segment.active {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #3E3E42;
 }
 
 /* User Instructions Styles */
@@ -929,4 +972,158 @@ input[type="text"].search-input:focus {
 .user-instructions-container + .copy-button-container {
   margin-top: 0;
   border-top: var(--standard-border);
+}
+
+/* Additional dark mode overrides for specific UI elements */
+.dark-mode .file-list {
+  background-color: var(--background-primary);
+}
+
+.dark-mode .file-card-action {
+  border-color: #444444;
+  background-color: #2C2C2C;
+}
+
+.dark-mode .sort-dropdown-button {
+  border-color: #333333;
+}
+
+.dark-mode input[type="checkbox"] {
+  border-color: #555555;
+  background-color: #2C2C2C;
+}
+
+.dark-mode .selected-folder {
+  background-color: #2D2D2D;
+}
+
+/* Improve contrast for focused elements in dark mode */
+.dark-mode .user-instructions textarea:focus,
+.dark-mode input[type="text"]:focus,
+.dark-mode input[type="search"]:focus {
+  border-color: var(--accent-blue);
+  background-color: #252526;
+}
+
+.dark-mode .tree-item:hover {
+  background-color: #2C2C2C;
+}
+
+/* Fix for borders between grid cells */
+.dark-mode .file-list > div {
+  border-color: #333333;
+}
+
+.dark-mode .tree-item-badge {
+  background-color: #333333;
+  color: #bbbbbb;
+}
+
+/* Theme toggle improvements */
+.dark-mode .theme-segmented-control {
+  background-color: #252526;
+  border: 1px solid #333333;
+}
+
+/* Improve user instructions section in dark mode */
+.dark-mode .content-header + .user-instructions-container {
+  border-top: none;
+}
+
+.dark-mode .user-instructions-container {
+  background-color: #1E1E1E;
+}
+
+.dark-mode .user-instructions textarea {
+  border: 1px solid #333333;
+  background-color: #252526;
+}
+
+/* Fix the spacing around text area in dark mode */
+.user-instructions textarea {
+  padding: 12px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Fix for the area between sections */
+.dark-mode .file-list-container + .content-header {
+  border-color: #333333;
+}
+
+/* Improve textarea focus in dark mode */
+.dark-mode .user-instructions textarea:focus {
+  border-color: var(--accent-blue);
+  background-color: #1E1E1E;
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+/* Fix all section borders in dark mode */
+.dark-mode * {
+  border-color: #333333;
+}
+
+/* Fix the border between sections */
+.dark-mode .content-header,
+.dark-mode .user-instructions-container,
+.dark-mode .copy-button-container,
+.dark-mode .file-list-container {
+  border-color: #333333;
+}
+
+/* Fix the checkbox container */
+.dark-mode input[type="checkbox"] {
+  background-color: #252526;
+  border-color: #333333;
+}
+
+/* Fix the label container in the copy section */
+.dark-mode .copy-button-container label {
+  color: var(--text-primary);
+}
+
+/* Fix any remaining borders */
+.dark-mode .content-area > div {
+  border-color: #333333;
+}
+
+/* Perfecting the dark mode UI */
+.dark-mode {
+  --border-color: #333333;
+  color-scheme: dark;
+}
+
+/* Make input boxes in dark mode look better */
+.dark-mode textarea,
+.dark-mode input[type="text"],
+.dark-mode input[type="search"] {
+  color: var(--text-primary);
+  caret-color: var(--text-primary);
+}
+
+/* Improved focus for dark mode */
+.dark-mode .user-instructions textarea:focus {
+  border-color: var(--accent-blue);
+  background-color: #2d2d2d;
+}
+
+/* Fix textarea placeholder in dark mode */
+.dark-mode textarea::placeholder {
+  color: #808080;
+}
+
+/* Fix checkbox label vertical alignment */
+label {
+  display: flex;
+  align-items: center;
+}
+
+/* Improve spacing between elements */
+.copy-button-container {
+  padding-top: 20px;
+}
+
+/* Remove any border radius that might be causing issues */
+.dark-mode .user-instructions-container {
+  border-radius: 0;
 }
