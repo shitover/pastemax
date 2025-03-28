@@ -445,11 +445,27 @@ const App = (): JSX.Element => {
     }, 0);
   };
 
-  // NEW: State for user instructions
+  /**
+   * State for storing user instructions 
+   * This text will be appended at the end of all copied content
+   * to provide context or special notes to recipients
+   */
   const [userInstructions, setUserInstructions] = useState("");
 
-  // Modify getSelectedFilesContent to include instructions
+  /**
+   * Assembles the final content for copying
+   * The content is assembled in the following order:
+   * 1. File tree (if enabled)
+   * 2. All selected file content (sorted according to current sort)
+   * 3. User instructions at the end (if present)
+   * 
+   * This ensures the important code content comes first, with instructions
+   * as supplementary information at the end.
+   * 
+   * @returns {string} The concatenated content ready for copying
+   */
   const getSelectedFilesContent = () => {
+    // Sort files according to current sort settings
     const sortedSelected = allFiles
       .filter((file: FileData) => selectedFiles.includes(file.path))
       .sort((a: FileData, b: FileData) => {
@@ -473,21 +489,23 @@ const App = (): JSX.Element => {
 
     let concatenatedString = "";
     
-    // Add user instructions if present
-    if (userInstructions.trim()) {
-      concatenatedString += `<instructions>\n${userInstructions.trim()}\n</instructions>\n\n`;
-    }
-    
     // Add ASCII file tree if enabled
     if (includeFileTree && selectedFolder) {
       const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
       concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
     }
     
+    // Add file content - the core of the output
     sortedSelected.forEach((file: FileData) => {
       concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
       concatenatedString += file.content;
     });
+    
+    // Add user instructions at the end if present
+    // Instructions are wrapped in <instructions> tags for clear delineation
+    if (userInstructions.trim()) {
+      concatenatedString += `\n\n<instructions>\n${userInstructions.trim()}\n</instructions>`;
+    }
 
     return concatenatedString;
   };
@@ -641,6 +659,12 @@ const App = (): JSX.Element => {
                 toggleFileSelection={toggleFileSelection}
               />
 
+              {/* 
+               * User Instructions Component
+               * Positioned after the file list and before the copy button
+               * Allows users to enter supplementary text that will be
+               * included at the end of the copied content
+               */}
               <UserInstructions
                 instructions={userInstructions}
                 setInstructions={setUserInstructions}
@@ -656,6 +680,12 @@ const App = (): JSX.Element => {
                     />
                     <span>Include File Tree</span>
                   </label>
+                  {/* 
+                   * Copy Button
+                   * When clicked, this will copy all selected files along with:
+                   * - File tree (if enabled via the checkbox)
+                   * - User instructions (if any were entered)
+                   */}
                   <CopyButton
                     text={getSelectedFilesContent()}
                     className="primary full-width"
