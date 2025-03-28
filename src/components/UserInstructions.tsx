@@ -11,10 +11,8 @@ const UserInstructions = ({
 }: UserInstructionsProps): JSX.Element => {
   return (
     <>
-      <div className="user-instructions-header">
-        <label className="content-title" htmlFor="userInstructionsInput">
-          User Instructions
-        </label>
+      <div className="content-header">
+        <div className="content-title">User Instructions</div>
       </div>
       <div className="user-instructions-container">
         <div className="user-instructions">
