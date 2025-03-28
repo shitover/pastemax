@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
   - Automatic detection of over 200 file types and extensions
   - Proper mapping of less common extensions to standard language identifiers
   - Consistent language tagging for optimal syntax highlighting in LLM contexts
+- Added modern scrollbar styling with theme consistency:
+  - Customized scrollbar appearance for both light and dark modes
+  - Thin scrollbars for content areas with better UI integration
+  - Cross-browser compatibility with Firefox and WebKit support
 
 ### Fixed
 - Fixed file path normalization in copied content to ensure cross-platform compatibility
@@ -38,6 +42,10 @@ All notable changes to this project will be documented in this file.
   - Normalized file paths for cross-platform compatibility
   - Sophisticated language-aware code fencing
   - Standardized language identifiers for consistent highlighting
+- Enhanced UI with modern scrollbars that match application theme:
+  - Light mode: subtle gray scrollbars with hover effects
+  - Dark mode: darker scrollbars that blend with the interface
+  - Improved visual consistency across scrollable containers
 
 ## v1.2.0
 

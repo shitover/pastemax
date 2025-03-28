@@ -18,6 +18,13 @@
   --standard-border: 1px solid var(--border-color);
   --font-family-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-family-code: Consolas, Menlo, Monaco, "Courier New", monospace;
+  
+  /* Scrollbar variables for light mode */
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-thumb-hover: #a1a1a1;
+  --scrollbar-width: 8px;
+  --scrollbar-width-thin: 6px;
 }
 
 .dark-mode {
@@ -37,6 +44,11 @@
   --primary-button-background: #0E639C;
   --primary-button-text: #ffffff;
   color-scheme: dark;
+  
+  /* Scrollbar variables for dark mode */
+  --scrollbar-track: #1E1E1E;
+  --scrollbar-thumb: #424242;
+  --scrollbar-thumb-hover: #4f4f4f;
 }
 
 /* Override specific elements in dark mode for better contrast */
@@ -83,6 +95,79 @@
 
 .dark-mode .processing-indicator {
   border-color: #333333;
+}
+
+/* Custom scrollbar styling for modern browsers */
+/* For Webkit browsers (Chrome, Safari, newer Edge) */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 8px;
+  border: 2px solid var(--scrollbar-track);
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, border-width 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  border: 2px solid var(--scrollbar-track);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Thin scrollbars for smaller areas */
+.file-tree::-webkit-scrollbar,
+.file-list::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+  width: var(--scrollbar-width-thin);
+}
+
+.file-tree::-webkit-scrollbar-thumb,
+.file-list::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb {
+  border-width: 1px;
+}
+
+/* Ensure proper scrollbar color for dark mode specifics */
+.dark-mode ::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-color: var(--scrollbar-track);
+  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  border-color: var(--scrollbar-track);
+  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+  border-width: 1px;
+}
+
+.dark-mode ::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
 }
 
 * {
