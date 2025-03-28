@@ -3,7 +3,7 @@
  */
 
 import { FileData } from "../types/FileTypes";
-import { generateAsciiFileTree } from "./pathUtils";
+import { generateAsciiFileTree, normalizePath } from "./pathUtils";
 import { getLanguageFromFilename } from "./languageUtils";
 
 /**
@@ -65,8 +65,9 @@ export const formatContentForCopying = ({
   
   // Add ASCII file tree if enabled within <file_map> tags
   if (includeFileTree && selectedFolder) {
+    const normalizedFolder = normalizePath(selectedFolder);
     const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
-    concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
+    concatenatedString += `<file_map>\n${normalizedFolder}\n${asciiTree}\n</file_map>\n\n`;
   }
   
   // Add file contents section
@@ -76,9 +77,11 @@ export const formatContentForCopying = ({
   sortedSelected.forEach((file: FileData) => {
     // Use the enhanced getLanguageFromFilename utility for optimal language detection
     const language = getLanguageFromFilename(file.name);
+    // Normalize the file path for cross-platform compatibility
+    const normalizedPath = normalizePath(file.path);
     
     // Add file path and content with language-specific code fencing
-    concatenatedString += `File: ${file.path}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
+    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
   });
   
   concatenatedString += `</file_contents>\n\n`;

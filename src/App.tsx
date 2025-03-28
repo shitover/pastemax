@@ -106,6 +106,30 @@ const App = (): JSX.Element => {
 
   const [isSafeMode, setIsSafeMode] = useState(false);
 
+  // Utility function to clear all saved state and reset the app
+  const clearSavedState = useCallback(() => {
+    // Clear all localStorage items
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Clear any session storage items
+    sessionStorage.removeItem("hasLoadedInitialData");
+    
+    // Reset all state to initial values
+    setSelectedFolder(null);
+    setAllFiles([]);
+    setSelectedFiles([]);
+    setDisplayedFiles([]);
+    setSearchTerm("");
+    setSortOrder("tokens-desc");
+    setExpandedNodes({});
+    setIncludeFileTree(false);
+    setProcessingStatus({ status: "idle", message: "All saved data cleared" });
+    
+    console.log("All saved state cleared");
+  }, []);
+
   // Load expanded nodes state from localStorage
   useEffect(() => {
     const savedExpandedNodes = localStorage.getItem(
@@ -184,24 +208,19 @@ const App = (): JSX.Element => {
   useEffect(() => {
     if (!isElectron || !selectedFolder || isSafeMode) return;
     
-    // Check if we've already loaded data in this session to avoid duplicate loading
-    const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
-    if (hasLoadedInitialData === "true") return;
-    
+    // Always reload the folder data when the component mounts (after page refresh)
+    // We want to ensure the exact same state is restored, including all selected files
     console.log("Loading saved folder on startup:", selectedFolder);
     setProcessingStatus({
       status: "processing",
-      message: "Loading files from previously selected folder... (Press ESC to cancel)",
+      message: "Loading files from previously selected folder...",
     });
+    
+    // Request file list from the main process
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
     
-    // Mark that we've loaded the initial data for this session
-    // This prevents duplicate loading but will reset on page refresh
-    sessionStorage.setItem("hasLoadedInitialData", "true");
-    
-    // Also store in localStorage to track across sessions that we've successfully
-    // loaded this folder before
-    localStorage.setItem("hasLoadedInitialData", "true");
+    // We intentionally don't set any session flags because we want this to run
+    // on every refresh to ensure state is fully restored
   }, [isElectron, selectedFolder, isSafeMode]);
   
 
@@ -244,21 +263,10 @@ const App = (): JSX.Element => {
       // Apply filters and sort to the new files
       applyFiltersAndSort(files, sortOrder, searchTerm);
 
-      // Only auto-select all files if we don't already have selections
-      // This preserves user selections across reloads
-      if (selectedFiles.length === 0) {
-        console.log("No existing file selections, selecting all eligible files");
-        // Select only files that are not binary, not skipped, and not excluded by default
-        const selectablePaths = files
-          .filter(
-            (file: FileData) =>
-              !file.isBinary && !file.isSkipped && !file.excludedByDefault, // Respect the excludedByDefault flag
-          )
-          .map((file: FileData) => file.path);
-  
-        setSelectedFiles(selectablePaths);
-      } else {
-        console.log("Preserving existing file selections:", selectedFiles.length, "files");
+      // Preserve selected files after reload
+      if (selectedFiles.length > 0) {
+        console.log("Preserving", selectedFiles.length, "file selections from before reload");
+        
         // Validate that selected files still exist in the newly loaded files
         // and remove any that don't (they might have been deleted)
         const validSelectedFiles = selectedFiles.filter((selectedPath: string) => 
@@ -266,9 +274,20 @@ const App = (): JSX.Element => {
         );
         
         if (validSelectedFiles.length !== selectedFiles.length) {
-          console.log("Removing", selectedFiles.length - validSelectedFiles.length, "invalid selections");
+          console.log("Removed", selectedFiles.length - validSelectedFiles.length, "invalid selections");
           setSelectedFiles(validSelectedFiles);
         }
+      } else {
+        // If no files were selected, auto-select non-binary files
+        console.log("No existing selections, selecting all eligible files");
+        const selectablePaths = files
+          .filter(
+            (file: FileData) =>
+              !file.isBinary && !file.isSkipped && !file.excludedByDefault,
+          )
+          .map((file: FileData) => file.path);
+  
+        setSelectedFiles(selectablePaths);
       }
     };
 
@@ -570,6 +589,13 @@ const App = (): JSX.Element => {
                 disabled={processingStatus.status === "processing"}
               >
                 Select Folder
+              </button>
+              <button
+                className="clear-data-btn"
+                onClick={clearSavedState}
+                title="Clear all saved data and start fresh"
+              >
+                Clear Data
               </button>
             </div>
           </div>
