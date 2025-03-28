@@ -56,12 +56,16 @@ const STORAGE_KEYS = {
  * - UI state management
  */
 const App = (): JSX.Element => {
-  // Clear saved folder on startup (temporary, for testing)
+  // This useEffect was clearing saved data on every reload
+  // It was marked as "temporary, for testing" but was preventing
+  // selections from persisting after a page refresh (Ctrl+R)
+  /* 
   useEffect(() => {
     localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
     localStorage.removeItem("hasLoadedInitialData");
     sessionStorage.removeItem("hasLoadedInitialData");
   }, []);
+  */
 
   // Load initial state from localStorage if available
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
@@ -180,7 +184,7 @@ const App = (): JSX.Element => {
   useEffect(() => {
     if (!isElectron || !selectedFolder || isSafeMode) return;
     
-    // Use a flag in sessionStorage to ensure we only load data once per session
+    // Check if we've already loaded data in this session to avoid duplicate loading
     const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
     if (hasLoadedInitialData === "true") return;
     
@@ -191,8 +195,13 @@ const App = (): JSX.Element => {
     });
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
     
-    // Mark that we've loaded the initial data
+    // Mark that we've loaded the initial data for this session
+    // This prevents duplicate loading but will reset on page refresh
     sessionStorage.setItem("hasLoadedInitialData", "true");
+    
+    // Also store in localStorage to track across sessions that we've successfully
+    // loaded this folder before
+    localStorage.setItem("hasLoadedInitialData", "true");
   }, [isElectron, selectedFolder, isSafeMode]);
   
 
@@ -235,15 +244,32 @@ const App = (): JSX.Element => {
       // Apply filters and sort to the new files
       applyFiltersAndSort(files, sortOrder, searchTerm);
 
-      // Select only files that are not binary, not skipped, and not excluded by default
-      const selectablePaths = files
-        .filter(
-          (file: FileData) =>
-            !file.isBinary && !file.isSkipped && !file.excludedByDefault, // Respect the excludedByDefault flag
-        )
-        .map((file: FileData) => file.path);
-
-      setSelectedFiles(selectablePaths);
+      // Only auto-select all files if we don't already have selections
+      // This preserves user selections across reloads
+      if (selectedFiles.length === 0) {
+        console.log("No existing file selections, selecting all eligible files");
+        // Select only files that are not binary, not skipped, and not excluded by default
+        const selectablePaths = files
+          .filter(
+            (file: FileData) =>
+              !file.isBinary && !file.isSkipped && !file.excludedByDefault, // Respect the excludedByDefault flag
+          )
+          .map((file: FileData) => file.path);
+  
+        setSelectedFiles(selectablePaths);
+      } else {
+        console.log("Preserving existing file selections:", selectedFiles.length, "files");
+        // Validate that selected files still exist in the newly loaded files
+        // and remove any that don't (they might have been deleted)
+        const validSelectedFiles = selectedFiles.filter((selectedPath: string) => 
+          files.some(file => arePathsEqual(file.path, selectedPath))
+        );
+        
+        if (validSelectedFiles.length !== selectedFiles.length) {
+          console.log("Removing", selectedFiles.length - validSelectedFiles.length, "invalid selections");
+          setSelectedFiles(validSelectedFiles);
+        }
+      }
     };
 
     const handleProcessingStatus = (status: {
