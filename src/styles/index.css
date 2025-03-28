@@ -890,3 +890,29 @@ input[type="text"].search-input:focus {
   margin-left: 6px;
   white-space: nowrap;
 }
+
+/* User Instructions Styles */
+.user-instructions-container {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 16px;
+}
+
+.user-instructions textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.user-instructions-header {
+  margin-bottom: 12px;
+  padding: 0 16px;
+}

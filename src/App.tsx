@@ -5,6 +5,7 @@ import CopyButton from "./components/CopyButton";
 import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
+import UserInstructions from "./components/UserInstructions";
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -444,14 +445,16 @@ const App = (): JSX.Element => {
     }, 0);
   };
 
-  // Concatenate selected files content for copying
+  // NEW: State for user instructions
+  const [userInstructions, setUserInstructions] = useState("");
+
+  // Modify getSelectedFilesContent to include instructions
   const getSelectedFilesContent = () => {
-    // Sort selected files according to current sort order
-    const [sortKey, sortDir] = sortOrder.split("-");
     const sortedSelected = allFiles
       .filter((file: FileData) => selectedFiles.includes(file.path))
       .sort((a: FileData, b: FileData) => {
         let comparison = 0;
+        const [sortKey, sortDir] = sortOrder.split("-");
 
         if (sortKey === "name") {
           comparison = a.name.localeCompare(b.name);
@@ -469,6 +472,11 @@ const App = (): JSX.Element => {
     }
 
     let concatenatedString = "";
+    
+    // Add user instructions if present
+    if (userInstructions.trim()) {
+      concatenatedString += `<instructions>\n${userInstructions.trim()}\n</instructions>\n\n`;
+    }
     
     // Add ASCII file tree if enabled
     if (includeFileTree && selectedFolder) {
@@ -631,6 +639,11 @@ const App = (): JSX.Element => {
                 files={displayedFiles}
                 selectedFiles={selectedFiles}
                 toggleFileSelection={toggleFileSelection}
+              />
+
+              <UserInstructions
+                instructions={userInstructions}
+                setInstructions={setUserInstructions}
               />
 
               <div className="copy-button-container">
