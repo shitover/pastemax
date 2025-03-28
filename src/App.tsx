@@ -455,12 +455,12 @@ const App = (): JSX.Element => {
   /**
    * Assembles the final content for copying
    * The content is assembled in the following order:
-   * 1. File tree (if enabled)
-   * 2. All selected file content (sorted according to current sort)
-   * 3. User instructions at the end (if present)
+   * 1. File tree (if enabled) within <file_map> tags
+   * 2. All selected file content within <file_contents> tags
+   * 3. User instructions at the end within <user_instructions> tags
    * 
-   * This ensures the important code content comes first, with instructions
-   * as supplementary information at the end.
+   * Each section is clearly separated with the appropriate tags
+   * File contents include the full file path and language syntax highlighting
    * 
    * @returns {string} The concatenated content ready for copying
    */
@@ -489,25 +489,215 @@ const App = (): JSX.Element => {
 
     let concatenatedString = "";
     
-    // Add ASCII file tree if enabled
+    // Add ASCII file tree if enabled within <file_map> tags
     if (includeFileTree && selectedFolder) {
       const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
       concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
     }
     
-    // Add file content - the core of the output
+    // Add file contents section
+    concatenatedString += `<file_contents>\n`;
+    
+    // Add each file with its path and language-specific syntax highlighting
     sortedSelected.forEach((file: FileData) => {
-      concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
-      concatenatedString += file.content;
+      // Get the language for syntax highlighting
+      const language = getLanguageFromFilename(file.name);
+      
+      // Add file path and content with language-specific code fencing
+      concatenatedString += `File: ${file.path}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
     });
     
+    concatenatedString += `</file_contents>\n\n`;
+    
     // Add user instructions at the end if present
-    // Instructions are wrapped in <instructions> tags for clear delineation
     if (userInstructions.trim()) {
-      concatenatedString += `\n\n<instructions>\n${userInstructions.trim()}\n</instructions>`;
+      concatenatedString += `<user_instructions>\n${userInstructions.trim()}\n</user_instructions>`;
     }
 
     return concatenatedString;
+  };
+
+  /**
+   * Determines the appropriate language identifier for syntax highlighting
+   * based on the file name/extension.
+   * 
+   * Handles common file types, config files, and files with multiple extensions
+   * 
+   * @param {string} filename - The name of the file
+   * @returns {string} The language identifier for syntax highlighting
+   */
+  const getLanguageFromFilename = (filename: string): string => {
+    // Handle files with no extension
+    if (!filename.includes('.')) {
+      // Common files without extensions
+      const noExtensionMap: Record<string, string> = {
+        'Dockerfile': 'dockerfile',
+        'Makefile': 'makefile',
+        'makefile': 'makefile',
+        'Jenkinsfile': 'groovy',
+        'README': 'markdown',
+        'LICENSE': 'text',
+        '.gitignore': 'gitignore',
+        '.env': 'shell',
+        '.npmrc': 'ini',
+        '.editorconfig': 'ini',
+      };
+      
+      return noExtensionMap[filename] || 'text';
+    }
+    
+    // Extract full extension including dots (e.g., ".eslint.js")
+    const fullExtension = filename.substring(filename.indexOf('.'));
+    
+    // Handle special compound extensions
+    const compoundExtMap: Record<string, string> = {
+      '.eslintrc.js': 'javascript',
+      '.eslintrc.json': 'json',
+      '.eslintrc.yml': 'yaml',
+      '.babelrc.js': 'javascript',
+      '.tsconfig.json': 'json',
+      '.prettierrc.js': 'javascript',
+      '.prettierrc.json': 'json',
+      '.d.ts': 'typescript',
+      '.test.js': 'javascript',
+      '.test.ts': 'typescript',
+      '.test.tsx': 'tsx',
+      '.spec.js': 'javascript',
+      '.spec.ts': 'typescript',
+      '.spec.tsx': 'tsx',
+      '.config.js': 'javascript',
+      '.config.ts': 'typescript',
+      '.module.css': 'css',
+      '.module.scss': 'scss',
+    };
+    
+    // Check if the filename has a special compound extension
+    for (const [ext, lang] of Object.entries(compoundExtMap)) {
+      if (filename.endsWith(ext)) {
+        return lang;
+      }
+    }
+    
+    // If not a compound extension, use just the last extension
+    const extension = filename.split('.').pop()?.toLowerCase() || '';
+    
+    // Map common extensions to language names
+    const extensionMap: Record<string, string> = {
+      // Web Technologies
+      'html': 'html',
+      'htm': 'html',
+      'xhtml': 'html',
+      'css': 'css',
+      'scss': 'scss',
+      'sass': 'sass',
+      'less': 'less',
+      'js': 'javascript',
+      'jsx': 'jsx',
+      'ts': 'typescript',
+      'tsx': 'tsx',
+      'json': 'json',
+      'jsonc': 'jsonc',
+      'webmanifest': 'json',
+      
+      // Documentation
+      'md': 'markdown',
+      'mdx': 'mdx',
+      'markdown': 'markdown',
+      'txt': 'text',
+      'rst': 'restructuredtext',
+      'adoc': 'asciidoc',
+      
+      // Configuration
+      'yaml': 'yaml',
+      'yml': 'yaml',
+      'toml': 'toml',
+      'ini': 'ini',
+      'cfg': 'ini',
+      'conf': 'ini',
+      'properties': 'properties',
+      'env': 'shell',
+      'editorconfig': 'ini',
+      'gitignore': 'gitignore',
+      'dockerignore': 'gitignore',
+      
+      // Scripts
+      'sh': 'shell',
+      'bash': 'bash',
+      'zsh': 'shell',
+      'bat': 'batch',
+      'cmd': 'batch',
+      'ps1': 'powershell',
+      'py': 'python',
+      'rb': 'ruby',
+      'php': 'php',
+      'pl': 'perl',
+      'lua': 'lua',
+      'r': 'r',
+      'swift': 'swift',
+      
+      // JVM
+      'java': 'java',
+      'groovy': 'groovy',
+      'gradle': 'gradle',
+      'kt': 'kotlin',
+      'kts': 'kotlin',
+      'scala': 'scala',
+      
+      // C-family
+      'c': 'c',
+      'h': 'c',
+      'cpp': 'cpp',
+      'hpp': 'cpp',
+      'cc': 'cpp',
+      'cxx': 'cpp',
+      'cs': 'csharp',
+      'm': 'objectivec',
+      'mm': 'objectivec',
+      'go': 'go',
+      'rs': 'rust',
+      
+      // Static site generators
+      'njk': 'nunjucks',
+      'hbs': 'handlebars',
+      'twig': 'twig',
+      'liquid': 'liquid',
+      'pug': 'pug',
+      'ejs': 'ejs',
+      
+      // Others
+      'sql': 'sql',
+      'graphql': 'graphql',
+      'gql': 'graphql',
+      'xml': 'xml',
+      'svg': 'svg',
+      'svelte': 'svelte',
+      'vue': 'vue',
+      'elm': 'elm',
+      'clj': 'clojure',
+      'dart': 'dart',
+      'ex': 'elixir',
+      'exs': 'elixir',
+      'erl': 'erlang',
+      'hrl': 'erlang',
+      'fs': 'fsharp',
+      'fsi': 'fsharp',
+      'fsx': 'fsharp',
+      'fs.js': 'javascript',  // Node.js filesystem module
+      'hs': 'haskell',
+      'lhs': 'haskell',
+      'tf': 'terraform',
+      'tfvars': 'terraform',
+      'proto': 'protobuf',
+      'astro': 'astro',
+      'cjs': 'javascript',
+      'mjs': 'javascript',
+      
+      // Build configuration
+      'dockerfile': 'dockerfile',
+      'makefile': 'makefile',
+    };
+    
+    return extensionMap[extension] || extension || 'text';
   };
 
   // Handle select all files
