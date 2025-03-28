@@ -13,6 +13,13 @@ import UserInstructions from "./components/UserInstructions";
  */
 import { generateAsciiFileTree, normalizePath, arePathsEqual, isSubPath, join } from "./utils/pathUtils";
 
+/**
+ * Import utility functions for content formatting and language detection.
+ * The contentFormatUtils module handles content assembly and applies language detection
+ * via the languageUtils module internally.
+ */
+import { formatContentForCopying } from "./utils/contentFormatUtils";
+
 // Access the electron API from the window object
 declare global {
   interface Window {
@@ -453,251 +460,18 @@ const App = (): JSX.Element => {
   const [userInstructions, setUserInstructions] = useState("");
 
   /**
-   * Assembles the final content for copying
-   * The content is assembled in the following order:
-   * 1. File tree (if enabled) within <file_map> tags
-   * 2. All selected file content within <file_contents> tags
-   * 3. User instructions at the end within <user_instructions> tags
-   * 
-   * Each section is clearly separated with the appropriate tags
-   * File contents include the full file path and language syntax highlighting
-   * 
+   * Assembles the final content for copying by using the utility function
    * @returns {string} The concatenated content ready for copying
    */
   const getSelectedFilesContent = () => {
-    // Sort files according to current sort settings
-    const sortedSelected = allFiles
-      .filter((file: FileData) => selectedFiles.includes(file.path))
-      .sort((a: FileData, b: FileData) => {
-        let comparison = 0;
-        const [sortKey, sortDir] = sortOrder.split("-");
-
-        if (sortKey === "name") {
-          comparison = a.name.localeCompare(b.name);
-        } else if (sortKey === "tokens") {
-          comparison = a.tokenCount - b.tokenCount;
-        } else if (sortKey === "size") {
-          comparison = a.size - b.size;
-        }
-
-        return sortDir === "asc" ? comparison : -comparison;
-      });
-
-    if (sortedSelected.length === 0) {
-      return "No files selected.";
-    }
-
-    let concatenatedString = "";
-    
-    // Add ASCII file tree if enabled within <file_map> tags
-    if (includeFileTree && selectedFolder) {
-      const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
-      concatenatedString += `<file_map>\n${selectedFolder}\n${asciiTree}\n</file_map>\n\n`;
-    }
-    
-    // Add file contents section
-    concatenatedString += `<file_contents>\n`;
-    
-    // Add each file with its path and language-specific syntax highlighting
-    sortedSelected.forEach((file: FileData) => {
-      // Get the language for syntax highlighting
-      const language = getLanguageFromFilename(file.name);
-      
-      // Add file path and content with language-specific code fencing
-      concatenatedString += `File: ${file.path}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
+    return formatContentForCopying({
+      files: allFiles,
+      selectedFiles,
+      sortOrder,
+      includeFileTree,
+      selectedFolder,
+      userInstructions
     });
-    
-    concatenatedString += `</file_contents>\n\n`;
-    
-    // Add user instructions at the end if present
-    if (userInstructions.trim()) {
-      concatenatedString += `<user_instructions>\n${userInstructions.trim()}\n</user_instructions>`;
-    }
-
-    return concatenatedString;
-  };
-
-  /**
-   * Determines the appropriate language identifier for syntax highlighting
-   * based on the file name/extension.
-   * 
-   * Handles common file types, config files, and files with multiple extensions
-   * 
-   * @param {string} filename - The name of the file
-   * @returns {string} The language identifier for syntax highlighting
-   */
-  const getLanguageFromFilename = (filename: string): string => {
-    // Handle files with no extension
-    if (!filename.includes('.')) {
-      // Common files without extensions
-      const noExtensionMap: Record<string, string> = {
-        'Dockerfile': 'dockerfile',
-        'Makefile': 'makefile',
-        'makefile': 'makefile',
-        'Jenkinsfile': 'groovy',
-        'README': 'markdown',
-        'LICENSE': 'text',
-        '.gitignore': 'gitignore',
-        '.env': 'shell',
-        '.npmrc': 'ini',
-        '.editorconfig': 'ini',
-      };
-      
-      return noExtensionMap[filename] || 'text';
-    }
-    
-    // Extract full extension including dots (e.g., ".eslint.js")
-    const fullExtension = filename.substring(filename.indexOf('.'));
-    
-    // Handle special compound extensions
-    const compoundExtMap: Record<string, string> = {
-      '.eslintrc.js': 'javascript',
-      '.eslintrc.json': 'json',
-      '.eslintrc.yml': 'yaml',
-      '.babelrc.js': 'javascript',
-      '.tsconfig.json': 'json',
-      '.prettierrc.js': 'javascript',
-      '.prettierrc.json': 'json',
-      '.d.ts': 'typescript',
-      '.test.js': 'javascript',
-      '.test.ts': 'typescript',
-      '.test.tsx': 'tsx',
-      '.spec.js': 'javascript',
-      '.spec.ts': 'typescript',
-      '.spec.tsx': 'tsx',
-      '.config.js': 'javascript',
-      '.config.ts': 'typescript',
-      '.module.css': 'css',
-      '.module.scss': 'scss',
-    };
-    
-    // Check if the filename has a special compound extension
-    for (const [ext, lang] of Object.entries(compoundExtMap)) {
-      if (filename.endsWith(ext)) {
-        return lang;
-      }
-    }
-    
-    // If not a compound extension, use just the last extension
-    const extension = filename.split('.').pop()?.toLowerCase() || '';
-    
-    // Map common extensions to language names
-    const extensionMap: Record<string, string> = {
-      // Web Technologies
-      'html': 'html',
-      'htm': 'html',
-      'xhtml': 'html',
-      'css': 'css',
-      'scss': 'scss',
-      'sass': 'sass',
-      'less': 'less',
-      'js': 'javascript',
-      'jsx': 'jsx',
-      'ts': 'typescript',
-      'tsx': 'tsx',
-      'json': 'json',
-      'jsonc': 'jsonc',
-      'webmanifest': 'json',
-      
-      // Documentation
-      'md': 'markdown',
-      'mdx': 'mdx',
-      'markdown': 'markdown',
-      'txt': 'text',
-      'rst': 'restructuredtext',
-      'adoc': 'asciidoc',
-      
-      // Configuration
-      'yaml': 'yaml',
-      'yml': 'yaml',
-      'toml': 'toml',
-      'ini': 'ini',
-      'cfg': 'ini',
-      'conf': 'ini',
-      'properties': 'properties',
-      'env': 'shell',
-      'editorconfig': 'ini',
-      'gitignore': 'gitignore',
-      'dockerignore': 'gitignore',
-      
-      // Scripts
-      'sh': 'shell',
-      'bash': 'bash',
-      'zsh': 'shell',
-      'bat': 'batch',
-      'cmd': 'batch',
-      'ps1': 'powershell',
-      'py': 'python',
-      'rb': 'ruby',
-      'php': 'php',
-      'pl': 'perl',
-      'lua': 'lua',
-      'r': 'r',
-      'swift': 'swift',
-      
-      // JVM
-      'java': 'java',
-      'groovy': 'groovy',
-      'gradle': 'gradle',
-      'kt': 'kotlin',
-      'kts': 'kotlin',
-      'scala': 'scala',
-      
-      // C-family
-      'c': 'c',
-      'h': 'c',
-      'cpp': 'cpp',
-      'hpp': 'cpp',
-      'cc': 'cpp',
-      'cxx': 'cpp',
-      'cs': 'csharp',
-      'm': 'objectivec',
-      'mm': 'objectivec',
-      'go': 'go',
-      'rs': 'rust',
-      
-      // Static site generators
-      'njk': 'nunjucks',
-      'hbs': 'handlebars',
-      'twig': 'twig',
-      'liquid': 'liquid',
-      'pug': 'pug',
-      'ejs': 'ejs',
-      
-      // Others
-      'sql': 'sql',
-      'graphql': 'graphql',
-      'gql': 'graphql',
-      'xml': 'xml',
-      'svg': 'svg',
-      'svelte': 'svelte',
-      'vue': 'vue',
-      'elm': 'elm',
-      'clj': 'clojure',
-      'dart': 'dart',
-      'ex': 'elixir',
-      'exs': 'elixir',
-      'erl': 'erlang',
-      'hrl': 'erlang',
-      'fs': 'fsharp',
-      'fsi': 'fsharp',
-      'fsx': 'fsharp',
-      'fs.js': 'javascript',  // Node.js filesystem module
-      'hs': 'haskell',
-      'lhs': 'haskell',
-      'tf': 'terraform',
-      'tfvars': 'terraform',
-      'proto': 'protobuf',
-      'astro': 'astro',
-      'cjs': 'javascript',
-      'mjs': 'javascript',
-      
-      // Build configuration
-      'dockerfile': 'dockerfile',
-      'makefile': 'makefile',
-    };
-    
-    return extensionMap[extension] || extension || 'text';
   };
 
   // Handle select all files
