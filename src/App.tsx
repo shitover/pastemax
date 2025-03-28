@@ -345,18 +345,38 @@ const App = (): JSX.Element => {
     
     // Function to check if a file is in the given folder or its subfolders
     const isFileInFolder = (filePath: string, folderPath: string): boolean => {
-      const normalizedFilePath = normalizePath(filePath);
-      
+      // Ensure paths are normalized with consistent slashes
+      let normalizedFilePath = normalizePath(filePath);
+      let normalizedFolderPath = normalizePath(folderPath);
+
+      // Add leading slash to absolute paths if missing (common on macOS)
+      if (
+        !normalizedFilePath.startsWith("/") &&
+        !normalizedFilePath.match(/^[a-z]:/i)
+      ) {
+        normalizedFilePath = "/" + normalizedFilePath;
+      }
+
+      if (
+        !normalizedFolderPath.startsWith("/") &&
+        !normalizedFolderPath.match(/^[a-z]:/i)
+      ) {
+        normalizedFolderPath = "/" + normalizedFolderPath;
+      }
+
       // A file is in the folder if:
       // 1. The paths are equal (exact match)
       // 2. The file path is a subpath of the folder
-      const isMatch = arePathsEqual(normalizedFilePath, folderPath) || 
-                     isSubPath(folderPath, normalizedFilePath);
-      
+      const isMatch =
+        arePathsEqual(normalizedFilePath, normalizedFolderPath) ||
+        isSubPath(normalizedFolderPath, normalizedFilePath);
+
       if (isMatch) {
-        console.log(`File ${normalizedFilePath} is in folder ${folderPath}`);
+        console.log(
+          `File ${normalizedFilePath} is in folder ${normalizedFolderPath}`,
+        );
       }
-      
+
       return isMatch;
     };
     
