@@ -210,16 +210,17 @@ ipcMain.on("open-folder", async (event) => {
   });
 
   if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
-    const selectedPath = result.filePaths[0];
+    const rawPath = result.filePaths[0]; // Get the raw path
+    const normalizedPath = normalizePath(rawPath); // Normalize it immediately
     try {
       // Ensure we're only sending a string, not an object
-      const pathString = String(selectedPath);
-      console.log("Sending folder-selected event with path:", pathString);
-      event.sender.send("folder-selected", pathString);
+      // Use the normalized path for logging and sending
+      console.log("Sending folder-selected event with normalized path:", normalizedPath);
+      event.sender.send("folder-selected", normalizedPath);
     } catch (err) {
       console.error("Error sending folder-selected event:", err);
-      // Try a more direct approach as a fallback
-      event.sender.send("folder-selected", String(selectedPath));
+      // Try a more direct approach as a fallback, still using normalized path
+      event.sender.send("folder-selected", normalizedPath);
     }
   }
 });
