@@ -1,5 +1,3 @@
-# THIS IS FIXED!
-
 # Known Issues
 
 ## Performance Issues
