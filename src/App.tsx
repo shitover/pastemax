@@ -211,7 +211,8 @@ const App = (): JSX.Element => {
 
   // Modify the existing useEffect for loading initial data
   useEffect(() => {
-    if (!isElectron || !selectedFolder || isSafeMode) return;
+    // Prevent this hook from running if a folder selection is already in progress
+    if (!isElectron || !selectedFolder || isSafeMode || processingStatus.status === 'processing') return;
     
     // Always reload the folder data when the component mounts (after page refresh)
     // We want to ensure the exact same state is restored, including all selected files
