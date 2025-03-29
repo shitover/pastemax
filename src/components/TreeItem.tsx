@@ -209,12 +209,17 @@ const TreeItem = ({
           </span>
         )}
 
-        {/* Show badge for unselectable files */}
-        {fileData && isDisabled && (
+        {/* Show badges for files and folders */}
+        {type === "file" && fileData && isDisabled && (
           <span className="tree-item-badge">
             {fileData.isBinary ? "Binary" : 
              fileData.isSkipped ? "Skipped" : 
              "Excluded"}
+          </span>
+        )}
+        {type === "directory" && node.hasBinaries && (
+          <span className="tree-item-badge">
+            Has Binaries
           </span>
         )}
       </div>
@@ -222,4 +227,4 @@ const TreeItem = ({
   );
 };
 
-export default TreeItem; 
+export default TreeItem;
