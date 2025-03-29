@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
+- Implemented intelligent caching system:
+  - New file metadata cache for faster reprocessing
+  - Unified .gitignore pattern cache with deep repository support
+  - Session-persistent caching for improved performance
+- Enhanced file processing architecture:
+  - Smart validation checks before file I/O
+  - Early binary file detection without content reads
+  - Efficient path validation system
 - Enhanced binary file handling:
   - Added binary flag propagation through directory structure
   - New visual indicators for folders containing binary files
@@ -16,6 +24,10 @@ All notable changes to this project will be documented in this file.
   - Added italicized indicators for folders with binary content
 
 ### Improved
+- Optimized large repository handling:
+  - Reordered file processing checks for better performance 
+  - Reduced unnecessary file I/O operations
+  - Improved handling of deep directory structures
 - Enhanced directory tree metadata:
   - Added `hasBinaries` flag to track binary file presence
   - Optimized binary state propagation through directory structure
