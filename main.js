@@ -434,15 +434,41 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
         // Calculate relative path safely
         const relativePath = safeRelativePath(rootDir, fullPath);
 
-        // Skip PasteMax app files and invalid paths
-        if (fullPath.includes('.app') || fullPath === app.getAppPath() || 
-            !isValidPath(relativePath) || relativePath.startsWith('..')) {
-          console.log('Skipping file:', fullPath);
+        // Early validation checks
+        if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
+          console.log('Invalid path, skipping:', fullPath);
           return null;
         }
 
-        if (ignoreFilter.ignores(relativePath)) {
+        // System and app-specific path checks
+        if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
+          console.log('System path, skipping:', fullPath);
           return null;
+        }
+
+        // Gitignore check before any file I/O
+        if (ignoreFilter.ignores(relativePath)) {
+          console.log('Ignored by filter, skipping:', relativePath);
+          return null;
+        }
+
+        // Early binary extension check without reading the file
+        if (isBinaryFile(fullPath)) {
+          console.log('Binary file by extension, skipping content read:', fullPath);
+          // Create and cache binary file metadata without file I/O
+          const fileData = {
+            name: dirent.name,
+            path: normalizePath(fullPath),
+            relativePath: relativePath,
+            tokenCount: 0,
+            size: 0, // We'll get actual size only if needed
+            content: "",
+            isBinary: true,
+            isSkipped: false,
+            fileType: path.extname(fullPath).substring(1).toUpperCase()
+          };
+          fileCache.set(normalizePath(fullPath), fileData);
+          return fileData;
         }
 
         // Check cache first
