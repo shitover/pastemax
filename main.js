@@ -274,55 +274,57 @@ async function collectCombinedGitignore(rootDir) {
 }
 
 /**
- * Parse .gitignore files and create an ignore filter
- * Handles path normalization for cross-platform compatibility
+ * Load or create an ignore filter with cached patterns
+ * Combines patterns from all .gitignore files in the directory tree
  * 
- * @param {string} rootDir - The root directory containing .gitignore
- * @returns {object} - Configured ignore filter
+ * @param {string} rootDir - The root directory containing .gitignore files
+ * @returns {object} - Configured ignore filter with cached patterns
  */
 function loadGitignore(rootDir) {
-  const ig = ignore();
-  
-  // Ensure root directory path is absolute and normalized
+  // Ensure root directory path is absolute and normalized for consistent cache keys
   rootDir = ensureAbsolutePath(rootDir);
-  const gitignorePath = safePathJoin(rootDir, ".gitignore");
-
-  if (fs.existsSync(gitignorePath)) {
-    try {
-      const gitignoreContent = fs.readFileSync(gitignorePath, "utf8");
-      // Split content into lines and normalize path separators
-      const normalizedPatterns = gitignoreContent
-        .split(/\r?\n/)
-        .map(pattern => pattern.trim())
-        .filter(pattern => pattern && !pattern.startsWith('#'))
-        .map(pattern => normalizePath(pattern));
-
-      ig.add(normalizedPatterns);
-    } catch (err) {
-      console.error("Error reading .gitignore:", err);
-    }
+  
+  // Check cache first
+  if (ignoreCache.has(rootDir)) {
+    console.log('Using cached ignore filter for:', rootDir);
+    return ignoreCache.get(rootDir);
   }
 
-  // Add some default ignores that are common
-  ig.add([
+  // Create new ignore filter with default patterns
+  const ig = ignore();
+  
+  // Add default patterns first
+  const defaultPatterns = [
     ".git",
     "node_modules",
     ".DS_Store",
-    // Add Windows-specific files to ignore
     "Thumbs.db",
     "desktop.ini",
-    // Add common IDE files
     ".idea",
     ".vscode",
-    // Add common build directories
     "dist",
     "build",
     "out"
-  ]);
+  ];
+  ig.add(defaultPatterns);
 
-  // Normalize and add the excludedFiles patterns
+  // Add excluded files patterns
   const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
   ig.add(normalizedExcludedFiles);
+
+  // Asynchronously collect and add patterns from all .gitignore files
+  collectCombinedGitignore(rootDir)
+    .then(patterns => {
+      if (patterns.size > 0) {
+        console.log(`Adding ${patterns.size} combined .gitignore patterns for:`, rootDir);
+        ig.add(Array.from(patterns));
+      }
+      // Cache the configured ignore filter
+      ignoreCache.set(rootDir, ig);
+    })
+    .catch(err => {
+      console.error("Error collecting .gitignore patterns:", err);
+    });
 
   return ig;
 }
