@@ -5,7 +5,7 @@
 
 A modern file viewer application for developers to easily navigate, search, and copy code from repositories. Ideal for pasting into ChatGPT or your LLM of choice. Built with Electron, React, and TypeScript.
 
-![PasteMax Screenshot](https://github.com/user-attachments/assets/4115ad31-9c93-4cf8-bd65-4bb5379e0eba)
+![PasteMax](https://github.com/user-attachments/assets/7160e35a-a0d5-4519-bc84-8035e3aa3f92)
 
 ## Video
 [YouTube Link](https://youtu.be/YV-pZSDNnPo)
