@@ -135,6 +135,9 @@ const App = (): JSX.Element => {
     }
     
     console.log("All saved state cleared");
+
+    // Reload the application window
+    window.location.reload();
   }, [isElectron]); // Added isElectron dependency
 
   // Load expanded nodes state from localStorage
