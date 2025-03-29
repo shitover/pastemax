@@ -140,63 +140,7 @@ try {
   encoder = null;
 }
 
-// Binary file extensions that should be excluded from token counting
-const BINARY_EXTENSIONS = [
-  // Images
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".tiff",
-  ".ico",
-  ".icns",
-  ".webp",
-  ".svg",
-  ".heic",
-  ".heif",
-  ".pdf",
-  ".psd",
-  // Audio/Video
-  ".mp3",
-  ".mp4",
-  ".wav",
-  ".ogg",
-  ".avi",
-  ".mov",
-  ".mkv",
-  ".flac",
-  // Archives
-  ".zip",
-  ".rar",
-  ".tar",
-  ".gz",
-  ".7z",
-  // Documents
-  ".pdf",
-  ".doc",
-  ".docx",
-  ".ppt",
-  ".pptx",
-  ".xls",
-  ".xlsx",
-  // Compiled
-  ".exe",
-  ".dll",
-  ".so",
-  ".class",
-  ".o",
-  ".pyc",
-  // Database
-  ".db",
-  ".sqlite",
-  ".sqlite3",
-  // Others
-  ".bin",
-  ".dat",
-].concat(binaryExtensions || []); // Add any additional binary extensions from excluded-files.js
-
-// Max file size to read (5MB)
+// Max file size to read (5MB) - BINARY_EXTENSIONS constant removed
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 function createWindow() {
@@ -337,7 +281,8 @@ function loadGitignore(rootDir) {
 // Check if file is binary based on extension
 function isBinaryFile(filePath) {
   const ext = path.extname(filePath).toLowerCase();
-  return BINARY_EXTENSIONS.includes(ext);
+  // Use imported binaryExtensions directly
+  return binaryExtensions.includes(ext);
 }
 
 // Count tokens using tiktoken with o200k_base encoding
