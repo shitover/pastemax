@@ -94,6 +94,9 @@ function isValidPath(pathToCheck) {
   }
 }
 
+// Global cache for ignore filters keyed by normalized root directory
+const ignoreCache = new Map();
+
 // Add handling for the 'ignore' module
 let ignore;
 try {
@@ -226,7 +229,52 @@ ipcMain.on("open-folder", async (event) => {
 });
 
 /**
- * Parse .gitignore file if it exists and create an ignore filter
+ * Traverses a directory to find and merge all .gitignore files
+ * Handles path normalization and duplicate patterns
+ * 
+ * @param {string} rootDir - The root directory to start traversal from
+ * @returns {Promise<Set<string>>} - Set of unique normalized ignore patterns
+ */
+async function collectCombinedGitignore(rootDir) {
+  const ignorePatterns = new Set();
+  
+  async function traverse(dir) {
+    try {
+      const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
+      
+      for (const dirent of dirents) {
+        const fullPath = safePathJoin(dir, dirent.name);
+        
+        // Skip invalid paths and system directories
+        if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
+          continue;
+        }
+        
+        if (dirent.isDirectory()) {
+          await traverse(fullPath);
+        } else if (dirent.isFile() && dirent.name === '.gitignore') {
+          try {
+            const content = await fs.promises.readFile(fullPath, "utf8");
+            content.split(/\r?\n/)
+              .map(line => line.trim())
+              .filter(line => line && !line.startsWith('#'))
+              .forEach(pattern => ignorePatterns.add(normalizePath(pattern)));
+          } catch (err) {
+            console.error(`Error reading ${fullPath}:`, err);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Error reading directory ${dir}:`, err);
+    }
+  }
+  
+  await traverse(rootDir);
+  return ignorePatterns;
+}
+
+/**
+ * Parse .gitignore files and create an ignore filter
  * Handles path normalization for cross-platform compatibility
  * 
  * @param {string} rootDir - The root directory containing .gitignore
