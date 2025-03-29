@@ -45,7 +45,7 @@ npm install
 3. Build the app:
 
 ```
-npm run build-electron
+npm run build:electron
 npm run package
 ```
 
@@ -93,7 +93,7 @@ To build the application for production:
 
 ```
 # Build the React app with Vite and update paths for Electron
-npm run build-electron
+npm run build:electron
 
 # Create platform-specific distributables
 npm run package
@@ -152,7 +152,7 @@ This is caused by dependencies not being properly included in the package. To fi
 2. Rebuild the application:
 
    ```
-   npm run build-electron && npm run package
+   npm run build:electron && npm run package
    ```
 
 3. Install the new version
