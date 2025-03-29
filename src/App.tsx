@@ -73,21 +73,23 @@ const App = (): JSX.Element => {
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
 
-  const [selectedFolder, setSelectedFolder] = useState(
-    savedFolder as string | null
+  // Normalize selectedFolder when loading from localStorage
+  const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
+    savedFolder ? normalizePath(savedFolder) : null
   );
-  const [allFiles, setAllFiles] = useState([] as FileData[]);
-  const [selectedFiles, setSelectedFiles] = useState(
-    savedFiles ? JSON.parse(savedFiles) : [] as string[]
+  const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
+  // Normalize paths loaded from localStorage
+  const [selectedFiles, setSelectedFiles] = useState( // Remove type argument
+    (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[] // Explicitly type initial value
   );
-  const [sortOrder, setSortOrder] = useState(
+  const [sortOrder, setSortOrder] = useState( // Remove type argument
     savedSortOrder || "tokens-desc"
   );
-  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
+  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || ""); // Remove type argument
   const [expandedNodes, setExpandedNodes] = useState(
     {} as Record<string, boolean>
   );
-  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
+  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]); // Keep explicit type for initial value
   const [processingStatus, setProcessingStatus] = useState(
     { status: "idle", message: "" } as {
       status: "idle" | "processing" | "complete" | "error";
@@ -253,11 +255,12 @@ const App = (): JSX.Element => {
         console.log("Folder already selected and loaded/loading, skipping request:", folderPath);
         return;
       }
-
-      console.log("Folder selected:", folderPath);
-      setSelectedFolder(folderPath);
+      
+      const normalizedFolderPath = normalizePath(folderPath); // Normalize before setting
+      console.log("Folder selected:", normalizedFolderPath);
+      setSelectedFolder(normalizedFolderPath); // Set normalized path
       // Reset selections when a *new* folder is selected
-      if (!arePathsEqual(folderPath, selectedFolder)) {
+      if (!arePathsEqual(normalizedFolderPath, selectedFolder)) { // Compare normalized path
         setSelectedFiles([]); 
       }
       setProcessingStatus({
@@ -509,8 +512,11 @@ const App = (): JSX.Element => {
 
   // Calculate total tokens from selected files
   const calculateTotalTokens = () => {
-    return selectedFiles.reduce((total: number, path: string) => {
-      const file = allFiles.find((f: FileData) => f.path === path);
+    // Ensure paths are normalized before summing tokens
+    const normalizedSelectedPaths = selectedFiles.map(normalizePath);
+    return normalizedSelectedPaths.reduce((total: number, selectedPath: string) => {
+      // Use arePathsEqual for comparison
+      const file = allFiles.find((f: FileData) => arePathsEqual(f.path, selectedPath));
       return total + (file ? file.tokenCount : 0);
     }, 0);
   };
@@ -541,13 +547,15 @@ const App = (): JSX.Element => {
   const selectAllFiles = () => {
     const selectablePaths = displayedFiles
       .filter((file: FileData) => !file.isBinary && !file.isSkipped)
-      .map((file: FileData) => file.path);
+      .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
     setSelectedFiles((prev: string[]) => {
-      const newSelection = [...prev];
-      selectablePaths.forEach((path: string) => {
-        if (!newSelection.includes(path)) {
-          newSelection.push(path);
+      const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
+      const newSelection = [...normalizedPrev];
+      selectablePaths.forEach((pathToAdd: string) => {
+        // Use arePathsEqual for checking existence
+        if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
+          newSelection.push(pathToAdd);
         }
       });
       return newSelection;
@@ -556,10 +564,16 @@ const App = (): JSX.Element => {
 
   // Handle deselect all files
   const deselectAllFiles = () => {
-    const displayedPaths = displayedFiles.map((file: FileData) => file.path);
-    setSelectedFiles((prev: string[]) =>
-      prev.filter((path: string) => !displayedPaths.includes(path)),
-    );
+    const displayedPathsToDeselect = displayedFiles.map((file: FileData) => normalizePath(file.path)); // Normalize paths to deselect
+    setSelectedFiles((prev: string[]) => {
+      const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
+      // Use arePathsEqual for filtering
+      return normalizedPrev.filter(
+        (selectedPath: string) => !displayedPathsToDeselect.some(
+          (deselectPath: string) => arePathsEqual(selectedPath, deselectPath) // Add type annotation
+        )
+      );
+    });
   };
 
   // Sort options for the dropdown
