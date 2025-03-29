@@ -211,15 +211,15 @@ const TreeItem = ({
 
         {/* Show badges for files and folders */}
         {type === "file" && fileData && isDisabled && (
-          <span className="tree-item-badge">
+          <span className={`tree-item-badge ${fileData.isBinary ? "tree-item-badge-binary-file" : ""}`}>
             {fileData.isBinary ? "Binary" : 
              fileData.isSkipped ? "Skipped" : 
              "Excluded"}
           </span>
         )}
         {type === "directory" && node.hasBinaries && (
-          <span className="tree-item-badge">
-            Has Binaries
+          <span className="tree-item-badge tree-item-badge-folder">
+            Has Binary Files
           </span>
         )}
       </div>
