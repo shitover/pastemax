@@ -211,7 +211,7 @@ const App = (): JSX.Element => {
 
   // Modify the existing useEffect for loading initial data
   useEffect(() => {
-    // Prevent this hook from running if a folder selection is already in progress
+    // Prevent this hook from running if not in Electron, no folder selected, in safe mode, or already processing
     if (!isElectron || !selectedFolder || isSafeMode || processingStatus.status === 'processing') return;
     
     // Always reload the folder data when the component mounts (after page refresh)
@@ -239,23 +239,32 @@ const App = (): JSX.Element => {
 
     const handleFolderSelected = (folderPath: string) => {
       // Check if folderPath is valid string
-      if (typeof folderPath === "string") {
-        console.log("Folder selected:", folderPath);
-        setSelectedFolder(folderPath);
-        // We'll select all files after they're loaded
-        setSelectedFiles([]);
-        setProcessingStatus({
-          status: "processing",
-          message: "Requesting file list...",
-        });
-        window.electron.ipcRenderer.send("request-file-list", folderPath);
-      } else {
+      if (typeof folderPath !== "string") {
         console.error("Invalid folder path received:", folderPath);
         setProcessingStatus({
           status: "error",
           message: "Invalid folder path received",
         });
+        return;
       }
+
+      // Prevent redundant processing if the same folder is selected and already loaded/loading
+      if (arePathsEqual(folderPath, selectedFolder) && (allFiles.length > 0 || processingStatus.status === 'processing')) {
+        console.log("Folder already selected and loaded/loading, skipping request:", folderPath);
+        return;
+      }
+
+      console.log("Folder selected:", folderPath);
+      setSelectedFolder(folderPath);
+      // Reset selections when a *new* folder is selected
+      if (!arePathsEqual(folderPath, selectedFolder)) {
+        setSelectedFiles([]); 
+      }
+      setProcessingStatus({
+        status: "processing",
+        message: "Requesting file list...",
+      });
+      window.electron.ipcRenderer.send("request-file-list", folderPath);
     };
 
     const handleFileListData = (files: FileData[]) => {
