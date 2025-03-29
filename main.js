@@ -97,6 +97,9 @@ function isValidPath(pathToCheck) {
 // Global cache for ignore filters keyed by normalized root directory
 const ignoreCache = new Map();
 
+// Global cache for file metadata keyed by normalized file path
+const fileCache = new Map();
+
 // Add handling for the 'ignore' module
 let ignore;
 try {
@@ -442,12 +445,21 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           return null;
         }
 
+        // Check cache first
+        const fullPathNormalized = normalizePath(fullPath);
+        if (fileCache.has(fullPathNormalized)) {
+          console.log('Using cached file data for:', fullPathNormalized);
+          return fileCache.get(fullPathNormalized);
+        }
+
         try {
           const stats = await fs.promises.stat(fullPath);
           if (!isLoadingDirectory) return null;
+
+          let fileData;
           
           if (stats.size > MAX_FILE_SIZE) {
-            return {
+            fileData = {
               name: dirent.name,
               path: normalizePath(fullPath),
               relativePath: relativePath,
@@ -458,10 +470,12 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
               isSkipped: true,
               error: "File too large to process"
             };
+            fileCache.set(fullPathNormalized, fileData);
+            return fileData;
           }
 
           if (isBinaryFile(fullPath)) {
-            return {
+            fileData = {
               name: dirent.name,
               path: normalizePath(fullPath),
               relativePath: relativePath,
@@ -472,12 +486,14 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
               isSkipped: false,
               fileType: path.extname(fullPath).substring(1).toUpperCase()
             };
+            fileCache.set(fullPathNormalized, fileData);
+            return fileData;
           }
 
           const fileContent = await fs.promises.readFile(fullPath, "utf8");
           if (!isLoadingDirectory) return null;
           
-          return {
+          fileData = {
             name: dirent.name,
             path: normalizePath(fullPath),
             relativePath: relativePath,
@@ -487,9 +503,11 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
             isBinary: false,
             isSkipped: false
           };
+          fileCache.set(fullPathNormalized, fileData);
+          return fileData;
         } catch (err) {
           console.error(`Error reading file ${fullPath}:`, err);
-          return {
+          const errorData = {
             name: dirent.name,
             path: normalizePath(fullPath),
             relativePath: relativePath,
@@ -501,6 +519,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
                    err.code === 'ENOENT' ? "File not found" : 
                    "Could not read file"
           };
+          fileCache.set(fullPathNormalized, errorData);
+          return errorData;
         }
       });
 
