@@ -126,9 +126,14 @@ const App = (): JSX.Element => {
     setExpandedNodes({});
     setIncludeFileTree(false);
     setProcessingStatus({ status: "idle", message: "All saved data cleared" });
+
+    // Also cancel any ongoing directory loading
+    if (isElectron) {
+      window.electron.ipcRenderer.send("cancel-directory-loading");
+    }
     
     console.log("All saved state cleared");
-  }, []);
+  }, [isElectron]); // Added isElectron dependency
 
   // Load expanded nodes state from localStorage
   useEffect(() => {
@@ -254,14 +259,12 @@ const App = (): JSX.Element => {
 
     const handleFileListData = (files: FileData[]) => {
       console.log("Received file list data:", files.length, "files");
-      setAllFiles(files);
+      // Set the files, but let the separate useEffect handle filtering/sorting
+      setAllFiles(files); 
       setProcessingStatus({
         status: "complete",
         message: `Loaded ${files.length} files`,
       });
-
-      // Apply filters and sort to the new files
-      applyFiltersAndSort(files, sortOrder, searchTerm);
 
       // Preserve selected files after reload
       if (selectedFiles.length > 0) {
@@ -320,7 +323,12 @@ const App = (): JSX.Element => {
         handleProcessingStatus,
       );
     };
-  }, [isElectron, sortOrder, searchTerm]);
+  }, [isElectron]); // Removed sortOrder and searchTerm dependencies
+
+  // Apply filters and sort whenever relevant state changes
+  useEffect(() => {
+    applyFiltersAndSort(allFiles, sortOrder, searchTerm);
+  }, [allFiles, sortOrder, searchTerm]); // Added allFiles dependency
 
   const openFolder = () => {
     if (isElectron) {
@@ -474,14 +482,14 @@ const App = (): JSX.Element => {
   // Handle sort change
   const handleSortChange = (newSort: string) => {
     setSortOrder(newSort);
-    applyFiltersAndSort(allFiles, newSort, searchTerm);
+    // applyFiltersAndSort(allFiles, newSort, searchTerm); // Let the useEffect handle this
     setSortDropdownOpen(false); // Close dropdown after selection
   };
 
   // Handle search change
   const handleSearchChange = (newSearch: string) => {
     setSearchTerm(newSearch);
-    applyFiltersAndSort(allFiles, sortOrder, newSearch);
+    // applyFiltersAndSort(allFiles, sortOrder, newSearch); // Let the useEffect handle this
   };
 
   // Toggle sort dropdown
