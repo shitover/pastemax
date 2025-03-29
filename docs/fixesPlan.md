@@ -20,6 +20,9 @@ This plan addresses performance issues and .gitignore handling based on the Know
 3. **Documentation & Code Comments**
    - Update inline comments and developer documentation to explain new caches, processing logic, and metadata enhancements.
 
+Refer to this flow diagram for visual detail of change
+![Flow Diagram](newCache.png)
+
 ---
 
 ## Task Checklist & Progress Tracking
@@ -221,3 +224,4 @@ This plan addresses performance issues and .gitignore handling based on the Know
 ---
 
 *This plan comprehensively addresses all issues and fixes proposed in KnownIssue.md while ensuring that the current program functionality remains intact.*
+
