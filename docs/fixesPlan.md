@@ -152,38 +152,38 @@ Refer to this flow diagram for visual detail of change
 
 ---
 
-### 4. Propagating a `hasBinaries` Flag in the File Tree
+### 4. Propagating a `hasBinaries` Flag in the File Tree ✅
 
-- [ ] **Task 4.1: Update the Data Model**
+- [x] **Task 4.1: Update the Data Model**
   - **File:** `FileTypes.ts`
-  - **Action:** Extend the `TreeNode` interface to include an optional `hasBinaries` property.
-  - **Example:**
-    ```ts
-    export interface TreeNode {
-      id: string;
-      name: string;
-      path: string;
-      type: "file" | "directory";
-      children?: TreeNode[];
-      isExpanded?: boolean;
-      level: number;
-      fileData?: FileData;
-      hasBinaries?: boolean;
-    }
-    ```
-  - **Outcome:** The file tree can now store additional metadata for directories.
+  - **Action:** Extended the `TreeNode` interface to include `hasBinaries` property
+  - **Status:** Completed - Interface updated and working
 
-- [ ] **Task 4.2: Update Tree Building in `Sidebar.tsx`**
+- [x] **Task 4.2: Update Tree Building in `Sidebar.tsx`**
   - **File:** `Sidebar.tsx`
-  - **Action:** When building the file tree, if a file is detected as binary, mark its parent directory node with `hasBinaries: true`. Optionally, propagate this flag upward to all parent nodes.
-  - **Guidance:**  
-    - During the file path splitting and tree node creation, check `if (file.isBinary)` and update the corresponding directory node.
-  - **Outcome:** Folders with binary files are flagged for UI indicators without altering selection or navigation functionality.
+  - **Action:** Implemented binary flag propagation through tree structure
+  - **Status:** Completed - Binary detection properly propagates up the tree
+  - **Implementation:**
+    ```ts
+    const updateBinaryFlag = (node: TreeNode): boolean => {
+      if (node.type === "file") {
+        return node.fileData?.isBinary || false;
+      }
+      if (node.children) {
+        node.hasBinaries = node.children.some(child => updateBinaryFlag(child));
+        return node.hasBinaries;
+      }
+      return false;
+    };
+    ```
 
-- [ ] **Task 4.3: (Optional) Update UI in `TreeItem.tsx`**
-  - **File:** `TreeItem.tsx`
-  - **Action:** Modify the component to optionally display an indicator (icon, badge, etc.) if `hasBinaries` is true.
-  - **Outcome:** Enhances user feedback without impacting core functionality.
+- [x] **Task 4.3: Update UI in `TreeItem.tsx`**
+  - **File:** `TreeItem.tsx` and `index.css`
+  - **Action:** Added badges for both binary files and folders containing binaries
+  - **Status:** Completed - Includes:
+    - Distinct styling for file vs folder badges
+    - Theme compatibility for both light and dark modes
+    - Text updates ("Binary" for files, "Has Binary Files" for folders)
 
 ---
 
@@ -193,12 +193,15 @@ Refer to this flow diagram for visual detail of change
   - **Action:** Document the purpose of `ignoreCache`, `fileCache`, and the logic behind `collectCombinedGitignore`.
   - **Outcome:** Improves code clarity and aids future maintenance.
 
-- [ ] **Task 5.2: Revise Comments in `Sidebar.tsx` and `FileTypes.ts`**
-  - **Action:** Clearly document the new `hasBinaries` property and modifications to the tree-building process.
-  - **Outcome:** Provides clear guidance for future enhancements.
+- [x] **Task 5.2: Revise Comments in `Sidebar.tsx` and `FileTypes.ts`**
+  - **Action:** Added documentation for:
+    - `hasBinaries` property in TreeNode interface
+    - Binary flag propagation logic in Sidebar.tsx
+    - Badge rendering logic in TreeItem.tsx
+  - **Status:** Completed with clear documentation of binary handling
 
 - [ ] **Task 5.3: Update Developer Documentation**
-  - **Action:** Add a section to the project README or developer docs summarizing the performance improvements and caching strategies.
+  - **Action:** Add a section to the project CHANGELOG.md summarizing the performance improvements and caching strategies.
   - **Outcome:** Ensures that all team members understand the new architecture.
 
 ---
@@ -224,4 +227,3 @@ Refer to this flow diagram for visual detail of change
 ---
 
 *This plan comprehensively addresses all issues and fixes proposed in KnownIssue.md while ensuring that the current program functionality remains intact.*
-
