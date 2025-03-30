@@ -5,10 +5,14 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
-- Fixed race condition in .gitignore handling:
-  - Improved handling of deep repositories with multiple .gitignore files
-  - Ensured all .gitignore patterns are loaded before file filtering begins
-  - Better support for complex repository structures with nested git repositories
+- Enhanced large repository handling:
+  - Extended directory loading timeout to 5 minutes for very large repositories
+  - Added detailed progress tracking for directories and files processed
+  - Improved logging and status messages with processing statistics
+  - Fixed race condition in .gitignore handling:
+    - Better handling of deep repositories with multiple .gitignore files
+    - Ensured all .gitignore patterns are loaded before file filtering begins
+    - Better support for complex repository structures with nested git repositories
 
 - Enhanced cache clearing functionality:
   - Added main process cache clearing to "Clear Data" operation

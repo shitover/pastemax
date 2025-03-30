@@ -6,7 +6,9 @@ const os = require("os");
 // Global variables for directory loading control
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
-const MAX_DIRECTORY_LOAD_TIME = 60000; // 60 seconds timeout
+const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
+let processedDirectories = 0;
+let processedFiles = 0;
 
 /**
  * Enhanced path handling functions for cross-platform compatibility
@@ -418,6 +420,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
 
       // Only process if not ignored
       if (!ignoreFilter.ignores(relativePath)) {
+        processedDirectories++; // Increment directory counter
         const subResults = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window);
         if (!isLoadingDirectory) return results;
         results = results.concat(subResults);
@@ -425,7 +428,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
 
       window.webContents.send("file-processing-status", {
         status: "processing",
-        message: `Scanning directories... (Press ESC to cancel)`,
+        message: `Scanning directories (${processedDirectories} processed)... (Press ESC to cancel)`,
       });
     }
 
@@ -561,13 +564,18 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       const chunkResults = await Promise.all(chunkPromises);
       if (!isLoadingDirectory) return results;
       
-      results = results.concat(chunkResults.filter(result => result !== null));
-      processedFiles += chunk.length;
+      const validResults = chunkResults.filter(result => result !== null);
+      results = results.concat(validResults);
+      processedFiles += validResults.length;
       
       window.webContents.send("file-processing-status", {
         status: "processing",
-        message: `Processing files... ${processedFiles}/${files.length} (Press ESC to cancel)`,
+        message: `Processing files (${processedDirectories} dirs, ${processedFiles} files)... (Press ESC to cancel)`,
       });
+
+      if (processedFiles % 100 === 0) {
+        console.log(`Progress update - Directories: ${processedDirectories}, Files: ${processedFiles}`);
+      }
     }
   } catch (err) {
     console.error(`Error reading directory ${dir}:`, err);
@@ -743,35 +751,12 @@ ipcMain.on("debug-file-selection", (event, data) => {
  * Handles the cancellation of directory loading operations.
  * Ensures clean cancellation by:
  * - Clearing all timeouts
- * - Resetting loading flags
- * - Notifying the UI immediately
+ * - Resetting loading flags and counters
+ * - Notifying the UI immediately with context
  * 
  * @param {BrowserWindow} window - The Electron window instance to send updates to
+ * @param {string} reason - The reason for cancellation ("user" or "timeout")
  */
-function cancelDirectoryLoading(window) {
-  if (!isLoadingDirectory) return;
-
-  console.log("Cancelling directory loading process immediately");
-  // Ensure flag is reset here as well
-  isLoadingDirectory = false;
-
-  if (loadingTimeoutId) {
-    clearTimeout(loadingTimeoutId);
-    loadingTimeoutId = null;
-  }
-
-  // Send cancellation message immediately
-  // Add checks for window validity
-  if (window && window.webContents && !window.webContents.isDestroyed()) {
-    window.webContents.send("file-processing-status", {
-      status: "cancelled",
-      message: "Directory loading cancelled",
-    });
-  } else {
-    console.log("Window not available to send cancellation status.");
-  }
-}
-
 /**
  * Sets up a safety timeout for directory loading operations.
  * Prevents infinite loading by automatically cancelling after MAX_DIRECTORY_LOAD_TIME.
@@ -788,7 +773,46 @@ function setupDirectoryLoadingTimeout(window, folderPath) {
   // Set a new timeout
   loadingTimeoutId = setTimeout(() => {
     console.log(`Directory loading timed out after ${MAX_DIRECTORY_LOAD_TIME / 1000} seconds: ${folderPath}`);
-    // Call cancelDirectoryLoading which now resets the flag
-    cancelDirectoryLoading(window);
+    console.log(`Stats at timeout: Processed ${processedDirectories} directories and ${processedFiles} files`);
+    // Call cancelDirectoryLoading with timeout reason
+    cancelDirectoryLoading(window, "timeout");
   }, MAX_DIRECTORY_LOAD_TIME);
+
+  // Reset counters when starting new directory load
+  processedDirectories = 0;
+  processedFiles = 0;
+}
+
+function cancelDirectoryLoading(window, reason = "user") {
+  if (!isLoadingDirectory) return;
+
+  console.log(`Cancelling directory loading process (Reason: ${reason})`);
+  console.log(`Stats at cancellation: Processed ${processedDirectories} directories and ${processedFiles} files`);
+
+  // Ensure flag is reset here as well
+  isLoadingDirectory = false;
+
+  if (loadingTimeoutId) {
+    clearTimeout(loadingTimeoutId);
+    loadingTimeoutId = null;
+  }
+
+  // Reset counters
+  processedDirectories = 0;
+  processedFiles = 0;
+
+  // Send cancellation message immediately with appropriate context
+  // Add checks for window validity
+  if (window && window.webContents && !window.webContents.isDestroyed()) {
+    const message = reason === "timeout" 
+      ? "Directory loading timed out after 5 minutes. Try clearing data and retrying."
+      : "Directory loading cancelled";
+
+    window.webContents.send("file-processing-status", {
+      status: "cancelled",
+      message: message,
+    });
+  } else {
+    console.log("Window not available to send cancellation status.");
+  }
 }
