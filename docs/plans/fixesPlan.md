@@ -314,3 +314,54 @@ Refer to [ChunkLoad](chunkLoad.png)
 ---
 
 *This additional plan focuses on enhancing robustness and UI performance for large-scale repositories, building upon the previous optimizations.*
+
+
+
+## Refined Plan & Analysis (Tasks 6-8)
+
+Based on code review of `main.js`, `Sidebar.tsx`, and `TreeItem.tsx`, the plan for Tasks 6-8 is confirmed with the following analysis:
+
+**Task 6: Backend Reliability & Feedback (main.js)**
+*   **6.1 (Dynamic Chunking):** Architecturally sound. Improves robustness by preventing main thread blocking during large scans using time-slicing instead of fixed counts. Builds upon existing `readFilesRecursively`.
+*   **6.2 (Enhanced Progress Reporting):** Good enhancement. Provides much better UX during loading by sending more detailed progress info (counts, current directory) via IPC. Requires adding tracking within `readFilesRecursively`.
+*   **Conclusion:** Task 6 is safe and beneficial.
+
+**Task 7: Frontend UI Performance Optimization (React Components)**
+*   **7.1 (Improve Loading Indicator):** Straightforward UI improvement, directly uses data from Task 6.2.
+*   **7.2 (Implement Tree Virtualization):** **Necessary for large repositories.** The current `Sidebar.tsx` renders *all* visible nodes (`.map` over `visibleTree`), causing performance issues with thousands of files. Virtualization (using `react-window` or similar) renders only the on-screen items, directly solving this bottleneck. While it adds implementation complexity to `Sidebar.tsx`, it's the standard solution and optimizes the presentation layer significantly without altering core data flow.
+*   **7.3 (Memoize TreeItem):** Highly recommended. `TreeItem.tsx` is complex; `React.memo` will prevent unnecessary re-renders, improving list performance.
+*   **7.4 (Optimize Selection/Expansion Logic):** Important. Optimizing how `selectedFiles` and `expandedNodes` state is updated in `App.tsx` will reduce unnecessary work and re-renders in `Sidebar.tsx` and `TreeItem.tsx`.
+*   **Conclusion:** Task 7 addresses identified performance bottlenecks. Virtualization (7.2) is key for large file counts, complemented by memoization (7.3) and state optimization (7.4).
+
+**Task 8: Documentation Updates**
+*   Standard updates to reflect implemented changes in this plan and the `CHANGELOG.md`.
+
+**Architectural Integrity:**
+*   Task 6 modifies the *how* of backend processing (time-slicing, better progress) but not the *what*.
+*   Task 7 primarily affects the *rendering* layer (`Sidebar.tsx`, `TreeItem.tsx`) and state update *efficiency* (`App.tsx`), not fundamental data structures or application flow.
+
+**Overall Flow Diagram:**
+
+```mermaid
+graph TD
+    subgraph Backend - main.js
+        A[Renderer requests files] --> B[readFilesRecursively]
+        B -- Time-Sliced Chunks --> C{Process File Chunk}
+        C -- Check Ignore/Cache --> D[Read File Info / Count Tokens]
+        D --> E[Add to Results / Cache]
+        C -- Yield setImmediate --> B
+        B -- IPC: file-processing-status → --> F[IPC: file-processing-status - Detailed]
+        B -- On Completion --> G[IPC: file-processing-complete - Full List]
+    end
+
+    subgraph Frontend - React
+        F --> H[Sidebar: Update Loading Indicator]
+        G --> I[App.tsx: Set allFiles state]
+        I -- Optimized State Update --> J[Sidebar: Receives allFiles]
+        J --> K{Build Tree Structure}
+        K --> L[Sidebar: Render Tree]
+        L -- Uses react-window --> M[Render Only Visible TreeItems]
+        M -- Uses Memoized TreeItem --> N[Display Item]
+        O[User Interaction: Select or Expand] -- Optimized Handler --> I
+    end
+```
