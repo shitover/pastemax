@@ -6,6 +6,8 @@ import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import IgnorePatternsViewer from "./components/IgnorePatternsViewer";
 import ThemeToggle from "./components/ThemeToggle";
+import ViewIgnorePatternsButton from "./components/ViewIgnorePatternsButton";
+import { useIgnorePatterns } from "./hooks/useIgnorePatterns";
 import UserInstructions from "./components/UserInstructions";
 
 /**
@@ -79,14 +81,19 @@ const App = (): JSX.Element => {
   const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
     savedFolder ? normalizePath(savedFolder) : null
   );
+  // Check if we're running in Electron or browser environment
+  const isElectron = window.electron !== undefined;
+
   const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
-  const [isIgnoreViewerOpen, setIsIgnoreViewerOpen] = useState(false);
-  const [ignorePatterns, setIgnorePatterns] = useState(null as {
-    default: string[];
-    excludedFiles: string[];
-    gitignore: string[];
-  } | null);
-  const [ignorePatternsError, setIgnorePatternsError] = useState(null as string | null);
+  
+  // Initialize ignore patterns functionality
+  const {
+    isIgnoreViewerOpen,
+    ignorePatterns,
+    ignorePatternsError,
+    handleViewIgnorePatterns,
+    closeIgnoreViewer
+  } = useIgnorePatterns(selectedFolder, isElectron);
   // Normalize paths loaded from localStorage
   const [selectedFiles, setSelectedFiles] = useState( // Remove type argument
     (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[] // Explicitly type initial value
@@ -112,8 +119,6 @@ const App = (): JSX.Element => {
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
-  // Check if we're running in Electron or browser environment
-  const isElectron = window.electron !== undefined;
 
   const [isSafeMode, setIsSafeMode] = useState(false);
 
@@ -642,31 +647,10 @@ const App = (): JSX.Element => {
               >
                 Clear Data
               </button>
-              <button
-                onClick={async () => {
-                  if (!selectedFolder || !isElectron) return;
-                  setIgnorePatterns(null);
-                  setIgnorePatternsError(null);
-
-                  try {
-                    const result = await window.electron.ipcRenderer.invoke('get-ignore-patterns', selectedFolder);
-                    if (result.error) {
-                      setIgnorePatternsError(result.error);
-                    } else {
-                      setIgnorePatterns(result.patterns);
-                    }
-                  } catch (err) {
-                    console.error("Error invoking get-ignore-patterns:", err);
-                    setIgnorePatternsError(err instanceof Error ? err.message : "Failed to fetch ignore patterns.");
-                  } finally {
-                    setIsIgnoreViewerOpen(true);
-                  }
-                }}
-                title="View Applied Ignore Rules"
+              <ViewIgnorePatternsButton
+                onClick={handleViewIgnorePatterns}
                 disabled={!selectedFolder || !isElectron}
-              >
-                View Ignores
-              </button>
+              />
             </div>
           </div>
         </header>
@@ -784,9 +768,10 @@ const App = (): JSX.Element => {
           </div>
         )}
 
+        {/* Ignore Patterns Viewer Modal */}
         <IgnorePatternsViewer
           isOpen={isIgnoreViewerOpen}
-          onClose={() => setIsIgnoreViewerOpen(false)}
+          onClose={closeIgnoreViewer}
           patterns={ignorePatterns}
           error={ignorePatternsError}
         />
