@@ -1,4 +1,4 @@
-# Implementation Plan: Performance & .gitignore Improvements
+# Implementation Plan: Performance & .gitignore Improvements 1.2.2
 
 This plan addresses performance issues and .gitignore handling based on the KnownIssue.md report. The goal is to optimize file scanning through caching, reordering processing checks, and enhancing file tree metadata while keeping all existing features intact.
 
@@ -228,4 +228,89 @@ Refer to this flow diagram for visual detail of change
 
 ---
 
-*This plan comprehensively addresses all issues and fixes proposed in KnownIssue.md while ensuring that the current program functionality remains intact.*
+# Additional Implementation Plan: UI Performance & Backend Reliability 1.2.3
+
+This section outlines further improvements focusing on UI responsiveness for large repositories and backend loading robustness.
+
+---
+
+## Additional Objectives
+
+1.  **Backend Reliability & Feedback:**
+    *   Improve chunk loading mechanism in `main.js` to be time-based, preventing main thread blockage.
+    *   Enhance IPC progress messages with more granular details (counts, current directory).
+2.  **Frontend UI Performance:**
+    *   Implement UI virtualization for the file tree in `Sidebar.tsx` to handle large datasets efficiently.
+    *   Optimize `TreeItem.tsx` rendering using memoization.
+    *   Review and optimize state update logic for selection/expansion in `App.tsx`.
+3.  **Documentation:**
+    *   Update this plan and `CHANGELOG.md` to reflect these new enhancements.
+
+---
+
+## Additional Task Checklist & Progress Tracking
+
+### 6. Backend Reliability & Feedback (main.js)
+
+-   [ ] **Task 6.1: Implement Dynamic Chunking**
+    *   **File:** `main.js`
+    *   **Action:** Modify `readFilesRecursively` to process files based on time slices (e.g., 50ms per chunk) instead of a fixed count. Use `process.nextTick` or `setImmediate` to yield control back to the event loop between chunks.
+    *   **Outcome:** More reliable scanning for large/deep repos, preventing crashes due to prolonged main thread blocking.
+
+-   [ ] **Task 6.2: Enhance Progress Reporting**
+    *   **File:** `main.js`
+    *   **Action:** Modify `readFilesRecursively` to track `processedCount`, `totalFileCount` (estimated initially, refined as scanning progresses), and `currentDirectory`. Send these details via `file-processing-status` IPC events.
+    *   **Outcome:** More informative loading indicator in the UI, providing better user feedback.
+
+#### Explanation:
+Refer to [ChunkLoad](chunkLoad.png)
+
+- **Initiation**: The Renderer requests the file list.
+- **Start Scan**: `main.js` starts `readFilesRecursively` and sends an initial "processing" status.
+- **Directory Loop**: It reads directories from the file system.
+- **Time-Sliced Chunk Loop**: Instead of a fixed number of files, it processes files within a time budget (e.g., 50ms).
+- **File Processing**: Inside the chunk loop, it performs checks (ignore, cache), reads file info if needed (stat, readFile), counts tokens, caches the result, and adds it to the list.
+- **Yield & Report**: After each time slice (or chunk), it sends a detailed file-processing-status update to the UI (including counts and current directory) and then yields control back to the event loop `(setImmediate or process.nextTick)` to keep the application responsive.
+- **Completion**: Once all files/directories are processed, it sends the final "complete" status and the full file list data.
+
+
+
+---
+
+### 7. Frontend UI Performance Optimization (React Components)
+
+-   [ ] **Task 7.1: Improve Visual Loading Progress Indicator**
+    *   **File:** `src/components/Sidebar.tsx`
+    *   **Action:** Update the loading indicator UI (`tree-loading` div) to utilize the enhanced progress data received from `main.js` (via `file-processing-status` IPC). Display details like "Processed X/Y files" and the current directory being scanned. Consider adding a visual progress bar.
+    *   **Outcome:** Provides users with much clearer feedback on the loading progress, especially for large repositories.
+
+-   [ ] **Task 7.2: Implement Tree Virtualization**
+    *   **File:** `src/components/Sidebar.tsx`
+    *   **Action:** Integrate `react-window` (FixedSizeList) or `react-virtualized` (List) to render only the visible `TreeItem` components based on scroll position. Calculate item heights accurately.
+    *   **Outcome:** Significant improvement in UI responsiveness (scrolling, interaction) for repositories with thousands of files/folders.
+
+-   [ ] **Task 7.3: Memoize TreeItem Component**
+    *   **File:** `src/components/TreeItem.tsx`
+    *   **Action:** Wrap the `TreeItem` component export with `React.memo`. Ensure props passed down are stable where possible.
+    *   **Outcome:** Reduces unnecessary re-renders of individual tree items, improving overall rendering performance during state changes.
+
+-   [ ] **Task 7.4: Optimize Selection/Expansion Logic**
+    *   **Files:** `src/App.tsx`, `src/components/Sidebar.tsx`
+    *   **Action:** Analyze how `selectedFiles` and `expandedNodes` state updates trigger re-renders. Optimize state update functions (`toggleFileSelection`, `toggleFolderSelection`, `toggleExpanded`) to minimize unnecessary recalculations or broad state changes. Consider using more targeted updates if possible.
+                    *   **Outcome:** Faster and smoother user interactions when selecting/deselecting items or expanding/collapsing folders.
+
+---
+
+### 8. Documentation Updates
+
+-   [ ] **Task 8.1: Update `docs/fixesPlan.md`**
+    *   **Action:** Ensure this section (Tasks 6-8) is correctly added and formatted. Mark tasks as complete as they are implemented.
+    *   **Outcome:** Plan document accurately reflects current development goals.
+
+-   [ ] **Task 8.2: Update `CHANGELOG.md`**
+    *   **Action:** Add entries under "Unreleased" summarizing the backend reliability and frontend performance enhancements once implemented.
+    *   **Outcome:** Changelog provides a clear record of improvements for users and developers.
+
+---
+
+*This additional plan focuses on enhancing robustness and UI performance for large-scale repositories, building upon the previous optimizations.*
