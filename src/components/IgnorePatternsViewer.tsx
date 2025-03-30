@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 interface IgnorePatternsViewerProps {
   isOpen: boolean;
@@ -88,6 +88,13 @@ export const IgnorePatternsViewer = ({
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Reset search when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -106,8 +113,10 @@ export const IgnorePatternsViewer = ({
                 <input
                   type="text"
                   placeholder="Search patterns..."
+                  value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
+                  autoFocus
                 />
               </div>
               <div className="ignore-patterns-sections">
