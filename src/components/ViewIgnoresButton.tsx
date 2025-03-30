@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface ViewIgnorePatternsButtonProps {
+interface ViewIgnoreButtonProps {
   onClick: () => void;
   disabled: boolean;
 }
@@ -13,26 +13,26 @@ interface ViewIgnorePatternsButtonProps {
  * @component
  * @example
  * ```tsx
- * <ViewIgnorePatternsButton
+ * <ViewIgnoreButton
  *   onClick={handleViewPatterns}
  *   disabled={!hasSelectedFolder}
  * />
  * ```
  */
-function ViewIgnorePatternsButton({ 
+function ViewIgnoreButton({ 
   onClick, 
   disabled 
-}: ViewIgnorePatternsButtonProps) {
+}: ViewIgnoreButtonProps) {
   return (
     <button
       onClick={onClick}
       title="View Applied Ignore Rules"
       disabled={disabled}
-      className="view-ignores-btn" // Using consistent class naming
+      className="view-ignores-btn"
     >
       View Ignores
     </button>
   );
 }
 
-export default ViewIgnorePatternsButton;
+export default ViewIgnoreButton;

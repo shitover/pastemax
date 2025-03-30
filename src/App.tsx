@@ -6,7 +6,7 @@ import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import IgnorePatternsViewer from "./components/IgnorePatternsViewer";
 import ThemeToggle from "./components/ThemeToggle";
-import ViewIgnorePatternsButton from "./components/ViewIgnorePatternsButton";
+import ViewIgnoresButton from "./components/ViewIgnoresButton";
 import { useIgnorePatterns } from "./hooks/useIgnorePatterns";
 import UserInstructions from "./components/UserInstructions";
 
@@ -647,7 +647,7 @@ const App = (): JSX.Element => {
               >
                 Clear Data
               </button>
-              <ViewIgnorePatternsButton
+              <ViewIgnoresButton
                 onClick={handleViewIgnorePatterns}
                 disabled={!selectedFolder || !isElectron}
               />
