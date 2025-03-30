@@ -1297,33 +1297,66 @@ label {
 .ignore-patterns-sections {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
-.ignore-patterns-sections section {
+.ignore-patterns-sections .ignore-patterns-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  padding: 20px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
-.ignore-patterns-sections h3 {
-  font-size: 14px;
+.ignore-patterns-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ignore-patterns-section h3 {
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
+.ignore-patterns-section .pattern-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  background-color: var(--background-primary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.ignore-patterns-section .section-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: -8px;
+  font-style: italic;
+}
+
 .pattern-list {
-  background-color: var(--background-secondary);
-  border-radius: 4px;
-  padding: 12px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
   margin: 0;
   font-family: var(--font-family-code);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text-primary);
   white-space: pre;
   overflow-x: auto;
+  max-height: 200px;
+}
+
+.pattern-list:hover {
+  border-color: var(--accent-blue);
 }
 
 .ignore-patterns-error {
