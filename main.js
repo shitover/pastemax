@@ -327,13 +327,21 @@ async function loadGitignore(rootDir) {
 
   try {
     // Wait for all .gitignore patterns to be collected
-    const patterns = await collectCombinedGitignore(rootDir);
-    if (patterns.size > 0) {
-      console.log(`Adding ${patterns.size} combined .gitignore patterns for:`, rootDir);
-      ig.add(Array.from(patterns));
+    const gitignorePatterns = await collectCombinedGitignore(rootDir);
+    if (gitignorePatterns.size > 0) {
+      console.log(`Adding ${gitignorePatterns.size} combined .gitignore patterns for:`, rootDir);
+      ig.add(Array.from(gitignorePatterns));
     }
-    // Cache the configured ignore filter
-    ignoreCache.set(rootDir, ig);
+
+    // Store categorized patterns alongside the ignore instance
+    const categorizedPatterns = {
+      default: defaultPatterns,
+      excludedFiles: normalizedExcludedFiles,
+      gitignore: Array.from(gitignorePatterns)
+    };
+
+    // Cache both the ignore instance and patterns
+    ignoreCache.set(rootDir, { ig, patterns: categorizedPatterns });
     return ig;
   } catch (err) {
     console.error("Error collecting .gitignore patterns:", err);
@@ -745,6 +753,29 @@ function shouldExcludeByDefault(filePath, rootDir) {
 // Add a debug handler for file selection
 ipcMain.on("debug-file-selection", (event, data) => {
   console.log("DEBUG - File Selection:", data);
+});
+
+// Handler for retrieving ignore patterns
+ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
+  if (!rootDir) {
+    return { error: 'No directory selected' };
+  }
+
+  try {
+    // Ensure rules are loaded and cached
+    await loadGitignore(rootDir);
+    
+    const cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
+    if (cachedData?.patterns) {
+      console.log(`Returning ignore patterns for ${rootDir}`);
+      return { patterns: cachedData.patterns };
+    } 
+
+    return { error: 'Could not retrieve ignore patterns' };
+  } catch (error) {
+    console.error('Error retrieving ignore patterns:', error);
+    return { error: `Failed to get ignore patterns: ${error.message}` };
+  }
 });
 
 /**

@@ -2,9 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.2.3
 
 ### Added
+- View Applied Ignore Patterns feature:
+  - Added modal interface to view all active ignore patterns
+  - Organized patterns by source (default, excluded-files.js, .gitignore)
+  - Live search functionality for quick pattern finding
+  - Smart pattern categorization with pattern counts
+  - Section-based filtering with empty state handling
+  - Auto-focus search with UX improvements
+  - Theme-aware styling with improved readability
+
 - Enhanced large repository handling:
   - Extended directory loading timeout to 5 minutes for very large repositories
   - Added detailed progress tracking for directories and files processed
@@ -24,21 +33,32 @@ All notable changes to this project will be documented in this file.
   - New file metadata cache for faster reprocessing
   - Unified .gitignore pattern cache with deep repository support
   - Session-persistent caching for improved performance
+
 - Enhanced file processing architecture:
   - Smart validation checks before file I/O
   - Early binary file detection without content reads
   - Efficient path validation system
+
 - Enhanced binary file handling:
   - Added binary flag propagation through directory structure
   - New visual indicators for folders containing binary files
   - Improved badge system with theme-aware styling
   - Clear distinction between binary files and folders containing binaries
+
 - Improved file tree UI:
   - Added styled badges for binary files and containing folders
   - Enhanced badge visibility with distinct styling for light/dark themes
   - Added italicized indicators for folders with binary content
 
 ### Improved
+- View Applied Ignore Patterns UI Improvements:
+  - Added sorting for better pattern organization
+  - Enhanced section styling with clear visual hierarchy
+  - Added hover effects for pattern lists
+  - Improved modal layout and spacing
+  - Added search input with theme-consistent styling
+  - Fixed search state management for better UX
+
 - Optimized large repository handling:
   - Reordered file processing checks for better performance 
   - Reduced unnecessary file I/O operations
