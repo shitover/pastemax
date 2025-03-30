@@ -289,9 +289,9 @@ async function collectCombinedGitignore(rootDir) {
  * Combines patterns from all .gitignore files in the directory tree
  * 
  * @param {string} rootDir - The root directory containing .gitignore files
- * @returns {object} - Configured ignore filter with cached patterns
+ * @returns {Promise<object>} - Promise resolving to configured ignore filter with cached patterns
  */
-function loadGitignore(rootDir) {
+async function loadGitignore(rootDir) {
   // Ensure root directory path is absolute and normalized for consistent cache keys
   rootDir = ensureAbsolutePath(rootDir);
   
@@ -323,21 +323,21 @@ function loadGitignore(rootDir) {
   const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
   ig.add(normalizedExcludedFiles);
 
-  // Asynchronously collect and add patterns from all .gitignore files
-  collectCombinedGitignore(rootDir)
-    .then(patterns => {
-      if (patterns.size > 0) {
-        console.log(`Adding ${patterns.size} combined .gitignore patterns for:`, rootDir);
-        ig.add(Array.from(patterns));
-      }
-      // Cache the configured ignore filter
-      ignoreCache.set(rootDir, ig);
-    })
-    .catch(err => {
-      console.error("Error collecting .gitignore patterns:", err);
-    });
-
-  return ig;
+  try {
+    // Wait for all .gitignore patterns to be collected
+    const patterns = await collectCombinedGitignore(rootDir);
+    if (patterns.size > 0) {
+      console.log(`Adding ${patterns.size} combined .gitignore patterns for:`, rootDir);
+      ig.add(Array.from(patterns));
+    }
+    // Cache the configured ignore filter
+    ignoreCache.set(rootDir, ig);
+    return ig;
+  } catch (err) {
+    console.error("Error collecting .gitignore patterns:", err);
+    // Still return the ig object with default patterns in case of error
+    return ig;
+  }
 }
 
 // Check if file is binary based on extension
@@ -388,7 +388,7 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
   // Ensure absolute and normalized paths
   dir = ensureAbsolutePath(dir);
   rootDir = ensureAbsolutePath(rootDir || dir);
-  ignoreFilter = ignoreFilter || loadGitignore(rootDir);
+  ignoreFilter = ignoreFilter || await loadGitignore(rootDir);
 
   let results = [];
   let processedFiles = 0;

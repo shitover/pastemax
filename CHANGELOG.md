@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
+- Fixed race condition in .gitignore handling:
+  - Improved handling of deep repositories with multiple .gitignore files
+  - Ensured all .gitignore patterns are loaded before file filtering begins
+  - Better support for complex repository structures with nested git repositories
+
 - Enhanced cache clearing functionality:
   - Added main process cache clearing to "Clear Data" operation
   - Complete clearing of ignoreCache and fileCache in main process
