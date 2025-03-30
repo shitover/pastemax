@@ -300,7 +300,7 @@ async function loadGitignore(rootDir) {
   // Check cache first
   if (ignoreCache.has(rootDir)) {
     console.log('Using cached ignore filter for:', rootDir);
-    return ignoreCache.get(rootDir);
+    return ignoreCache.get(rootDir).ig;
   }
 
   // Create new ignore filter with default patterns
