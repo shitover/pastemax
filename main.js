@@ -755,6 +755,29 @@ ipcMain.on("debug-file-selection", (event, data) => {
   console.log("DEBUG - File Selection:", data);
 });
 
+// Handler for retrieving ignore patterns
+ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
+  if (!rootDir) {
+    return { error: 'No directory selected' };
+  }
+
+  try {
+    // Ensure rules are loaded and cached
+    await loadGitignore(rootDir);
+    
+    const cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
+    if (cachedData?.patterns) {
+      console.log(`Returning ignore patterns for ${rootDir}`);
+      return { patterns: cachedData.patterns };
+    } 
+
+    return { error: 'Could not retrieve ignore patterns' };
+  } catch (error) {
+    console.error('Error retrieving ignore patterns:', error);
+    return { error: `Failed to get ignore patterns: ${error.message}` };
+  }
+});
+
 /**
  * Handles the cancellation of directory loading operations.
  * Ensures clean cancellation by:
