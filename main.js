@@ -149,6 +149,14 @@ try {
 // Max file size to read (5MB) - BINARY_EXTENSIONS constant removed
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+// Handler for clearing main process caches
+ipcMain.on("clear-main-cache", () => {
+  console.log("Clearing main process caches");
+  ignoreCache.clear();
+  fileCache.clear();
+  console.log("Main process caches cleared");
+});
+
 function createWindow() {
   // Check if we're starting in safe mode (Shift key pressed)
   const isSafeMode = process.argv.includes('--safe-mode');

@@ -129,9 +129,10 @@ const App = (): JSX.Element => {
     setIncludeFileTree(false);
     setProcessingStatus({ status: "idle", message: "All saved data cleared" });
 
-    // Also cancel any ongoing directory loading
+    // Also cancel any ongoing directory loading and clear main process caches
     if (isElectron) {
       window.electron.ipcRenderer.send("cancel-directory-loading");
+      window.electron.ipcRenderer.send("clear-main-cache");
     }
     
     console.log("All saved state cleared");
