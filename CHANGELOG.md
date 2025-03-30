@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
+- Enhanced cache clearing functionality:
+  - Added main process cache clearing to "Clear Data" operation
+  - Complete clearing of ignoreCache and fileCache in main process
+  - Synchronized clearing of renderer and main process caches
+  - Improved state reset during cache clearing operations
+
 - Implemented intelligent caching system:
   - New file metadata cache for faster reprocessing
   - Unified .gitignore pattern cache with deep repository support
