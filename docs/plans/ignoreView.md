@@ -1,3 +1,4 @@
+# DONE! [X]
 # Plan: View Applied Ignore Patterns Feature
 
 ## 1. Goal
