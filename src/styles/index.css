@@ -1288,6 +1288,33 @@ label {
   color: var(--text-primary);
 }
 
+.ignore-patterns-search {
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.ignore-patterns-search .search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.ignore-patterns-search .search-input:focus {
+  border-color: var(--accent-blue);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.ignore-patterns-search .search-input::placeholder {
+  color: var(--text-secondary);
+}
+
 .ignore-patterns-content {
   flex: 1;
   overflow-y: auto;
