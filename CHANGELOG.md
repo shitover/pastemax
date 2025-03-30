@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.2.3
 
 ### Added
 - View Applied Ignore Patterns feature:
