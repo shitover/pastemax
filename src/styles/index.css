@@ -1231,3 +1231,136 @@ label {
 .dark-mode .copy-button-container label {
   color: var(--text-secondary); /* Use secondary text color */
 }
+
+/* -------------------- Ignore Patterns Modal -------------------- */
+.ignore-patterns-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ignore-patterns-modal {
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border: var(--standard-border);
+}
+
+.ignore-patterns-header {
+  padding: var(--standard-padding);
+  border-bottom: var(--standard-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ignore-patterns-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.close-button:hover {
+  background-color: var(--hover-color);
+  color: var(--text-primary);
+}
+
+.ignore-patterns-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--standard-padding);
+}
+
+.ignore-patterns-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ignore-patterns-sections section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ignore-patterns-sections h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pattern-list {
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  padding: 12px;
+  margin: 0;
+  font-family: var(--font-family-code);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.ignore-patterns-error {
+  color: var(--error-color);
+  padding: 16px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.ignore-patterns-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.no-patterns {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 14px;
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+
+/* Dark mode specific styles for ignore patterns modal */
+.dark-mode .ignore-patterns-modal {
+  border-color: var(--border-color);
+}
+
+.dark-mode .pattern-list {
+  border: var(--standard-border);
+}
+
+.dark-mode .ignore-patterns-error {
+  background-color: rgba(231, 76, 60, 0.1);
+}
