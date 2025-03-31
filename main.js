@@ -110,11 +110,10 @@ function isValidPath(pathToCheck) {
   }
 }
 
-// Global cache for ignore filters keyed by normalized root directory
-const ignoreCache = new Map();
-
-// Global cache for file metadata keyed by normalized file path
-const fileCache = new Map();
+// Global caches
+const ignoreCache = new Map();  // Cache for ignore filters keyed by normalized root directory
+const fileCache = new Map();    // Cache for file metadata keyed by normalized file path
+const fileTypeCache = new Map(); // Cache for binary file type detection results
 
 // Add handling for the 'ignore' module
 let ignore;
@@ -167,6 +166,7 @@ ipcMain.on("clear-main-cache", () => {
   console.log("Clearing main process caches");
   ignoreCache.clear();
   fileCache.clear();
+  fileTypeCache.clear(); // Clear binary file type cache as well
   console.log("Main process caches cleared");
 });
 
@@ -361,11 +361,23 @@ async function loadGitignore(rootDir) {
   }
 }
 
-// Check if file is binary based on extension
+/**
+ * Check if file is binary based on extension, using cache for performance
+ * @param {string} filePath - Path to the file
+ * @returns {boolean} - True if the file is binary
+ */
 function isBinaryFile(filePath) {
   const ext = path.extname(filePath).toLowerCase();
-  // Use imported binaryExtensions directly
-  return binaryExtensions.includes(ext);
+  
+  // Check cache first
+  if (fileTypeCache.has(ext)) {
+    return fileTypeCache.get(ext);
+  }
+
+  // Calculate and cache the result
+  const isBinary = binaryExtensions.includes(ext);
+  fileTypeCache.set(ext, isBinary);
+  return isBinary;
 }
 
 // Count tokens using tiktoken with o200k_base encoding
@@ -484,8 +496,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress
         if (!isLoadingDirectory) return null;
 
         const fullPath = safePathJoin(dir, dirent.name);
-        // Calculate relative path safely
         const relativePath = safeRelativePath(rootDir, fullPath);
+        const fullPathNormalized = normalizePath(fullPath);
 
         // Early validation checks
         if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
@@ -505,42 +517,50 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress
           return null;
         }
 
-        // Early binary extension check without reading the file
-        if (isBinaryFile(fullPath)) {
-          console.log('Binary file by extension, skipping content read:', fullPath);
-          // Create and cache binary file metadata without file I/O
-          const fileData = {
-            name: dirent.name,
-            path: normalizePath(fullPath),
-            relativePath: relativePath,
-            tokenCount: 0,
-            size: 0, // We'll get actual size only if needed
-            content: "",
-            isBinary: true,
-            isSkipped: false,
-            fileType: path.extname(fullPath).substring(1).toUpperCase()
-          };
-          fileCache.set(normalizePath(fullPath), fileData);
-          return fileData;
-        }
-
-        // Check cache first
-        const fullPathNormalized = normalizePath(fullPath);
+        // Check cache first - this could be a complete hit from a previous scan
         if (fileCache.has(fullPathNormalized)) {
           console.log('Using cached file data for:', fullPathNormalized);
           return fileCache.get(fullPathNormalized);
         }
 
+        // Early binary check using cached extension info
+        if (isBinaryFile(fullPath)) {
+          console.log('Binary file by extension, skipping content read:', fullPath);
+          const fileData = {
+            name: dirent.name,
+            path: fullPathNormalized,
+            relativePath: relativePath,
+            tokenCount: 0,
+            size: 0,
+            content: "",
+            isBinary: true,
+            isSkipped: false,
+            fileType: path.extname(fullPath).substring(1).toUpperCase()
+          };
+
+          // Try to get the size without full file read
+          try {
+            const stats = await fs.promises.stat(fullPath);
+            if (!isLoadingDirectory) return null;
+            fileData.size = stats.size;
+          } catch (err) {
+            console.log('Could not get size for binary file:', fullPath);
+          }
+
+          fileCache.set(fullPathNormalized, fileData);
+          return fileData;
+        }
+
         try {
+          // Get stats first to check size before reading content
           const stats = await fs.promises.stat(fullPath);
           if (!isLoadingDirectory) return null;
 
-          let fileData;
-          
+          // Handle large files without reading content
           if (stats.size > MAX_FILE_SIZE) {
-            fileData = {
+            const fileData = {
               name: dirent.name,
-              path: normalizePath(fullPath),
+              path: fullPathNormalized,
               relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
@@ -553,28 +573,13 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress
             return fileData;
           }
 
-          if (isBinaryFile(fullPath)) {
-            fileData = {
-              name: dirent.name,
-              path: normalizePath(fullPath),
-              relativePath: relativePath,
-              tokenCount: 0,
-              size: stats.size,
-              content: "",
-              isBinary: true,
-              isSkipped: false,
-              fileType: path.extname(fullPath).substring(1).toUpperCase()
-            };
-            fileCache.set(fullPathNormalized, fileData);
-            return fileData;
-          }
-
+          // File is not binary and not too large, read its content
           const fileContent = await fs.promises.readFile(fullPath, "utf8");
           if (!isLoadingDirectory) return null;
-          
-          fileData = {
+
+          const fileData = {
             name: dirent.name,
-            path: normalizePath(fullPath),
+            path: fullPathNormalized,
             relativePath: relativePath,
             content: fileContent,
             tokenCount: countTokens(fileContent),
