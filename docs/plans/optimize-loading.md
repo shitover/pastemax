@@ -1,3 +1,4 @@
+# DONE! [X]
 # Loading Time Optimization Plan
 
 ## Current Performance Issues

@@ -1,3 +1,4 @@
+# DONE [X]
 # Plan: Fix Inaccurate Progress Reporting During Directory Loading
 
 ## Problem
