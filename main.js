@@ -405,47 +405,6 @@ function countTokens(text) {
  * @returns {Promise<{results: Array, progress: DirectoryLoadingProgress}>} Array of processed file objects Results and progress
  */
 /**
- * Process a batch of directories in parallel
- * @param {Array} dirents - Array of directory entries to process
- * @param {Object} params - Parameters needed for processing
- * @returns {Promise<Array>} Combined results from all directories
- */
-async function processDirectoryBatch(dirents, { dir, rootDir, ignoreFilter, window, progress }) {
-  const batchResults = await Promise.all(
-    dirents.map(async (dirent) => {
-      if (!isLoadingDirectory) return { results: [], progress };
-
-      const fullPath = safePathJoin(dir, dirent.name);
-      const relativePath = safeRelativePath(rootDir, fullPath);
-
-      // Skip invalid paths and system directories
-      if (fullPath.includes('.app') || fullPath === app.getAppPath() ||
-          !isValidPath(relativePath) || relativePath.startsWith('..')) {
-        console.log('Skipping directory:', fullPath);
-        return { results: [], progress };
-      }
-
-      // Only process if not ignored
-      if (!ignoreFilter.ignores(relativePath)) {
-        progress.directories++; // Increment directory counter
-        window.webContents.send("file-processing-status", {
-          status: "processing",
-          message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
-        });
-        return readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
-      }
-      return { results: [], progress };
-    })
-  );
-
-  // Combine results from all directories in the batch
-  return batchResults.reduce((acc, curr) => {
-    acc.results = acc.results.concat(curr.results);
-    return acc;
-  }, { results: [], progress });
-}
-
-/**
  * Processes a single directory entry recursively
  * @param {Object} params - Parameters for processing
  * @returns {Promise<{results: Array, progress: Object}>} Results and updated progress
