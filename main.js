@@ -3,16 +3,26 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-// Global variables for directory loading control
+// Configuration constants
+const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
+const CONCURRENT_DIRS = 4;  // Number of directories to process in parallel
+const CHUNK_SIZE = 20;      // Number of files to process in one chunk
+
+// Global state
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
-const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
 
 /**
  * @typedef {Object} DirectoryLoadingProgress
  * @property {number} directories - Number of directories processed
  * @property {number} files - Number of files processed
  */
+
+/**
+ * @type {DirectoryLoadingProgress}
+ */
+let currentProgress = { directories: 0, files: 0 };
 
 /**
  * Enhanced path handling functions for cross-platform compatibility
@@ -151,9 +161,6 @@ try {
   console.log("Using fallback token counter");
   encoder = null;
 }
-
-// Max file size to read (5MB) - BINARY_EXTENSIONS constant removed
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Handler for clearing main process caches
 ipcMain.on("clear-main-cache", () => {
@@ -397,6 +404,75 @@ function countTokens(text) {
  * @param {DirectoryLoadingProgress} progress - Object tracking processing progress
  * @returns {Promise<{results: Array, progress: DirectoryLoadingProgress}>} Array of processed file objects Results and progress
  */
+/**
+ * Process a batch of directories in parallel
+ * @param {Array} dirents - Array of directory entries to process
+ * @param {Object} params - Parameters needed for processing
+ * @returns {Promise<Array>} Combined results from all directories
+ */
+async function processDirectoryBatch(dirents, { dir, rootDir, ignoreFilter, window, progress }) {
+  const batchResults = await Promise.all(
+    dirents.map(async (dirent) => {
+      if (!isLoadingDirectory) return { results: [], progress };
+
+      const fullPath = safePathJoin(dir, dirent.name);
+      const relativePath = safeRelativePath(rootDir, fullPath);
+
+      // Skip invalid paths and system directories
+      if (fullPath.includes('.app') || fullPath === app.getAppPath() ||
+          !isValidPath(relativePath) || relativePath.startsWith('..')) {
+        console.log('Skipping directory:', fullPath);
+        return { results: [], progress };
+      }
+
+      // Only process if not ignored
+      if (!ignoreFilter.ignores(relativePath)) {
+        progress.directories++; // Increment directory counter
+        window.webContents.send("file-processing-status", {
+          status: "processing",
+          message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
+        });
+        return readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
+      }
+      return { results: [], progress };
+    })
+  );
+
+  // Combine results from all directories in the batch
+  return batchResults.reduce((acc, curr) => {
+    acc.results = acc.results.concat(curr.results);
+    return acc;
+  }, { results: [], progress });
+}
+
+/**
+ * Processes a single directory entry recursively
+ * @param {Object} params - Parameters for processing
+ * @returns {Promise<{results: Array, progress: Object}>} Results and updated progress
+ */
+async function processDirectory({ dirent, dir, rootDir, ignoreFilter, window, progress }) {
+  const fullPath = safePathJoin(dir, dirent.name);
+  const relativePath = safeRelativePath(rootDir, fullPath);
+
+  // Skip invalid paths and system directories
+  if (fullPath.includes('.app') || fullPath === app.getAppPath() ||
+      !isValidPath(relativePath) || relativePath.startsWith('..')) {
+    console.log('Skipping directory:', fullPath);
+    return { results: [], progress };
+  }
+
+  // Only process if not ignored
+  if (!ignoreFilter.ignores(relativePath)) {
+    progress.directories++; // Increment directory counter
+    window.webContents.send("file-processing-status", {
+      status: "processing",
+      message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
+    });
+    return readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
+  }
+  return { results: [], progress };
+}
+
 async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress = { directories: 0, files: 0 }) {
   if (!isLoadingDirectory) return { results: [], progress };
   
@@ -410,43 +486,38 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress
 
   try {
     const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
-    if (!isLoadingDirectory) return results;
+    if (!isLoadingDirectory) return { results: [], progress };
 
     const directories = dirents.filter(dirent => dirent.isDirectory());
     const files = dirents.filter(dirent => dirent.isFile());
 
-    // Process directories first
-    for (const dirent of directories) {
-      if (!isLoadingDirectory) return results;
+    // Process directories in parallel batches
+    for (let i = 0; i < directories.length; i += CONCURRENT_DIRS) {
+      if (!isLoadingDirectory) return { results: [], progress };
+      
+      const batch = directories.slice(i, Math.min(i + CONCURRENT_DIRS, directories.length));
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(dirent =>
+        processDirectory({ dirent, dir, rootDir, ignoreFilter, window, progress })
+      );
 
-      const fullPath = safePathJoin(dir, dirent.name);
-      // Calculate relative path safely
-      const relativePath = safeRelativePath(rootDir, fullPath);
-
-      // Skip PasteMax app directories and invalid paths
-      if (fullPath.includes('.app') || fullPath === app.getAppPath() || 
-          !isValidPath(relativePath) || relativePath.startsWith('..')) {
-        console.log('Skipping directory:', fullPath);
-        continue;
-      }
-
-      // Only process if not ignored
-      if (!ignoreFilter.ignores(relativePath)) {
-        progress.directories++; // Increment directory counter using progress object
-        const { results: subResults } = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
-        if (!isLoadingDirectory) return { results: [], progress };
-        results = results.concat(subResults);
-      }
-
-      window.webContents.send("file-processing-status", {
-        status: "processing",
-        message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
-      });
+      // Wait for all directories in batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Combine results from this batch
+      const combinedResults = batchResults.reduce((acc, curr) => {
+        acc.results = acc.results.concat(curr.results);
+        return acc;
+      }, { results: [], progress });
+      
+      results = results.concat(combinedResults.results);
+      if (!isLoadingDirectory) return { results: [], progress };
     }
 
     // Process files in chunks
     for (let i = 0; i < files.length; i += CHUNK_SIZE) {
-      if (!isLoadingDirectory) return results;
+      if (!isLoadingDirectory) return { results: [], progress };
 
       const chunk = files.slice(i, i + CHUNK_SIZE);
       
@@ -808,10 +879,6 @@ ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
  * @param {BrowserWindow} window - The Electron window instance
  * @param {string} folderPath - The path being processed (for logging)
  */
-/**
- * @type {DirectoryLoadingProgress}
- */
-let currentProgress = { directories: 0, files: 0 };
 
 function setupDirectoryLoadingTimeout(window, folderPath) {
   // Clear any existing timeout
