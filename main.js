@@ -253,48 +253,60 @@ ipcMain.on("open-folder", async (event) => {
 });
 
 /**
- * Traverses a directory to find and merge all .gitignore files
- * Handles path normalization and duplicate patterns
- * 
- * @param {string} rootDir - The root directory to start traversal from
- * @returns {Promise<Set<string>>} - Set of unique normalized ignore patterns
+ * Collects .gitignore patterns hierarchically from a directory up to the root.
+ * @param {string} dirPath - The specific directory to collect patterns
+ for.
+ * @param {string} rootDir - The root directory to stop traversal at.
+ * @returns {Promise<Array<{dir: string, patterns: string[]}>>} - A promise resolving to an array of objects,
+ *                                                               each containing a directory path and its patterns,
+ *                                                               ordered from rootDir down to dirPath.
  */
-async function collectCombinedGitignore(rootDir) {
-  const ignorePatterns = new Set();
-  
-  async function traverse(dir) {
+async function collectGitignoreHierarchy(dirPath, rootDir) {
+  const hierarchy = [];
+  let currentDir = normalizePath(dirPath);
+  const normalizedRootDir = normalizePath(rootDir);
+
+  // Ensure dirPath is within rootDir
+  if (!currentDir.startsWith(normalizedRootDir)) {
+    console.warn(`dirPath ${dirPath} is not within rootDir ${rootDir}. Cannot collect hierarchy.`);
+    return [];
+  }
+
+  const pathSegments = [];
+  // Walk up from dirPath to rootDir
+  while (currentDir && currentDir.length >= normalizedRootDir.length) {
+    pathSegments.push(currentDir);
+    if (currentDir === normalizedRootDir) break;
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break; // Reached the top or an error
+    currentDir = parentDir;
+  }
+
+  // Reverse to process from root down to dirPath
+  pathSegments.reverse();
+
+ for (const segmentDir of pathSegments) {
+    const gitignorePath = safePathJoin(segmentDir, '.gitignore');
     try {
-      const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
-      
-      for (const dirent of dirents) {
-        const fullPath = safePathJoin(dir, dirent.name);
-        
-        // Skip invalid paths and system directories
-        if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
-          continue;
-        }
-        
-        if (dirent.isDirectory()) {
-          await traverse(fullPath);
-        } else if (dirent.isFile() && dirent.name === '.gitignore') {
-          try {
-            const content = await fs.promises.readFile(fullPath, "utf8");
-            content.split(/\r?\n/)
-              .map(line => line.trim())
-              .filter(line => line && !line.startsWith('#'))
-              .forEach(pattern => ignorePatterns.add(normalizePath(pattern)));
-          } catch (err) {
-            console.error(`Error reading ${fullPath}:`, err);
-          }
-        }
+      const content = await fs.promises.readFile(gitignorePath, "utf8");
+      const patterns = content.split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+;
+
+      if (patterns.length > 0) {
+        // Store patterns relative to the directory they were found in
+        hierarchy.push({ dir: segmentDir, patterns });
       }
     } catch (err) {
-      console.error(`Error reading directory ${dir}:`, err);
-    }
-  }
+      if (err.code !== 'ENOENT') { // Ignore if .gitignore doesn't exist
+          console.error(`Error reading ${gitignorePath}:`, err);
+      }
   
-  await traverse(rootDir);
-  return ignorePatterns;
+  }
+  }
+
+  return hierarchy;
 }
 
 /**
@@ -338,17 +350,39 @@ async function loadGitignore(rootDir) {
 
   try {
     // Wait for all .gitignore patterns to be collected
-    const gitignorePatterns = await collectCombinedGitignore(rootDir);
-    if (gitignorePatterns.size > 0) {
-      console.log(`Adding ${gitignorePatterns.size} combined .gitignore patterns for:`, rootDir);
-      ig.add(Array.from(gitignorePatterns));
+    // Collect patterns hierarchically, starting from the rootDir itself
+    const gitignoreHierarchy = await collectGitignoreHierarchy(rootDir, rootDir);
+    let totalGitignorePatterns = 0;
+
+    // Add patterns from the hierarchy, respecting their directory context
+    for (const level of gitignoreHierarchy) {
+      const relativeDirPath = safeRelativePath(rootDir, level.dir);
+      const patternsToAdd = level.patterns.map(pattern => {
+        // Prepend directory path to patterns unless they start with '/' (already root-relative)
+        // or contain '**' (global pattern)
+        if (!pattern.startsWith('/') && !pattern.includes('**')) {
+          // Join relative path and pattern, ensuring no leading './'
+          return normalizePath(path.join(relativeDirPath, pattern)).replace(/^\.\//, '');
+        }
+        return pattern;
+      });
+      
+      if (patternsToAdd.length > 0) {
+        ig.add(patternsToAdd);
+        totalGitignorePatterns += patternsToAdd.length;
+      }
+    }
+
+    if (totalGitignorePatterns > 0) {
+      console.log(`Adding ${totalGitignorePatterns} hierarchical .gitignore patterns for:`, rootDir);
     }
 
     // Store categorized patterns alongside the ignore instance
     const categorizedPatterns = {
       default: defaultPatterns,
       excludedFiles: normalizedExcludedFiles,
-      gitignore: Array.from(gitignorePatterns)
+      // Store the raw hierarchy for potential display/debugging
+      gitignoreHierarchy: gitignoreHierarchy 
     };
 
     // Cache both the ignore instance and patterns
