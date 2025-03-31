@@ -6,12 +6,10 @@ interface IgnorePatternsViewerProps {
   patterns?: {
     default?: string[];
     excludedFiles?: string[];
-    // Expect the hierarchical structure now
-    gitignoreHierarchy?: Array<{ dir: string; patterns: string[] }>; 
+    // Expect the Map structure (serialized as object) now
+    gitignoreMap?: { [key: string]: string[] }; 
   };
   error?: string;
-  // Add rootDir to display relative paths for hierarchy levels
-  rootDir?: string; 
 }
 
 interface PatternSectionProps {
@@ -90,8 +88,6 @@ export const IgnorePatternsViewer = ({
   onClose,
   patterns,
   error
-,
-  rootDir // Receive rootDir prop
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -99,9 +95,9 @@ export const IgnorePatternsViewer = ({
   useEffect(() => {
     if (isOpen) {
       console.log("DEBUG: IgnorePatternsViewer received patterns:", JSON.stringify(patterns, null, 2));
-      console.log("DEBUG: IgnorePatternsViewer received rootDir:", rootDir);
+      console.log("DEBUG: gitignoreMap entries:", patterns?.gitignoreMap ? Object.keys(patterns.gitignoreMap).length : 0);
     }
-  }, [isOpen, patterns, rootDir]);
+  }, [isOpen, patterns]);
 
   // Reset search when modal is closed
   useEffect(() => {
@@ -146,48 +142,29 @@ export const IgnorePatternsViewer = ({
                   patterns={patterns.excludedFiles || []} // Provide default empty array
                   searchTerm={searchTerm}
                 />
-                {/* Render hierarchical gitignore patterns */}
-                {patterns.gitignoreHierarchy && patterns.gitignoreHierarchy.length > 0 ? (
-                  patterns.gitignoreHierarchy.map((level, index) => {
-                    // Calculate relative path for display, handle potential errors
-                    let relativeDirPath = level.dir;
-                    if (rootDir) {
-                      try {
-                        // Basic relative path calculation (assuming simple structure)
-                        // A more robust solution might involve a utility function
-                        const normalizedRoot = rootDir.endsWith('/') ? rootDir : rootDir + '/';
-                        if (level.dir.startsWith(normalizedRoot)) {
-                          relativeDirPath = './' + level.dir.substring(normalizedRoot.length);
-                        } else if (level.dir === rootDir) {
-                          relativeDirPath = './'; // Indicate root
-                        }
-                        // Normalize if empty (e.g., root itself)
-                        relativeDirPath = relativeDirPath || './'; 
-                      } catch (e) {
-                        console.error("Error calculating relative path:", e);
-                        // Fallback to full path if calculation fails
-                      }
-                    }
-                    
-                    return (
+                {/* Render gitignore patterns from the Map */}
+                {patterns.gitignoreMap ? (
+                  Object.entries(patterns.gitignoreMap)
+                    .sort(([a], [b]) => {
+                      if (a === '.') return -1;
+                      if (b === '.') return 1;
+                      return a.localeCompare(b);
+                    })
+                    .map(([dirPath, dirPatterns]) => (
                       <PatternSection
-                        key={`${level.dir}-${index}`} // Use dir and index for key
-                        title={`Repository Rules (${relativeDirPath})`}
-                        subtitle={`From ${relativeDirPath}.gitignore`}
-                        patterns={level.patterns}
+                        key={dirPath}
+                        title={`Repository Rules (${dirPath === '.' ? './' : dirPath})`}
+                        subtitle={`From ${dirPath === '.' ? './' : dirPath}/.gitignore`}
+                        patterns={dirPatterns}
                         searchTerm={searchTerm}
                       />
-                    );
-                  })
+                    ))
                 ) : (
-                  // Display message if no .gitignore rules found
-                  <PatternSection 
-                    title="Repository Rules"
-                    subtitle="From .gitignore files"
-                    patterns={[]} 
-  
-                  searchTerm={searchTerm}
- 
+                  <PatternSection
+                    title="Repository Rules (No Rules Found)"
+                    subtitle="No .gitignore rules found in the repository"
+                    patterns={[]}
+                    searchTerm={searchTerm}
                   />
                 )}
               </div>
