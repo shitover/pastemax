@@ -4,11 +4,14 @@ interface IgnorePatternsViewerProps {
   isOpen: boolean;
   onClose: () => void;
   patterns?: {
-    default: string[];
-    excludedFiles: string[];
-    gitignore: string[];
+    default?: string[];
+    excludedFiles?: string[];
+    // Expect the hierarchical structure now
+    gitignoreHierarchy?: Array<{ dir: string; patterns: string[] }>; 
   };
   error?: string;
+  // Add rootDir to display relative paths for hierarchy levels
+  rootDir?: string; 
 }
 
 interface PatternSectionProps {
@@ -48,7 +51,9 @@ const PatternSection = ({
   searchTerm
 }: PatternSectionProps): JSX.Element | null => {
   const filteredPatterns = useMemo(() => {
-    const normalized = formatPatterns(patterns);
+    // Ensure patterns is always an array, even if undefined initially
+    const normalized = formatPatterns(patterns || []);
+ 
     if (!searchTerm) return normalized;
     
     const searchLower = searchTerm.toLowerCase();
@@ -85,6 +90,8 @@ export const IgnorePatternsViewer = ({
   onClose,
   patterns,
   error
+,
+  rootDir // Receive rootDir prop
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -122,21 +129,59 @@ export const IgnorePatternsViewer = ({
               <div className="ignore-patterns-sections">
                 <PatternSection
                   title="Default Patterns"
-                  patterns={patterns.default}
+                  patterns={patterns.default || []} // Provide default empty array
                   searchTerm={searchTerm}
                 />
                 <PatternSection
                   title="Global Exclusions"
                   subtitle="From excluded-files.js"
-                  patterns={patterns.excludedFiles}
+                  patterns={patterns.excludedFiles || []} // Provide default empty array
                   searchTerm={searchTerm}
                 />
-                <PatternSection
-                  title="Repository Rules"
-                  subtitle="From .gitignore files"
-                  patterns={patterns.gitignore}
+                {/* Render hierarchical gitignore patterns */}
+                {patterns.gitignoreHierarchy && patterns.gitignoreHierarchy.length > 0 ? (
+                  patterns.gitignoreHierarchy.map((level, index) => {
+                    // Calculate relative path for display, handle potential errors
+                    let relativeDirPath = level.dir;
+                    if (rootDir) {
+                      try {
+                        // Basic relative path calculation (assuming simple structure)
+                        // A more robust solution might involve a utility function
+                        const normalizedRoot = rootDir.endsWith('/') ? rootDir : rootDir + '/';
+                        if (level.dir.startsWith(normalizedRoot)) {
+                          relativeDirPath = './' + level.dir.substring(normalizedRoot.length);
+                        } else if (level.dir === rootDir) {
+                          relativeDirPath = './'; // Indicate root
+                        }
+                        // Normalize if empty (e.g., root itself)
+                        relativeDirPath = relativeDirPath || './'; 
+                      } catch (e) {
+                        console.error("Error calculating relative path:", e);
+                        // Fallback to full path if calculation fails
+                      }
+                    }
+                    
+                    return (
+                      <PatternSection
+                        key={`${level.dir}-${index}`} // Use dir and index for key
+                        title={`Repository Rules (${relativeDirPath})`}
+                        subtitle={`From ${relativeDirPath}.gitignore`}
+                        patterns={level.patterns}
+                        searchTerm={searchTerm}
+                      />
+                    );
+                  })
+                ) : (
+                  // Display message if no .gitignore rules found
+                  <PatternSection 
+                    title="Repository Rules"
+                    subtitle="From .gitignore files"
+                    patterns={[]} 
+  
                   searchTerm={searchTerm}
-                />
+ 
+                  />
+                )}
               </div>
             </React.Fragment>
           ) : (
