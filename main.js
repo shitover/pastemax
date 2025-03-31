@@ -7,8 +7,12 @@ const os = require("os");
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
-let processedDirectories = 0;
-let processedFiles = 0;
+
+/**
+ * @typedef {Object} DirectoryLoadingProgress
+ * @property {number} directories - Number of directories processed
+ * @property {number} files - Number of files processed
+ */
 
 /**
  * Enhanced path handling functions for cross-platform compatibility
@@ -385,15 +389,16 @@ function countTokens(text) {
  * - Respects .gitignore and custom exclusion patterns
  * - Provides progress updates to the UI
  * - Handles cross-platform path issues including UNC paths
- * 
+/**
  * @param {string} dir - The directory to process
  * @param {string} rootDir - The root directory (used for relative path calculations)
  * @param {object} ignoreFilter - The ignore filter instance for file exclusions
  * @param {BrowserWindow} window - The Electron window instance for sending updates
- * @returns {Promise<Array>} Array of processed file objects
+ * @param {DirectoryLoadingProgress} progress - Object tracking processing progress
+ * @returns {Promise<{results: Array, progress: DirectoryLoadingProgress}>} Array of processed file objects Results and progress
  */
-async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
-  if (!isLoadingDirectory) return [];
+async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress = { directories: 0, files: 0 }) {
+  if (!isLoadingDirectory) return { results: [], progress };
   
   // Ensure absolute and normalized paths
   dir = ensureAbsolutePath(dir);
@@ -401,7 +406,6 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
   ignoreFilter = ignoreFilter || await loadGitignore(rootDir);
 
   let results = [];
-  let processedFiles = 0;
   const CHUNK_SIZE = 20;
 
   try {
@@ -428,15 +432,15 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
 
       // Only process if not ignored
       if (!ignoreFilter.ignores(relativePath)) {
-        processedDirectories++; // Increment directory counter
-        const subResults = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window);
-        if (!isLoadingDirectory) return results;
+        progress.directories++; // Increment directory counter using progress object
+        const { results: subResults } = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
+        if (!isLoadingDirectory) return { results: [], progress };
         results = results.concat(subResults);
       }
 
       window.webContents.send("file-processing-status", {
         status: "processing",
-        message: `Scanning directories (${processedDirectories} processed)... (Press ESC to cancel)`,
+        message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
       });
     }
 
@@ -574,26 +578,26 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       
       const validResults = chunkResults.filter(result => result !== null);
       results = results.concat(validResults);
-      processedFiles += validResults.length;
+      progress.files += validResults.length;
       
       window.webContents.send("file-processing-status", {
         status: "processing",
-        message: `Processing files (${processedDirectories} dirs, ${processedFiles} files)... (Press ESC to cancel)`,
+        message: `Processing files (${progress.directories} dirs, ${progress.files} files)... (Press ESC to cancel)`,
       });
 
-      if (processedFiles % 100 === 0) {
-        console.log(`Progress update - Directories: ${processedDirectories}, Files: ${processedFiles}`);
+      if (progress.files % 100 === 0) {
+        console.log(`Progress update - Directories: ${progress.directories}, Files: ${progress.files}`);
       }
     }
   } catch (err) {
     console.error(`Error reading directory ${dir}:`, err);
     if (err.code === 'EPERM' || err.code === 'EACCES') {
       console.log(`Skipping inaccessible directory: ${dir}`);
-      return results;
+      return { results: [], progress };
     }
   }
 
-  return results;
+  return { results, progress };
 }
 
 // Modify the request-file-list handler to use async/await
@@ -625,8 +629,17 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
       message: "Scanning directory structure... (Press ESC to cancel)",
     });
 
+    // Initialize progress tracking
+    currentProgress = { directories: 0, files: 0 };
+
     // Process files with async/await
-    const files = await readFilesRecursively(folderPath, folderPath, null, BrowserWindow.fromWebContents(event.sender));
+    const { results: files } = await readFilesRecursively(
+      folderPath,
+      folderPath,
+      null,
+      BrowserWindow.fromWebContents(event.sender),
+      currentProgress
+    );
     
     // If loading was cancelled, return early
     if (!isLoadingDirectory) {
@@ -795,6 +808,11 @@ ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
  * @param {BrowserWindow} window - The Electron window instance
  * @param {string} folderPath - The path being processed (for logging)
  */
+/**
+ * @type {DirectoryLoadingProgress}
+ */
+let currentProgress = { directories: 0, files: 0 };
+
 function setupDirectoryLoadingTimeout(window, folderPath) {
   // Clear any existing timeout
   if (loadingTimeoutId) {
@@ -804,21 +822,20 @@ function setupDirectoryLoadingTimeout(window, folderPath) {
   // Set a new timeout
   loadingTimeoutId = setTimeout(() => {
     console.log(`Directory loading timed out after ${MAX_DIRECTORY_LOAD_TIME / 1000} seconds: ${folderPath}`);
-    console.log(`Stats at timeout: Processed ${processedDirectories} directories and ${processedFiles} files`);
+    console.log(`Stats at timeout: Processed ${currentProgress.directories} directories and ${currentProgress.files} files`);
     // Call cancelDirectoryLoading with timeout reason
     cancelDirectoryLoading(window, "timeout");
   }, MAX_DIRECTORY_LOAD_TIME);
 
-  // Reset counters when starting new directory load
-  processedDirectories = 0;
-  processedFiles = 0;
+  // Reset progress when starting new directory load
+  currentProgress = { directories: 0, files: 0 };
 }
 
 function cancelDirectoryLoading(window, reason = "user") {
   if (!isLoadingDirectory) return;
 
   console.log(`Cancelling directory loading process (Reason: ${reason})`);
-  console.log(`Stats at cancellation: Processed ${processedDirectories} directories and ${processedFiles} files`);
+  console.log(`Stats at cancellation: Processed ${currentProgress.directories} directories and ${currentProgress.files} files`);
 
   // Ensure flag is reset here as well
   isLoadingDirectory = false;
@@ -828,14 +845,13 @@ function cancelDirectoryLoading(window, reason = "user") {
     loadingTimeoutId = null;
   }
 
-  // Reset counters
-  processedDirectories = 0;
-  processedFiles = 0;
+  // Reset progress
+  currentProgress = { directories: 0, files: 0 };
 
   // Send cancellation message immediately with appropriate context
   // Add checks for window validity
   if (window && window.webContents && !window.webContents.isDestroyed()) {
-    const message = reason === "timeout" 
+    const message = reason === "timeout"
       ? "Directory loading timed out after 5 minutes. Try clearing data and retrying."
       : "Directory loading cancelled";
 
