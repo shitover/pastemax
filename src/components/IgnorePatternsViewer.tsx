@@ -95,6 +95,14 @@ export const IgnorePatternsViewer = ({
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Log the received patterns prop for debugging
+  useEffect(() => {
+    if (isOpen) {
+      console.log("DEBUG: IgnorePatternsViewer received patterns:", JSON.stringify(patterns, null, 2));
+      console.log("DEBUG: IgnorePatternsViewer received rootDir:", rootDir);
+    }
+  }, [isOpen, patterns, rootDir]);
+
   // Reset search when modal is closed
   useEffect(() => {
     if (!isOpen) {

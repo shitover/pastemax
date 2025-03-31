@@ -350,8 +350,10 @@ async function loadGitignore(rootDir) {
 
   try {
     // Wait for all .gitignore patterns to be collected
+    console.log(`DEBUG: Calling collectGitignoreHierarchy for dirPath=${rootDir}, rootDir=${rootDir}`);
     // Collect patterns hierarchically, starting from the rootDir itself
     const gitignoreHierarchy = await collectGitignoreHierarchy(rootDir, rootDir);
+    console.log(`DEBUG: collectGitignoreHierarchy returned:`, JSON.stringify(gitignoreHierarchy, null, 2));
     let totalGitignorePatterns = 0;
 
     // Add patterns from the hierarchy, respecting their directory context
@@ -384,12 +386,14 @@ async function loadGitignore(rootDir) {
       // Store the raw hierarchy for potential display/debugging
       gitignoreHierarchy: gitignoreHierarchy 
     };
+    console.log(`DEBUG: Caching categorized patterns for ${rootDir}:`, JSON.stringify(categorizedPatterns, null, 2));
 
     // Cache both the ignore instance and patterns
     ignoreCache.set(rootDir, { ig, patterns: categorizedPatterns });
     return ig;
   } catch (err) {
-    console.error("Error collecting .gitignore patterns:", err);
+    // Add more detailed error logging
+    console.error(`ERROR in loadGitignore for ${rootDir} during pattern collection:`, err); 
     // Still return the ig object with default patterns in case of error
     return ig;
   }
@@ -847,9 +851,20 @@ ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
     // Ensure rules are loaded and cached
     await loadGitignore(rootDir);
     
-    const cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
+    let cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
+
+    // DEBUG: If hierarchy is missing or empty in cache, force reload
+    if (!cachedData?.patterns?.gitignoreHierarchy || cachedData.patterns.gitignoreHierarchy.length === 0) {
+      console.log(`DEBUG: Cached gitignoreHierarchy empty for ${rootDir}. Forcing reload.`);
+      ignoreCache.delete(ensureAbsolutePath(rootDir)); // Clear potentially bad cache entry
+      await loadGitignore(rootDir); // Reload patterns
+      cachedData = ignoreCache.get(ensureAbsolutePath(rootDir)); // Get potentially updated cache
+      console.log(`DEBUG: Reloaded cache data for ${rootDir}:`, JSON.stringify(cachedData?.patterns, null, 2));
+    }
+
     if (cachedData?.patterns) {
-      console.log(`Returning ignore patterns for ${rootDir}`);
+      // Add detailed logging for the returned patterns
+      console.log(`DEBUG: Returning ignore patterns for ${rootDir}:`, JSON.stringify(cachedData.patterns, null, 2)); 
       return { patterns: cachedData.patterns };
     } 
 
