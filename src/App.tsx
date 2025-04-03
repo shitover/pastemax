@@ -318,7 +318,6 @@ const App = (): JSX.Element => {
 
   // Listen for live file changes from main process
   useEffect(() => {
-    console.log("Setting up IPC listeners for file changes", isElectron, allFiles, );
     if (!isElectron) return;
 
     const handleFileAdded = (newFile: FileData) => {
