@@ -566,22 +566,25 @@ const App = (): JSX.Element => {
   // Handle select all files
   const selectAllFiles = () => {
     console.time('selectAllFiles');
-    const selectablePaths = displayedFiles
-      .filter((file: FileData) => !file.isBinary && !file.isSkipped)
-      .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
+    try {
+      const selectablePaths = displayedFiles
+        .filter((file: FileData) => !file.isBinary && !file.isSkipped)
+        .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
-    setSelectedFiles((prev: string[]) => {
-      const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
-      const newSelection = [...normalizedPrev];
-      selectablePaths.forEach((pathToAdd: string) => {
-        // Use arePathsEqual for checking existence
-        if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
-          newSelection.push(pathToAdd);
-        }
+      setSelectedFiles((prev: string[]) => {
+        const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
+        const newSelection = [...normalizedPrev];
+        selectablePaths.forEach((pathToAdd: string) => {
+          // Use arePathsEqual for checking existence
+          if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
+            newSelection.push(pathToAdd);
+          }
+        });
+        return newSelection;
       });
+    } finally {
       console.timeEnd('selectAllFiles');
-      return newSelection;
-    });
+    }
   };
 
   // Handle deselect all files

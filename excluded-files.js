@@ -177,5 +177,8 @@ binaryExtensions: [
     ".bin",
     ".dat",
     ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
   ],
 };
