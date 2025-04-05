@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, session } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -363,7 +363,17 @@ function countTokens(text) {
 function createWindow() {
   // Check if we're starting in safe mode (Shift key pressed)
   const isSafeMode = process.argv.includes('--safe-mode');
-  
+
+  // Set up Content Security Policy
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self'; font-src 'self' https://fonts.gstatic.com"]
+      }
+    });
+  });
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
