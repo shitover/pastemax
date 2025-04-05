@@ -69,14 +69,6 @@ module.exports = {
     "*.user",
 
     // Binary and image files
-    "*.jpg",
-    "*.jpeg",
-    "*.png",
-    "*.gif",
-    "*.ico",
-    "*.webp",
-    "*.svg",
-    "*.pdf",
     "*.zip",
     "*.tar.gz",
     "*.tgz",
@@ -114,8 +106,6 @@ module.exports = {
 
     // Misc
     ".git/**",
-    ".github/**",
-    ".gitlab/**",
   ],
 
   // File extensions to always mark as binary/unselectable
@@ -177,5 +167,8 @@ binaryExtensions: [
     ".bin",
     ".dat",
     ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
   ],
 };
