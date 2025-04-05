@@ -124,6 +124,7 @@ const App = (): JSX.Element => {
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
+    console.time('clearSavedState');
     // Clear all localStorage items
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
@@ -153,6 +154,7 @@ const App = (): JSX.Element => {
 
     // Reload the application window
     window.location.reload();
+    console.timeEnd('clearSavedState');
   }, [isElectron]); // Added isElectron dependency
 
   // Load expanded nodes state from localStorage
@@ -563,6 +565,7 @@ const App = (): JSX.Element => {
 
   // Handle select all files
   const selectAllFiles = () => {
+    console.time('selectAllFiles');
     const selectablePaths = displayedFiles
       .filter((file: FileData) => !file.isBinary && !file.isSkipped)
       .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
@@ -576,6 +579,7 @@ const App = (): JSX.Element => {
           newSelection.push(pathToAdd);
         }
       });
+      console.timeEnd('selectAllFiles');
       return newSelection;
     });
   };

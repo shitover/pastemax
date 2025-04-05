@@ -24,6 +24,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    * Handles both success and error states
    */
   const handleViewIgnorePatterns = async () => {
+    console.time('handleViewIgnorePatterns');
     if (!selectedFolder || !isElectron) return;
     setIgnorePatterns(null);
     setIgnorePatternsError(null);
@@ -40,6 +41,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
       setIgnorePatternsError(err instanceof Error ? err.message : "Failed to fetch ignore patterns.");
     } finally {
       setIsIgnoreViewerOpen(true);
+      console.timeEnd('handleViewIgnorePatterns');
     }
   };
 
