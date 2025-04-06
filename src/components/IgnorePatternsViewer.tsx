@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useIgnorePatterns } from '../hooks/useIgnorePatterns';
+import ToggleSwitch from './ToggleSwitch';
 
 interface IgnorePatternsViewerProps {
   isOpen: boolean;
@@ -118,52 +119,83 @@ export const IgnorePatternsViewer = ({
 
   if (!isOpen) return null;
 
-  // Handle empty state when no folder is selected
-  if (!selectedFolder) {
-    return (
-      <div className="ignore-patterns-modal-overlay">
-        <div className="ignore-patterns-modal">
-          <div className="ignore-patterns-header">
-            <h2>Applied Ignore Patterns</h2>
-            <button onClick={onClose} className="close-button" aria-label="Close">×</button>
-          </div>
-          <div className="ignore-patterns-content">
-            <div className="ignore-patterns-empty-state">
-              No folder loaded. Select a folder to view ignore patterns.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="ignore-patterns-modal-overlay">
-      <div className="ignore-patterns-modal">
+    <div className="ignore-patterns-container">
+      {/* Overlay div that closes the modal when clicked */}
+      <div className="ignore-patterns-modal-overlay" onClick={onClose}></div>
+      
+      {/* Modal dialog - stopPropagation prevents clicks inside from closing */}
+      <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
           <button onClick={onClose} className="close-button" aria-label="Close">×</button>
         </div>
         <div className="ignore-patterns-content">
-          {error ? (
+          {/* Mode Toggle Switch - Always visible */}
+          <div className="ignore-patterns-mode-toggle">
+            <ToggleSwitch
+              isOn={ignoreMode === 'global'}
+              onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
+            />
+          </div>
+
+          {/* Custom ignores section - Always visible in global mode */}
+          {ignoreMode === 'global' && (
+            <div className="custom-global-ignores">
+              <div className="custom-ignore-input">
+                <input
+                  type="text"
+                  placeholder="Enter additional ignore pattern"
+                  value={customIgnoreInput}
+                  onChange={(e) => setCustomIgnoreInput(e.target.value)}
+                  className="search-input"
+                />
+                <button
+                  className="add-pattern-button"
+                  onClick={() => {
+                    const trimmed = customIgnoreInput.trim();
+                    if (trimmed) {
+                      setCustomIgnores([...customIgnores, trimmed]);
+                      setCustomIgnoreInput('');
+                    }
+                  }}
+                >
+                  Add Pattern
+                </button>
+              </div>
+              {customIgnores.length > 0 && (
+                <div className="custom-ignore-list">
+                  <h4>Custom Global Ignores</h4>
+                  <ul>
+                    {customIgnores.map((pattern: string, index: number) => (
+                      <li key={index}>
+                        {pattern}
+                        <button
+                          className="remove-pattern-button"
+                          onClick={() => {
+                            setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
+                          }}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Conditional content based on folder selection */}
+          {!selectedFolder ? (
+            <div className="ignore-patterns-empty-state">
+              <p>No folder selected. Select a folder to view active ignore patterns.</p>
+              <p>You can still configure global ignore settings above.</p>
+            </div>
+          ) : error ? (
             <div className="ignore-patterns-error">{error}</div>
           ) : patterns ? (
             <React.Fragment>
-              {/* Mode Toggle Switch */}
-              <div className="ignore-patterns-mode-toggle">
-                <span className="toggle-label">Automatic</span>
-                <label className="mode-toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={ignoreMode === 'global'}
-                    onChange={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
-                    className="toggle-input"
-                  />
-                  <span className="toggle-slider"></span>
-                </label>
-                <span className="toggle-label">Global</span>
-              </div>
-
               <div className="ignore-patterns-search">
                 <input
                   type="text"
@@ -175,57 +207,11 @@ export const IgnorePatternsViewer = ({
                 />
               </div>
 
-              {ignoreMode === 'global' && (
-                <div className="custom-global-ignores">
-                  <div className="custom-ignore-input">
-                    <input
-                      type="text"
-                      placeholder="Enter additional ignore pattern"
-                      value={customIgnoreInput}
-                      onChange={(e) => setCustomIgnoreInput(e.target.value)}
-                      className="search-input"
-                    />
-                    <button
-                      className="add-pattern-button"
-                      onClick={() => {
-                        const trimmed = customIgnoreInput.trim();
-                        if (trimmed) {
-                          setCustomIgnores([...customIgnores, trimmed]);
-                          setCustomIgnoreInput('');
-                        }
-                      }}
-                    >
-                      Add Pattern
-                    </button>
-                  </div>
-                  {customIgnores.length > 0 && (
-                    <div className="custom-ignore-list">
-                      <h4>Custom Global Ignores</h4>
-                      <ul>
-                        {customIgnores.map((pattern: string, index: number) => (
-                          <li key={index}>
-                            {pattern}
-                            <button
-                              className="remove-pattern-button"
-                              onClick={() => {
-                                setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
-                              }}
-                            >
-                              ×
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
               <div className="ignore-patterns-sections">
-                {/* Default Patterns section removed as per requirement */}
                 <PatternSection
                   title="Global Exclusions"
                   subtitle="From excluded-files.js"
-                  patterns={patterns.excludedFiles || []} // Provide default empty array
+                  patterns={patterns.excludedFiles || []}
                   searchTerm={searchTerm}
                 />
                 {/* Render gitignore patterns from the Map */}

@@ -1301,6 +1301,18 @@ label {
 }
 
 /* -------------------- Ignore Patterns Modal -------------------- */
+.ignore-patterns-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .ignore-patterns-modal-overlay {
   position: fixed;
   top: 0;
@@ -1308,10 +1320,7 @@ label {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  z-index: 1001;
 }
 
 .ignore-patterns-modal {
@@ -1324,6 +1333,8 @@ label {
   display: flex;
   flex-direction: column;
   border: var(--standard-border);
+  position: relative;
+  z-index: 1002;
 }
 
 .ignore-patterns-header {
@@ -1497,54 +1508,43 @@ label {
 
 /* Toggle Switch for Ignore Mode */
 .ignore-patterns-mode-toggle {
-  gap: 10px;
-  padding: 12px 20px; /* Adjusted padding */
-  margin-bottom: 16px; /* Added margin */
-  border-bottom: 1px solid var(--border-color); /* Separator */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
 }
-.mode-toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
+
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--background-secondary);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-.mode-toggle-switch .toggle-input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.mode-toggle-switch .toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--border-color);
-  border-radius: 24px;
-  transition: background-color 0.2s;
-}
-.mode-toggle-switch .toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  top: 2px;
-  background-color: var(--background-primary);
-  border-radius: 50%;
-  transition: transform 0.2s;
-}
-.mode-toggle-switch .toggle-input:checked + .toggle-slider {
-  background-color: var(--accent-blue);
-}
-.mode-toggle-switch .toggle-input:checked + .toggle-slider:before {
-  transform: translateX(26px);
-}
-.toggle-label {
+
+.mode-toggle button {
+  flex: 1;
+  padding: 8px 16px;
   font-size: 14px;
-  color: var(--text-primary);
   font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.mode-toggle button.active {
+  background-color: var(--accent-blue);
+  color: white;
+}
+
+.mode-toggle button:first-child {
+  border-right: 1px solid var(--border-color);
 }
 
 /* Enhanced Search Input */
@@ -1601,5 +1601,119 @@ label {
   color: var(--text-secondary);
   font-size: 16px;
   font-style: italic;
+}
+
+/* ToggleSwitch styles with light/dark mode support */
+.toggle-switch {
+  position: relative;
+  width: 180px; /* Reduced width */
+  height: 36px; /* Reduced height */
+  border-radius: 18px; /* Adjusted to match height */
+  background-color: var(--background-secondary);
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px; /* Reduced padding for better centering */
+}
+
+.toggle-switch-inner {
+  position: absolute;
+  top: 3px; /* Adjusted for better vertical centering */
+  width: calc(50% - 6px); /* Adjusted width for better fit */
+  height: calc(100% - 6px); /* Adjusted height for better fit */
+  background-color: var(--accent-blue);
+  border-radius: 16px;
+  transition: left 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 500;
+  z-index: 1;
+}
+
+.toggle-switch-inner.off {
+  left: 3px; /* Adjusted for better alignment */
+}
+
+.toggle-switch-inner.on {
+  left: calc(50% + 3px); /* Adjusted for better alignment */
+}
+
+.toggle-switch .toggle-label {
+  font-size: 13px; /* Reduced font size */
+  font-weight: 500;
+  color: var(--text-secondary);
+  z-index: 2;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50%;
+  height: 100%;
+}
+
+.toggle-switch .toggle-label.left {
+  text-align: center;
+}
+
+.toggle-switch .toggle-label.right {
+  text-align: center;
+}
+
+.toggle-switch .toggle-label.active {
+  color: white; /* Bright white color for active text in light mode */
+  font-weight: 600;
+}
+
+/* Dark mode adjustments */
+.dark-mode .toggle-switch {
+  background-color: #2C2C2E;
+  border-color: #3A3A3C;
+}
+
+.dark-mode .toggle-switch-inner {
+  background-color: var(--accent-blue);
+}
+
+.dark-mode .toggle-switch .toggle-label {
+  color: var(--text-secondary);
+}
+
+.dark-mode .toggle-switch .toggle-label.active {
+  color: white; /* Keep active text bright white in dark mode too */
+}
+
+/* Updated ToggleSwitch styles to make the active text white for better contrast */
+.toggle-switch .toggle-label.active {
+  color: white; /* Bright white color for active text in light mode */
+  font-weight: 600;
+}
+
+/* For better readability, ensure the toggle background provides enough contrast */
+.toggle-switch-inner {
+  position: absolute;
+  top: 3px;
+  width: calc(50% - 6px);
+  height: calc(100% - 6px);
+  background-color: var(--accent-blue);
+  border-radius: 16px;
+  transition: left 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 500;
+  z-index: 1;
+}
+
+/* Dark mode adjustments */
+.dark-mode .toggle-switch .toggle-label.active {
+  color: white; /* Keep active text bright white in dark mode too */
 }
 

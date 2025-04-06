@@ -90,7 +90,17 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    */
   const handleViewIgnorePatterns = async () => {
     console.time('handleViewIgnorePatterns');
-    if (!selectedFolder || !isElectron) return;
+    
+    // Always open the viewer, even if no folder is selected
+    setIsIgnoreViewerOpen(true);
+    
+    // Only attempt to fetch patterns if both conditions are met
+    if (!selectedFolder || !isElectron) {
+      console.log('Ignore patterns viewer opened with no folder selected or not in Electron');
+      console.timeEnd('handleViewIgnorePatterns');
+      return;
+    }
+    
     setIgnorePatterns(null);
     setIgnorePatternsError(null);
 
@@ -113,7 +123,6 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
       console.error("Error invoking get-ignore-patterns:", err);
       setIgnorePatternsError(err instanceof Error ? err.message : "Failed to fetch ignore patterns.");
     } finally {
-      setIsIgnoreViewerOpen(true);
       console.timeEnd('handleViewIgnorePatterns');
     }
   };
