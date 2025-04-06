@@ -1585,10 +1585,14 @@ label {
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 15px;
-  width: auto; /* Don't force full width */
+  width: auto;
   flex-shrink: 0;
   transition: filter 0.2s;
-  margin-bottom: 0; /* Remove bottom margin */
+  margin-bottom: 0;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 15px;
 }
 .add-pattern-button:hover {
   filter: brightness(1.1);
