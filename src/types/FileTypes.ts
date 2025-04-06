@@ -1,3 +1,5 @@
+export type IgnoreMode = 'automatic' | 'global';
+
 export interface FileData {
   name: string;
   path: string;

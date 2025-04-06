@@ -235,56 +235,130 @@ async function collectGitignoreMapRecursive(startDir, rootDir, currentMap = new 
 /**
  * Load or create an ignore filter with cached patterns
  * Combines patterns from all .gitignore files in the directory tree
- * 
+ *
  * @param {string} rootDir - The root directory containing .gitignore files
+ * @param {'automatic' | 'global'} [mode='automatic'] - The ignore pattern mode:
+ *   - 'automatic': Scans for .gitignore files and combines with default excludes
+ *   - 'global': Uses only default excludes and custom ignores
+ * @param {string[]} [customIgnores=[]] - Additional patterns to include in the filter
  * @returns {Promise<object>} - Promise resolving to configured ignore filter with cached patterns
+ *
+ * @description The function uses a composite cache key combining:
+ *   - rootDir: Different directories have different .gitignore files
+ *   - mode: 'automatic' vs 'global' produce different pattern sets
+ *   - customIgnores: Additional patterns affect the final filter
+ * The cache ensures consistent behavior when the same parameters are used repeatedly.
  */
-async function loadGitignore(rootDir) {
+async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
   // Ensure root directory path is absolute and normalized for consistent cache keys
   rootDir = ensureAbsolutePath(rootDir);
   
+  // Generate composite cache key that includes all parameters that affect ignore patterns:
+  // - rootDir: Different directories have different .gitignore files
+  // - mode: 'automatic' vs 'global' produce different pattern sets
+  // - customIgnores: Additional patterns affect the final filter
+  const cacheKey = `${rootDir}:${mode}:${JSON.stringify(customIgnores)}`;
+  
   // Check cache first
-  if (ignoreCache.has(rootDir)) {
-    console.log('Using cached ignore filter for:', rootDir);
-    return ignoreCache.get(rootDir).ig;
+  if (ignoreCache.has(cacheKey)) {
+    console.log(`Using cached ignore filter for mode=${mode} in:`, rootDir);
+    const cached = ignoreCache.get(cacheKey);
+    console.log('Cache entry details:', {
+      mode: cached.patterns.global ? 'global' : 'automatic',
+      patternCount: cached.patterns.global?.length ||
+                   Object.keys(cached.patterns.gitignoreMap || {}).length
+    });
+    return cached.ig;
+  }
+  console.log(`Cache miss for key: ${cacheKey}`);
+
+  // Create new ignore filter
+  const ig = ignore();
+
+  if (mode === 'global') {
+    // Global mode behavior:
+    // - Only uses the default excludedFiles list plus any customIgnores
+    // - Doesn't scan for .gitignore files in the directory tree
+    const globalPatterns = [...excludedFiles, ...customIgnores].map(pattern => normalizePath(pattern));
+    ig.add(globalPatterns);
+    
+    console.log(`Created global ignore filter for ${rootDir} with ${globalPatterns.length} patterns`);
+    
+    // Cache the ignore filter with global patterns
+    ignoreCache.set(cacheKey, {
+      ig,
+      patterns: { global: globalPatterns }
+    });
+    return ig;
   }
 
-  // Create new ignore filter with default patterns
-  const ig = ignore();
-  
-  // Add default patterns first
-  const defaultPatterns = [
-    ".git",
-    "node_modules",
-    ".DS_Store",
-    "Thumbs.db",
-    "desktop.ini",
-    ".idea",
-    ".vscode",
-    "dist",
-    "build",
-    "out"
-  ];
-  ig.add(defaultPatterns);
-
-  // Add excluded files patterns
-  const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
-  ig.add(normalizedExcludedFiles);
-
+  // Automatic mode processing
   try {
+    // Add predefined default patterns first
+    const defaultPatterns = [
+      // Version control
+      ".git",
+      ".svn",
+      ".hg",
+      
+      // Package managers
+      "node_modules",
+      "bower_components",
+      "vendor",
+      
+      // Build directories
+      "dist",
+      "build",
+      "out",
+      ".next",
+      "target",
+      "bin",
+      "Debug",
+      "Release",
+      "x64",
+      "x86",
+      ".output",
+      
+      // Build files
+      "*.min.js",
+      "*.min.css",
+      "*.bundle.js",
+      "*.compiled.*",
+      "*.generated.*",
+      
+      // Cache directories
+      ".cache",
+      ".parcel-cache",
+      ".webpack",
+      ".turbo",
+      
+      // Editor configs
+      ".idea",
+      ".vscode",
+      ".vs",
+      
+      // System files
+      ".DS_Store",
+      "Thumbs.db",
+      "desktop.ini"
+    ];
+    ig.add(defaultPatterns);
+    console.log(`Added ${defaultPatterns.length} default ignore patterns`);
+
+    // Then add user-defined excluded files
+    const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
+    ig.add(normalizedExcludedFiles);
+    console.log(`Added ${normalizedExcludedFiles.length} excluded file patterns`);
+
     // Collect patterns by scanning downwards from rootDir
-    console.log(`DEBUG: Calling collectGitignoreMapRecursive for rootDir=${rootDir}`);
+    console.log(`Collecting .gitignore patterns for: ${rootDir}`);
     const gitignoreMap = await collectGitignoreMapRecursive(rootDir, rootDir);
-    console.log(`DEBUG: collectGitignoreMapRecursive returned Map with ${gitignoreMap.size} entries`);
     let totalGitignorePatterns = 0;
 
     // Add patterns from the map, respecting their directory context
     for (const [relativeDirPath, patterns] of gitignoreMap) {
       const patternsToAdd = patterns.map(pattern => {
-        // Prepend directory path to patterns unless they start with '/' (already root-relative)
-        // or contain '**' (global pattern)
         if (!pattern.startsWith('/') && !pattern.includes('**')) {
-          // Join relative path and pattern, ensuring no leading './'
           const joinedPath = normalizePath(path.join(relativeDirPath === '.' ? '' : relativeDirPath, pattern));
           return joinedPath.replace(/^\.\//, '');
         }
@@ -302,22 +376,17 @@ async function loadGitignore(rootDir) {
       console.log(`Added ${totalGitignorePatterns} total .gitignore patterns for:`, rootDir);
     }
 
-    // Store categorized patterns alongside the ignore instance
-    const categorizedPatterns = {
-      default: defaultPatterns,
-      excludedFiles: normalizedExcludedFiles,
-      // Store the raw map for potential display/debugging
-      gitignoreMap: Object.fromEntries(gitignoreMap)
-    };
-    console.log(`DEBUG: Caching categorized patterns for ${rootDir}`);
-
-    // Cache both the ignore instance and patterns
-    ignoreCache.set(rootDir, { ig, patterns: categorizedPatterns });
+    // Cache the ignore filter with gitignore map
+    ignoreCache.set(cacheKey, {
+      ig,
+      patterns: {
+        gitignoreMap: Object.fromEntries(gitignoreMap),
+        excludedFiles: normalizedExcludedFiles
+      }
+    });
     return ig;
   } catch (err) {
-    // Add more detailed error logging
-    console.error(`ERROR in loadGitignore for ${rootDir} during pattern collection:`, err); 
-    // Still return the ig object with default patterns in case of error
+    console.error(`Error in loadGitignore for ${rootDir}:`, err);
     return ig;
   }
 }
@@ -453,6 +522,60 @@ ipcMain.on("open-folder", async (event) => {
 });
 
 /**
+/**
+ * Handler for getting ignore patterns with mode support
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event
+ * @param {Object} params - Parameters object containing:
+ *   @param {string} params.folderPath - (Required) Root directory path to scan
+ *   @param {'automatic'|'global'} [params.mode='automatic'] - Pattern matching mode:
+ *     - 'automatic': Combines .gitignore files with default excludes
+ *     - 'global': Uses only default excludes and custom ignores
+ *   @param {string[]} [params.customIgnores=[]] - Additional ignore patterns to include
+ * @returns {Promise<{patterns?: Object, error?: string}>} Resolves with:
+ *   - patterns: Object containing loaded patterns when successful
+ *     - gitignoreMap: Map of directory paths to their patterns
+ *     - excludedFiles: Default excluded patterns
+ *     - global: Patterns when in global mode
+ *   - error: String error message if operation failed
+ */
+if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
+  ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
+    if (!folderPath) {
+      console.error("get-ignore-patterns called without folderPath");
+      return { error: "folderPath is required" };
+    }
+
+  try {
+    const normalizedPath = normalizePath(folderPath);
+    console.log(`Getting ignore patterns for ${normalizedPath} (mode=${mode})`);
+    
+    // Generate the same cache key used in loadGitignore
+    const cacheKey = `${normalizedPath}:${mode}:${JSON.stringify(customIgnores)}`;
+    
+    // Check cache first
+    if (ignoreCache.has(cacheKey)) {
+      const cached = ignoreCache.get(cacheKey);
+      console.log(`Returning cached patterns for ${normalizedPath} (mode=${mode})`);
+      return { patterns: cached.patterns };
+    }
+
+    // Load the ignore filter (will be cached by loadGitignore)
+    await loadGitignore(normalizedPath, mode, customIgnores);
+    
+    // Return the cached patterns
+    if (ignoreCache.has(cacheKey)) {
+      return { patterns: ignoreCache.get(cacheKey).patterns };
+    }
+    
+    return { error: "Failed to load ignore patterns" };
+  } catch (err) {
+    console.error(`Error getting ignore patterns for ${folderPath}:`, err);
+    return { error: err.message };
+  }
+});
+}
+
+/**
  * Sets up a safety timeout for directory loading operations.
  * Prevents infinite loading by automatically cancelling after MAX_DIRECTORY_LOAD_TIME.
  * 
@@ -520,29 +643,6 @@ function cancelDirectoryLoading(window, reason = "user") {
   }
 }
 
-// Handler for retrieving ignore patterns
-ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
-  if (!rootDir) {
-    return { error: 'No directory selected' };
-  }
-
-  try {
-    // Ensure rules are loaded and cached
-    await loadGitignore(rootDir);
-    
-    let cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
-
-    if (cachedData?.patterns) {
-      console.log(`DEBUG: Returning ignore patterns for ${rootDir}`);
-      return { patterns: cachedData.patterns };
-    } 
-
-    return { error: 'Could not retrieve ignore patterns' };
-  } catch (error) {
-    console.error('Error retrieving ignore patterns:', error);
-    return { error: `Failed to get ignore patterns: ${error.message}` };
-  }
-});
 
 // Add handler for cancel-directory-loading event
 ipcMain.on("cancel-directory-loading", (event) => {
@@ -832,20 +932,22 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
     });
 
     // Process the files to ensure they're serializable
-    const serializedFiles = files.map(file => ({
-      path: file.path, // Keep the full path
-      relativePath: file.relativePath, // Use the relative path for display
-      name: file.name,
-      size: file.size,
-      isDirectory: file.isDirectory,
-      extension: path.extname(file.name).toLowerCase(),
-      excluded: shouldExcludeByDefault(file.path, folderPath),
-      content: file.content,
-      tokenCount: file.tokenCount,
-      isBinary: file.isBinary,
-      isSkipped: file.isSkipped,
-      error: file.error,
-    }));
+    const serializedFiles = files.map(file => { // Use a block body for clarity
+      return { // Return an object literal
+        path: file.path, // Keep the full path
+        relativePath: file.relativePath, // Use the relative path for display
+        name: file.name,
+        size: file.size,
+        isDirectory: file.isDirectory,
+        extension: path.extname(file.name).toLowerCase(),
+        excluded: shouldExcludeByDefault(file.path, folderPath),
+        content: file.content,
+        tokenCount: file.tokenCount,
+        isBinary: file.isBinary,
+        isSkipped: file.isSkipped,
+        error: file.error,
+      }; // Close the returned object
+    }); // Close the map function call
 
     event.sender.send("file-list-data", serializedFiles);
   } catch (err) {

@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ViewIgnoreButtonProps {
   onClick: () => void;
-  disabled: boolean;
+  disabled?: boolean; // Made optional
 }
 
 /**
@@ -21,7 +21,7 @@ interface ViewIgnoreButtonProps {
  */
 function ViewIgnoreButton({ 
   onClick, 
-  disabled 
+  disabled = false // Default to false if not provided
 }: ViewIgnoreButtonProps) {
   return (
     <button
@@ -30,7 +30,7 @@ function ViewIgnoreButton({
       disabled={disabled}
       className="view-ignores-btn"
     >
-      View Ignores
+      Ignore Filters
     </button>
   );
 }
