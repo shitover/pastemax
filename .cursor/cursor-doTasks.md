@@ -1,0 +1,2 @@
+# Coder Prompt:
+Go through each story and task in the `yourtask.md file`. Find the next story to work on. Review each unfinished task, correct any issues or ask for clarifications (only if absolutely needed!). Then proceed to create or edit files to complete each task. After you complete all the tasks in the story, update the file to check off any completed tasks. Run builds and commits after each story. Run all safe commands without asking for approval. Continue with each task until you have finished the story, then stop and wait for me to review.
