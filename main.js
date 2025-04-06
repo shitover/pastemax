@@ -294,7 +294,58 @@ async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
 
   // Automatic mode processing
   try {
-    // Remove redundant default patterns from previous implementations
+    // Add predefined default patterns first
+    const defaultPatterns = [
+      // Version control
+      ".git",
+      ".svn",
+      ".hg",
+      
+      // Package managers
+      "node_modules",
+      "bower_components",
+      "vendor",
+      
+      // Build directories
+      "dist",
+      "build",
+      "out",
+      ".next",
+      "target",
+      "bin",
+      "Debug",
+      "Release",
+      "x64",
+      "x86",
+      ".output",
+      
+      // Build files
+      "*.min.js",
+      "*.min.css",
+      "*.bundle.js",
+      "*.compiled.*",
+      "*.generated.*",
+      
+      // Cache directories
+      ".cache",
+      ".parcel-cache",
+      ".webpack",
+      ".turbo",
+      
+      // Editor configs
+      ".idea",
+      ".vscode",
+      ".vs",
+      
+      // System files
+      ".DS_Store",
+      "Thumbs.db",
+      "desktop.ini"
+    ];
+    ig.add(defaultPatterns);
+    console.log(`Added ${defaultPatterns.length} default ignore patterns`);
+
+    // Then add user-defined excluded files
     const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
     ig.add(normalizedExcludedFiles);
     console.log(`Added ${normalizedExcludedFiles.length} excluded file patterns`);
