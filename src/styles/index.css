@@ -372,20 +372,14 @@ input[type="checkbox"]:checked {
 input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 6px;
-  width: 5px;
-  height: 9px;
+  top: 2px;
+  left: 5.2px;
+  width: 4.5px;
+  height: 8px;
   border: solid var(--text-on-primary);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-  opacity: 0;
-  animation: fadeIn 0.2s ease forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  opacity: 1;
 }
 
 input[type="checkbox"]:hover {
@@ -490,11 +484,11 @@ input[type="checkbox"][disabled] {
 }
 
 .sidebar-header {
-  padding: var(--space-md) var(--space-lg);
+  /* padding: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-sm);
-  border-bottom: var(--standard-border);
+  border-bottom: var(--standard-border); */
   background-color: var(--background-secondary);
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .sidebar-title {
@@ -565,6 +559,10 @@ input[type="checkbox"][disabled] {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+  margin-left: var(--space-md); /* Add left margin to move it right */
+  margin-bottom: var(--space-sm); /* Add bottom margin for spacing */
+  margin-top: var(--space-xs); /* Reduced top margin from --space-md to --space-xs */
+  /* Alternative: padding-left: var(--space-md); */
 }
 
 /* Remove the red underline from content titles (if it existed) */
@@ -808,6 +806,7 @@ input[type="checkbox"][disabled] {
 /* -------------------- File List (in Content Area) -------------------- */
 .file-list-container {
   flex: 1; /* Allow list container to grow */
+  margin-bottom: var(--space-xl);
   overflow: hidden; /* Manage internal scrolling */
   display: flex;
   flex-direction: column;
@@ -1035,6 +1034,7 @@ input[type="text"].search-input:focus {
 
 .sort-dropdown-button {
   display: flex;
+  margin-right: var(--space-lg);
   align-items: center;
   gap: 8px;
   font-size: 14px;
@@ -1083,7 +1083,8 @@ input[type="text"].search-input:focus {
 
 /* -------------------- User Instructions (in Content Area) -------------------- */
 .user-instructions-container {
-  padding: var(--standard-padding);
+  padding: var(--space-md) var(--space-lg);
+  margin-left: var(--space-lg);
   background-color: var(--background-primary);
   border-top: var(--standard-border); /* Separator line */
   flex-shrink: 0; /* Prevent shrinking */
@@ -2206,4 +2207,5 @@ button:hover svg.lucide {
   margin-right: var(--space-lg); /* Add right margin */
   padding: var(--space-sm) var(--space-md);
 }
+
 
