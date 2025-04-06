@@ -352,8 +352,8 @@ input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: var(--standard-border);
   border-radius: var(--border-radius-sm);
   background-color: var(--background-primary);
@@ -365,19 +365,27 @@ input[type="checkbox"] {
 input[type="checkbox"]:checked {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Simplify checkbox checked state with fade animation instead of scale animation */
 input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 5px;
-  width: 4px;
-  height: 8px;
+  top: 3px;
+  left: 6px;
+  width: 5px;
+  height: 9px;
   border: solid var(--text-on-primary);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-  animation: scaleIn 0.2s ease-out;
+  opacity: 0;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 input[type="checkbox"]:hover {
@@ -413,7 +421,7 @@ input[type="checkbox"][disabled] {
 
 /* -------------------- Header -------------------- */
 .header {
-  padding: var(--standard-padding);
+  padding: calc(var(--space-md) + 4px) var(--space-lg);
   border-bottom: var(--standard-border);
   display: flex;
   align-items: center;
@@ -427,18 +435,20 @@ input[type="checkbox"][disabled] {
   font-weight: 600;
   margin: 0;
   color: var(--text-primary);
+  padding: var(--space-xs) var(--space-sm);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-md);
+  padding-right: var(--space-sm);
 }
 
 .folder-info {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-md);
 }
 
 .selected-folder {
@@ -451,6 +461,7 @@ input[type="checkbox"][disabled] {
   white-space: nowrap;
   color: var(--text-secondary);
   font-size: 14px;
+  margin: 0 var(--space-md);
 }
 
 /* -------------------- Main Content Area -------------------- */
@@ -479,7 +490,8 @@ input[type="checkbox"][disabled] {
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-sm);
   border-bottom: var(--standard-border);
   background-color: var(--background-secondary);
   flex-shrink: 0;
@@ -488,8 +500,10 @@ input[type="checkbox"][disabled] {
 .sidebar-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-md);
   color: var(--text-primary);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-sm);
 }
 
 .sidebar-folder-path {
@@ -498,10 +512,12 @@ input[type="checkbox"][disabled] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: var(--space-sm) var(--space-lg);
+  margin-bottom: var(--space-md);
 }
 
 .sidebar-search {
-  padding: 12px 16px;
+  padding: var(--space-md) var(--space-lg);
   border-bottom: var(--standard-border);
   background-color: var(--background-secondary);
   flex-shrink: 0;
@@ -509,8 +525,8 @@ input[type="checkbox"][disabled] {
 
 .sidebar-actions {
   display: flex;
-  padding: 12px 16px;
-  gap: 8px;
+  padding: var(--space-md) var(--space-lg);
+  gap: var(--space-sm);
   border-bottom: var(--standard-border);
   background-color: var(--background-secondary);
   flex-shrink: 0;
@@ -519,28 +535,10 @@ input[type="checkbox"][disabled] {
 .sidebar-action-btn {
   flex: 1;
   font-size: 13px;
-  padding: 6px 12px;
+  padding: var(--space-sm) var(--space-md);
   background-color: var(--background-primary);
   color: var(--text-primary);
   border: var(--standard-border);
-}
-
-.sidebar-resize-handle {
-  position: absolute;
-  top: 0;
-  right: -5px; /* Position slightly outside for easier grabbing */
-  width: 10px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 10;
-  opacity: 0; /* Hidden by default */
-  /* Optional: Add a visual indicator on hover */
-}
-
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle:active {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.1); /* Subtle visual feedback */
 }
 
 /* -------------------- Content Area (Right Pane) -------------------- */
@@ -619,7 +617,7 @@ input[type="checkbox"][disabled] {
 .tree-item {
   display: flex;
   align-items: center;
-  padding: 6px 8px; /* Adjust padding as needed */
+  padding: var(--space-sm) var(--space-md); /* More horizontal padding */
   margin: 2px 0;
   border-radius: 4px;
   cursor: pointer;
@@ -689,6 +687,13 @@ input[type="checkbox"][disabled] {
   flex-shrink: 0;
 }
 
+.tree-item-checkbox svg.lucide {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+  color: var(--text-on-primary);
+}
+
 .tree-item-name {
   flex: 1;
   min-width: 0;
@@ -696,13 +701,15 @@ input[type="checkbox"][disabled] {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
+  padding-left: var(--space-xs); /* Add a bit of padding to the left */
 }
 
 .tree-item-tokens,
 .tree-item-badge {
   font-size: 11px;
   color: var(--text-secondary);
-  margin-left: 6px;
+  margin-left: var(--space-md);
+  padding-right: var(--space-xl); /* Increased right padding */
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -897,6 +904,7 @@ input[type="checkbox"][disabled] {
   white-space: nowrap; /* Prevent wrapping */
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 0 var(--space-xs); /* Add horizontal padding */
 }
 
 .file-card-actions {
@@ -1114,15 +1122,15 @@ input[type="text"].search-input:focus {
 
 /* -------------------- Copy Button Area (in Content Area) -------------------- */
 .copy-button-container {
-  padding: var(--standard-padding);
-  padding-top: 20px; /* Increased top padding */
+  padding: var(--space-xl);
+  padding-bottom: var(--space-xl); /* Increased bottom padding */
   border-top: var(--standard-border);
   display: flex;
-  flex-direction: column; /* Stack items vertically */
+  flex-direction: column;
   align-items: center; /* Center items horizontally */
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent shrinking */
-  gap: 16px; /* Add vertical gap between checkbox and button */
+  gap: var(--space-md); /* Add vertical gap between checkbox and button */
 }
 
 /* Optional: Add a label for the copy button */
@@ -1182,7 +1190,7 @@ input[type="text"].search-input:focus {
 .copy-status {
   opacity: 0;
   transition: opacity 0.3s ease;
-  color: var(--success-color);
+  color: var (--success-color);
   font-weight: 500;
   font-size: 14px;
   margin-left: 16px; /* Space from button */
@@ -1342,7 +1350,7 @@ input[type="text"].search-input:focus {
 /* Apply scrollbar styles globally or to specific scrollable elements */
 * {
   scrollbar-width: thin; /* Or 'auto' or 'none' */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* thumb track */
+  scrollbar-color: var(--scrollbar-thumb) var (--scrollbar-track); /* thumb track */
 }
 
 /* -------------------- Thin Scrollbars for Specific Areas -------------------- */
@@ -1697,7 +1705,7 @@ label {
   align-items: center;
   justify-content: center;
   padding: 32px;
-  color: var(--text-secondary);
+  color: var (--text-secondary);
   font-size: 14px;
 }
 
@@ -2064,7 +2072,7 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked::after {
-  animation: scaleIn 0.2s ease-out;
+  animation: fadeIn 0.2s ease-out;
 }
 
 /* Animated loading spinner */
@@ -2154,5 +2162,48 @@ body {
     outline: 2px solid var(--text-primary);
     outline-offset: 2px;
   }
+}
+
+/* -------------------- Lucide React Icon Integration -------------------- */
+/* Ensure proper sizing for Lucide icons */
+svg.lucide {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+  vertical-align: middle;
+}
+
+/* Size variations */
+svg.lucide-sm {
+  width: 16px;
+  height: 16px;
+}
+
+svg.lucide-lg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Style for Lucide icons in buttons */
+button svg.lucide {
+  transition: transform 0.2s ease;
+}
+
+button:hover svg.lucide {
+  transform: scale(1.1);
+}
+
+/* Fix for checkbox with Lucide icon if used */
+.tree-item-checkbox svg.lucide {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+  color: var(--text-on-primary);
+}
+
+/* -------------------- Fix Ignore Filter Button Spacing -------------------- */
+.view-ignores-button {
+  margin-right: var(--space-lg); /* Add right margin */
+  padding: var(--space-sm) var(--space-md);
 }
 
