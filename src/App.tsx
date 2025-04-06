@@ -694,40 +694,40 @@ const App = (): JSX.Element => {
               toggleExpanded={toggleExpanded}
             />
             <div className="content-area">
-              <div className="content-header">
+                <div className="content-header">
                 <div className="content-title">Selected Files</div>
                 <div className="content-actions">
-                  <div className="sort-dropdown">
-                    <button
-                      className="sort-dropdown-button"
-                      onClick={toggleSortDropdown}
-                    >
-                      Sort:{" "}
-                      {sortOptions.find((opt) => opt.value === sortOrder)
-                        ?.label || sortOrder}
-                    </button>
-                    {sortDropdownOpen && (
-                      <div className="sort-options">
-                        {sortOptions.map((option) => (
-                          <div
-                            key={option.value}
-                            className={`sort-option ${
-                              sortOrder === option.value ? "active" : ""
-                            }`}
-                            onClick={() => handleSortChange(option.value)}
-                          >
-                            {option.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                   <div className="file-stats">
-                    {selectedFiles.length} files | ~
-                    {calculateTotalTokens().toLocaleString()} tokens
+                  {selectedFiles.length} files | ~
+                  {calculateTotalTokens().toLocaleString()} tokens
+                  </div>
+                  <div className="sort-dropdown">
+                  <button
+                    className="sort-dropdown-button"
+                    onClick={toggleSortDropdown}
+                  >
+                    Sort:{" "}
+                    {sortOptions.find((opt) => opt.value === sortOrder)
+                    ?.label || sortOrder}
+                  </button>
+                  {sortDropdownOpen && (
+                    <div className="sort-options">
+                    {sortOptions.map((option) => (
+                      <div
+                      key={option.value}
+                      className={`sort-option ${
+                        sortOrder === option.value ? "active" : ""
+                      }`}
+                      onClick={() => handleSortChange(option.value)}
+                      >
+                      {option.label}
+                      </div>
+                    ))}
+                    </div>
+                  )}
                   </div>
                 </div>
-              </div>
+                </div>
 
               <FileList
                 files={displayedFiles}
@@ -747,8 +747,8 @@ const App = (): JSX.Element => {
               />
 
               <div className="copy-button-container">
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", maxWidth: "400px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <div className="copy-button-wrapper">
+                  <label className="file-tree-option">
                     <input
                       type="checkbox"
                       checked={includeFileTree}
@@ -764,9 +764,9 @@ const App = (): JSX.Element => {
                    */}
                   <CopyButton
                     text={getSelectedFilesContent()}
-                    className="primary full-width"
+                    className="primary full-width copy-button-main"
                   >
-                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                    <span className="copy-button-text">COPY ALL SELECTED ({selectedFiles.length} files)</span>
                   </CopyButton>
                 </div>
               </div>

@@ -700,6 +700,7 @@ input[type="checkbox"][disabled] {
   white-space: nowrap;
   color: var(--text-primary);
   padding-left: var(--space-xs); /* Add a bit of padding to the left */
+  font-size: 14.5px; /* Using the small font size variable */
 }
 
 .tree-item-tokens,
@@ -743,15 +744,39 @@ input[type="checkbox"][disabled] {
 .custom-global-ignores {
   margin: 16px 0;
 }
-
 .custom-global-ignores input {
-  width: 100%;
-  margin-bottom: 8px;
+  flex-grow: 1;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  background-color: var(--background-secondary);
+  transition: all 0.2s ease;
+  margin-bottom: 0;
+  margin-left: var(--space-md);
+  margin-right: var(--space-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.custom-global-ignores input:hover {
+  border-color: var(--color-primary-light);
+  background-color: var(--background-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.custom-global-ignores input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--background-primary);
+  box-shadow: var(--focus-ring);
+  transform: translateY(-1px);
 }
 
 .custom-global-ignores .add-pattern-btn {
   width: 100%;
   margin-bottom: 12px;
+  margin-right: 20px; 
 }
 
 .custom-global-ignores ul {
@@ -759,15 +784,20 @@ input[type="checkbox"][disabled] {
   padding: 0;
   margin: 0;
 }
-
 .custom-global-ignores li {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  margin: 4px 0;
-  background-color: var(--background-secondary);
+  margin: 4px var(--space-md);
+  background-color: #e8e8e8; /* Darker background for light mode */
+  border: 1px solid var(--border-color);
   border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.dark-mode .custom-global-ignores li {
+  background-color: var(--background-secondary); /* Keep the same for dark mode */
 }
 
 .custom-global-ignores li button {
@@ -776,10 +806,12 @@ input[type="checkbox"][disabled] {
   border: none;
   padding: 4px;
   cursor: pointer;
+  border-radius: 4px;
 }
 
 .custom-global-ignores li button:hover {
   opacity: 0.8;
+  background-color: rgba(231, 76, 60, 0.1); /* Light red background on hover */
 }
 .tree-item-badge {
   font-size: 10px;
@@ -1151,6 +1183,7 @@ input[type="text"].search-input:focus {
   font-weight: 600;
   border-radius: 4px;
   transition: all 0.2s ease;
+  flex-shrink: 0;
   gap: 8px;
   border: none; /* Primary button style often has no border */
   cursor: pointer;
@@ -1231,7 +1264,7 @@ input[type="text"].search-input:focus {
 .cancel-btn {
   padding: 4px 12px;
   font-size: 13px;
-  background-color: var(--error-color);
+  background-color: var (--error-color);
   color: white;
   border: none;
   border-radius: 4px;
@@ -1575,6 +1608,9 @@ label {
 
 .ignore-patterns-header h2 {
   margin: 0;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  margin-left: 25px;
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
@@ -1603,23 +1639,29 @@ label {
 
 .ignore-patterns-search .search-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background-color: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 2px solid var(--border-color); /* Thicker visible border */
+  border-radius: 8px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 15px;
   transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.ignore-patterns-search .search-input:hover {
+  border-color: var(--color-primary-light);
+  background-color: var(--background-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .ignore-patterns-search .search-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-primary);
   outline: none;
-  box-shadow: 0 0 0 1px var(--accent-blue);
-}
-
-.ignore-patterns-search .search-input::placeholder {
-  color: var(--text-secondary);
+  background-color: var(--background-primary);
+  box-shadow: var(--focus-ring);
+  transform: translateY(-1px);
 }
 
 .ignore-patterns-content {
@@ -1736,12 +1778,12 @@ label {
 
 /* Toggle Switch for Ignore Mode */
 .ignore-patterns-mode-toggle {
+  margin-top: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 12px 20px;
-  margin-bottom: 16px;
 }
 
 .mode-toggle {
@@ -1793,7 +1835,7 @@ label {
 }
 .custom-global-ignores input {
   flex-grow: 1;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-color); /* Use standard border color */
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 15px;
@@ -1801,29 +1843,37 @@ label {
   transition: border-color 0.2s, box-shadow 0.2s;
   margin-bottom: 0; /* Remove bottom margin from input */
 }
+.custom-global-ignores input:hover {
+  border-color: var(--border-color-focus);
+}
 .custom-global-ignores input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue);
+  border-color: var(--border-color-focus);
+  box-shadow: var(--focus-ring);
+  background-color: var(--background-primary);
 }
 
 .add-pattern-button {
-  background-color: var(--primary-button-background);
-  color: var(--primary-button-text);
+  background-color: var(--color-primary);
+  color: white;
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 15px;
   width: auto;
   flex-shrink: 0;
-  transition: filter 0.2s;
+  transition: background-color 0.2s ease;
   margin-bottom: 0;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 15px;
+  margin-right: 20px; /* Add right margin to move button to the left */
+  -webkit-transition: background-color 0.2s ease;
+  -moz-transition: background-color 0.2s ease;
+  -ms-transition: background-color 0.2s ease;
+  -o-transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease;
+  margin-right: 20px; /* Add right margin to move button to the left */
 }
 .add-pattern-button:hover {
-  filter: brightness(1.1);
+  background-color: #505050; /* Gray hover color */
+  transform: translateY(-2px); /* Slight lift effect */
 }
 
 /* Empty State */
@@ -1834,14 +1884,13 @@ label {
   font-size: 16px;
   font-style: italic;
 }
-
 /* ToggleSwitch styles with light/dark mode support */
 .toggle-switch {
   position: relative;
   width: 180px; /* Reduced width */
   height: 36px; /* Reduced height */
   border-radius: 18px; /* Adjusted to match height */
-  background-color: var(--background-secondary);
+  background-color: #7d7e84;
   cursor: pointer;
   user-select: none;
   border: 1px solid var(--border-color);
@@ -1858,9 +1907,9 @@ label {
   top: 3px; /* Adjusted for better vertical centering */
   width: calc(50% - 6px); /* Adjusted width for better fit */
   height: calc(100% - 6px); /* Adjusted height for better fit */
-  background-color: var(--accent-blue);
+  background-color: var(--color-primary); /* Using primary color (blue) */
   border-radius: 16px;
-  transition: left 0.3s ease;
+  transition: left 0.3s ease, background-color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1871,22 +1920,24 @@ label {
 
 .toggle-switch-inner.off {
   left: 3px; /* Adjusted for better alignment */
+  background-color: var(--color-primary); /* Grey when off */
 }
 
 .toggle-switch-inner.on {
   left: calc(50% + 3px); /* Adjusted for better alignment */
+  background-color: var(--color-primary); /* Blue when on */
 }
 
 .toggle-switch .toggle-label {
   font-size: 13px; /* Reduced font size */
   font-weight: 500;
-  color: var(--text-secondary);
+  color: #ffffff;
   z-index: 2;
   transition: color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50%;
+  width: 47.3%;
   height: 100%;
 }
 
@@ -1910,41 +1961,17 @@ label {
 }
 
 .dark-mode .toggle-switch-inner {
-  background-color: var(--accent-blue);
+  background-color: var(--color-primary); /* Using primary color (blue) in dark mode */
+}
+
+.dark-mode .toggle-switch-inner.off {
+  background-color: var(--color-primary);
 }
 
 .dark-mode .toggle-switch .toggle-label {
   color: var(--text-secondary);
 }
 
-.dark-mode .toggle-switch .toggle-label.active {
-  color: white; /* Keep active text bright white in dark mode too */
-}
-
-/* Updated ToggleSwitch styles to make the active text white for better contrast */
-.toggle-switch .toggle-label.active {
-  color: white; /* Bright white color for active text in light mode */
-  font-weight: 600;
-}
-
-/* For better readability, ensure the toggle background provides enough contrast */
-.toggle-switch-inner {
-  position: absolute;
-  top: 3px;
-  width: calc(50% - 6px);
-  height: calc(100% - 6px);
-  background-color: var(--accent-blue);
-  border-radius: 16px;
-  transition: left 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 500;
-  z-index: 1;
-}
-
-/* Dark mode adjustments */
 .dark-mode .toggle-switch .toggle-label.active {
   color: white; /* Keep active text bright white in dark mode too */
 }
@@ -2206,6 +2233,127 @@ button:hover svg.lucide {
 .view-ignores-button {
   margin-right: var(--space-lg); /* Add right margin */
   padding: var(--space-sm) var(--space-md);
+}
+
+.copy-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* Reduced gap from 12px to 10px */
+  width: 100%;
+  max-width: 380px; /* Reduced from 400px */
+}
+
+.file-tree-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px; /* Slightly smaller font */
+}
+
+.copy-button-main {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 10px 18px; /* Reduced padding from 12px 20px */
+  height: auto;
+  min-height: 44px; /* Reduced from 48px */
+}
+
+.copy-button-text {
+  font-size: 13px; /* Reduced from 14px */
+  letter-spacing: 0.3px; /* Reduced letter spacing */
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 330px; /* Reduced from 350px */
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 280px; /* Reduced from 300px */
+  }
+  
+  .copy-button-text {
+    font-size: 12px; /* Reduced from 13px */
+  }
+}
+
+.copy-button-main {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 12px 20px;
+  height: auto;
+  /* min-height: 10px; */
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 300px;
+  }
+  
+  .copy-button-text {
+    font-size: 13px;
+  }
+}
+.custom-global-ignores .custom-ignore-list h4 {
+  margin-left: var(--space-lg); /* Added margin left using space variable */
+  margin-right: var(--space-lg); /* Added margin right using space variable */
+  margin-bottom: 8px;
+  font-size: 15px;
+  color: var(--text-primary);
+  padding: 10px 12px; /* Increased padding top and bottom from 6px to 10px */
+  transition: all 0.2s ease;
+  display: inline-block;
+  border: 2px solid transparent;
+  background-color: var(--background-tertiary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.custom-global-ignores .custom-ignore-list h4:focus-visible {
+  outline: none;
+  background-color: var(--background-primary);
+  box-shadow: 0 0 0 2px rgba(14, 99, 156, 0.3); /* Blue focus ring */
+  transform: translateY(-2px);
+}
+
+/* Dark mode text color is already handled by var(--text-primary) which changes based on theme */
+
+.custom-global-ignores h4 {
+  margin-left: var(--space-md); /* Added margin left using space variable */
+  margin-right: var(--space-md); /* Added margin right using space variable */
+  margin-bottom: 10;
+  padding: 12px 12px; /* Increased padding top and bottom from 8px to 12px */
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-global-ignores h4:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-blue);
 }
 
 

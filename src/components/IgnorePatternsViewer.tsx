@@ -139,53 +139,6 @@ export const IgnorePatternsViewer = ({
             />
           </div>
 
-          {/* Custom ignores section - Always visible in global mode */}
-          {ignoreMode === 'global' && (
-            <div className="custom-global-ignores">
-              <div className="custom-ignore-input">
-                <input
-                  type="text"
-                  placeholder="Enter additional ignore pattern"
-                  value={customIgnoreInput}
-                  onChange={(e) => setCustomIgnoreInput(e.target.value)}
-                  className="search-input"
-                />
-                <button
-                  className="add-pattern-button"
-                  onClick={() => {
-                    const trimmed = customIgnoreInput.trim();
-                    if (trimmed) {
-                      setCustomIgnores([...customIgnores, trimmed]);
-                      setCustomIgnoreInput('');
-                    }
-                  }}
-                >
-                  Add Pattern
-                </button>
-              </div>
-              {customIgnores.length > 0 && (
-                <div className="custom-ignore-list">
-                  <h4>Custom Global Ignores</h4>
-                  <ul>
-                    {customIgnores.map((pattern: string, index: number) => (
-                      <li key={index}>
-                        {pattern}
-                        <button
-                          className="remove-pattern-button"
-                          onClick={() => {
-                            setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
-                          }}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Conditional content based on folder selection */}
           {!selectedFolder ? (
             <div className="ignore-patterns-empty-state">
@@ -203,6 +156,11 @@ export const IgnorePatternsViewer = ({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
+                  style={{
+                    border: '2px solid var(--border-color)',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease'
+                  }}
                   autoFocus
                 />
               </div>
@@ -214,6 +172,74 @@ export const IgnorePatternsViewer = ({
                   patterns={patterns.excludedFiles || []}
                   searchTerm={searchTerm}
                 />
+                
+                {/* Custom ignores section - Only visible in global mode */}
+                {ignoreMode === 'global' && (
+                  <div className="custom-global-ignores">
+                    <h4 
+                      tabIndex={0} 
+                      role="button"
+                      aria-label="Custom Global Ignores section" 
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          // Add interaction functionality here if needed
+                        }
+                      }}
+                    >
+                      Custom Global Ignores
+                    </h4>
+                    
+                    <div className="custom-ignore-input">
+                      <input
+                        type="text"
+                        placeholder="Enter additional ignore pattern"
+                        value={customIgnoreInput}
+                        onChange={(e) => setCustomIgnoreInput(e.target.value)}
+                        className="search-input"
+                        style={{
+                          border: '2px solid var(--color-primary)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          transition: 'all 0.3s ease'
+                        }}
+                      />
+                      <button
+                        className="add-pattern-button"
+                        onClick={() => {
+                          const trimmed = customIgnoreInput.trim();
+                          if (trimmed) {
+                            setCustomIgnores([...customIgnores, trimmed]);
+                            setCustomIgnoreInput('');
+                          }
+                        }}
+                      >
+                        Add Pattern
+                      </button>
+                    </div>
+                    
+                    {customIgnores.length > 0 && (
+                      <div className="custom-ignore-list">
+                        <ul>
+                          {customIgnores.map((pattern: string, index: number) => (
+                            <li key={index}>
+                              {pattern}
+                              <button
+                                className="remove-pattern-button"
+                                onClick={() => {
+                                  setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
+                                }}
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 {/* Render gitignore patterns from the Map */}
                 {patterns.gitignoreMap ? (
                   Object.entries(patterns.gitignoreMap)
