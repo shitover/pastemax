@@ -245,7 +245,10 @@ async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
   // Ensure root directory path is absolute and normalized for consistent cache keys
   rootDir = ensureAbsolutePath(rootDir);
   
-  // Generate composite cache key using mode and customIgnores
+  // Generate composite cache key that includes all parameters that affect ignore patterns:
+  // - rootDir: Different directories have different .gitignore files
+  // - mode: 'automatic' vs 'global' produce different pattern sets
+  // - customIgnores: Additional patterns affect the final filter
   const cacheKey = `${rootDir}:${mode}:${JSON.stringify(customIgnores)}`;
   
   // Check cache first
@@ -258,7 +261,9 @@ async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
   const ig = ignore();
 
   if (mode === 'global') {
-    // Combine excludedFiles and customIgnores for global mode
+    // Global mode behavior:
+    // - Only uses the default excludedFiles list plus any customIgnores
+    // - Doesn't scan for .gitignore files in the directory tree
     const globalPatterns = [...excludedFiles, ...customIgnores].map(pattern => normalizePath(pattern));
     ig.add(globalPatterns);
     
@@ -451,7 +456,16 @@ ipcMain.on("open-folder", async (event) => {
 });
 
 /**
+/**
  * Handler for getting ignore patterns with mode support
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event
+ * @param {Object} params - Parameters object
+ * @param {string} params.folderPath - Root directory path to scan for ignore patterns
+ * @param {'automatic'|'global'} [params.mode='automatic'] - Pattern matching mode:
+ *   - 'automatic': Combines .gitignore files with default excludes
+ *   - 'global': Uses only default excludes and custom ignores
+ * @param {string[]} [params.customIgnores=[]] - Additional ignore patterns to include
+ * @returns {Promise<{patterns?: Object, error?: string}>} Resolves with patterns or error
  */
 ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
   if (!folderPath) {
