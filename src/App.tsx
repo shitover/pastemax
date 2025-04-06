@@ -781,6 +781,8 @@ const App = (): JSX.Element => {
           onClose={closeIgnoreViewer}
           patterns={ignorePatterns}
           error={ignorePatternsError}
+          selectedFolder={selectedFolder}
+          isElectron={isElectron}
         />
       </div>
     } />

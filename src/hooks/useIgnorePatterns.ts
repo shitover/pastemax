@@ -38,7 +38,18 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    * - 'automatic': Scans for .gitignore files and combines with default excludes
    * - 'global': Uses only default excludes and custom ignores
    */
-  const [ignoreMode, setIgnoreMode] = useState('automatic' as 'automatic' | 'global');
+  const [ignoreMode, _setIgnoreMode] = useState('automatic' as 'automatic' | 'global', () => {
+    const savedMode = typeof window !== 'undefined' ? localStorage.getItem('ignoreMode') : null;
+    return savedMode === 'global' ? 'global' : 'automatic';
+  });
+
+  const setIgnoreMode = (mode: 'automatic' | 'global') => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ignoreMode', mode);
+    }
+    _setIgnoreMode(mode);
+    console.log(`Ignore mode changed to ${mode}`);
+  };
 
   /**
    * Custom ignore patterns that will be included when mode is 'global'
@@ -56,12 +67,16 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     setIgnorePatterns(null);
     setIgnorePatternsError(null);
 
+    console.log(`Fetching ignore patterns for ${selectedFolder} in ${ignoreMode} mode`);
+    console.log('Custom ignores:', customIgnores);
+
     try {
       const result = await window.electron.ipcRenderer.invoke('get-ignore-patterns', {
         folderPath: selectedFolder,
         mode: ignoreMode,
         customIgnores: ignoreMode === 'global' ? customIgnores : []
       });
+      console.log('Received ignore patterns:', result.patterns ? 'success' : 'error', result);
       if (result.error) {
         setIgnorePatternsError(result.error);
       } else {

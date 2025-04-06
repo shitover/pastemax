@@ -262,8 +262,15 @@ async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
   // Check cache first
   if (ignoreCache.has(cacheKey)) {
     console.log(`Using cached ignore filter for mode=${mode} in:`, rootDir);
-    return ignoreCache.get(cacheKey).ig;
+    const cached = ignoreCache.get(cacheKey);
+    console.log('Cache entry details:', {
+      mode: cached.patterns.global ? 'global' : 'automatic',
+      patternCount: cached.patterns.global?.length ||
+                   Object.keys(cached.patterns.gitignoreMap || {}).length
+    });
+    return cached.ig;
   }
+  console.log(`Cache miss for key: ${cacheKey}`);
 
   // Create new ignore filter
   const ig = ignore();

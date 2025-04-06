@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useIgnorePatterns } from '../hooks/useIgnorePatterns';
 
 interface IgnorePatternsViewerProps {
   isOpen: boolean;
@@ -7,9 +8,11 @@ interface IgnorePatternsViewerProps {
     default?: string[];
     excludedFiles?: string[];
     // Expect the Map structure (serialized as object) now
-    gitignoreMap?: { [key: string]: string[] }; 
+    gitignoreMap?: { [key: string]: string[] };
   };
   error?: string;
+  selectedFolder: string | null;
+  isElectron: boolean;
 }
 
 interface PatternSectionProps {
@@ -87,12 +90,16 @@ export const IgnorePatternsViewer = ({
   isOpen,
   onClose,
   patterns,
-  error
+  error,
+  selectedFolder,
+  isElectron
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ignoreMode, setIgnoreMode] = useState('automatic' as 'automatic' | 'global');
+  const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
+    selectedFolder,
+    isElectron
+  );
   const [customIgnoreInput, setCustomIgnoreInput] = useState('');
-  const [customIgnores, setCustomIgnores] = useState([] as string[]);
 
   // Log the received patterns prop for debugging
   useEffect(() => {
