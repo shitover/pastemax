@@ -12,13 +12,38 @@ interface IgnorePatternsState {
  *
  * @param selectedFolder - The currently selected folder path
  * @param isElectron - Whether the app is running in Electron environment
- * @returns Various states and handlers for ignore patterns functionality
+ * @returns {Object} An object containing:
+ *   - isIgnoreViewerOpen: Boolean state for viewer visibility
+ *   - ignorePatterns: Current ignore patterns state
+ *   - ignorePatternsError: Error message if pattern fetch failed
+ *   - handleViewIgnorePatterns: Function to fetch patterns
+ *   - closeIgnoreViewer: Function to close the viewer
+ *   - ignoreMode: Current ignore mode ('automatic' or 'global')
+ *     - 'automatic': Combines .gitignore files with default excludes
+ *     - 'global': Uses only default excludes and custom ignores
+ *   - setIgnoreMode: Function to update ignore mode
+ *   - customIgnores: Array of additional ignore patterns
+ *     - Only used when ignoreMode is 'global'
+ *   - setCustomIgnores: Function to update custom ignores
+ *
+ * @description The hook automatically includes customIgnores in the IPC call
+ * when mode is 'global', but ignores them in 'automatic' mode.
  */
 export function useIgnorePatterns(selectedFolder: string | null, isElectron: boolean) {
   const [isIgnoreViewerOpen, setIsIgnoreViewerOpen] = useState(false);
   const [ignorePatterns, setIgnorePatterns] = useState(null as IgnorePatternsState | null);
   const [ignorePatternsError, setIgnorePatternsError] = useState(null as string | null);
+  /**
+   * Current ignore mode state ('automatic' or 'global')
+   * - 'automatic': Scans for .gitignore files and combines with default excludes
+   * - 'global': Uses only default excludes and custom ignores
+   */
   const [ignoreMode, setIgnoreMode] = useState('automatic' as 'automatic' | 'global');
+
+  /**
+   * Custom ignore patterns that will be included when mode is 'global'
+   * These patterns are passed to the IPC handler when fetching ignore patterns
+   */
   const [customIgnores, setCustomIgnores] = useState([] as string[]);
 
   /**

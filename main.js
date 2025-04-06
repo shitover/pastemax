@@ -237,9 +237,17 @@ async function collectGitignoreMapRecursive(startDir, rootDir, currentMap = new 
  * Combines patterns from all .gitignore files in the directory tree
  *
  * @param {string} rootDir - The root directory containing .gitignore files
- * @param {'automatic' | 'global'} [mode='automatic'] - The ignore pattern mode
- * @param {string[]} [customIgnores=[]] - Additional patterns to include
+ * @param {'automatic' | 'global'} [mode='automatic'] - The ignore pattern mode:
+ *   - 'automatic': Scans for .gitignore files and combines with default excludes
+ *   - 'global': Uses only default excludes and custom ignores
+ * @param {string[]} [customIgnores=[]] - Additional patterns to include in the filter
  * @returns {Promise<object>} - Promise resolving to configured ignore filter with cached patterns
+ *
+ * @description The function uses a composite cache key combining:
+ *   - rootDir: Different directories have different .gitignore files
+ *   - mode: 'automatic' vs 'global' produce different pattern sets
+ *   - customIgnores: Additional patterns affect the final filter
+ * The cache ensures consistent behavior when the same parameters are used repeatedly.
  */
 async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
   // Ensure root directory path is absolute and normalized for consistent cache keys
@@ -459,13 +467,18 @@ ipcMain.on("open-folder", async (event) => {
 /**
  * Handler for getting ignore patterns with mode support
  * @param {Electron.IpcMainInvokeEvent} event - The IPC event
- * @param {Object} params - Parameters object
- * @param {string} params.folderPath - Root directory path to scan for ignore patterns
- * @param {'automatic'|'global'} [params.mode='automatic'] - Pattern matching mode:
- *   - 'automatic': Combines .gitignore files with default excludes
- *   - 'global': Uses only default excludes and custom ignores
- * @param {string[]} [params.customIgnores=[]] - Additional ignore patterns to include
- * @returns {Promise<{patterns?: Object, error?: string}>} Resolves with patterns or error
+ * @param {Object} params - Parameters object containing:
+ *   @param {string} params.folderPath - (Required) Root directory path to scan
+ *   @param {'automatic'|'global'} [params.mode='automatic'] - Pattern matching mode:
+ *     - 'automatic': Combines .gitignore files with default excludes
+ *     - 'global': Uses only default excludes and custom ignores
+ *   @param {string[]} [params.customIgnores=[]] - Additional ignore patterns to include
+ * @returns {Promise<{patterns?: Object, error?: string}>} Resolves with:
+ *   - patterns: Object containing loaded patterns when successful
+ *     - gitignoreMap: Map of directory paths to their patterns
+ *     - excludedFiles: Default excluded patterns
+ *     - global: Patterns when in global mode
+ *   - error: String error message if operation failed
  */
 ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
   if (!folderPath) {
