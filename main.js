@@ -487,11 +487,12 @@ ipcMain.on("open-folder", async (event) => {
  *     - global: Patterns when in global mode
  *   - error: String error message if operation failed
  */
-ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
-  if (!folderPath) {
-    console.error("get-ignore-patterns called without folderPath");
-    return { error: "folderPath is required" };
-  }
+if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
+  ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
+    if (!folderPath) {
+      console.error("get-ignore-patterns called without folderPath");
+      return { error: "folderPath is required" };
+    }
 
   try {
     const normalizedPath = normalizePath(folderPath);
@@ -521,6 +522,7 @@ ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automa
     return { error: err.message };
   }
 });
+}
 
 /**
  * Sets up a safety timeout for directory loading operations.
@@ -590,29 +592,6 @@ function cancelDirectoryLoading(window, reason = "user") {
   }
 }
 
-// Handler for retrieving ignore patterns
-ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
-  if (!rootDir) {
-    return { error: 'No directory selected' };
-  }
-
-  try {
-    // Ensure rules are loaded and cached
-    await loadGitignore(rootDir);
-    
-    let cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
-
-    if (cachedData?.patterns) {
-      console.log(`DEBUG: Returning ignore patterns for ${rootDir}`);
-      return { patterns: cachedData.patterns };
-    } 
-
-    return { error: 'Could not retrieve ignore patterns' };
-  } catch (error) {
-    console.error('Error retrieving ignore patterns:', error);
-    return { error: `Failed to get ignore patterns: ${error.message}` };
-  }
-});
 
 // Add handler for cancel-directory-loading event
 ipcMain.on("cancel-directory-loading", (event) => {
@@ -902,20 +881,22 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
     });
 
     // Process the files to ensure they're serializable
-    const serializedFiles = files.map(file => ({
-      path: file.path, // Keep the full path
-      relativePath: file.relativePath, // Use the relative path for display
-      name: file.name,
-      size: file.size,
-      isDirectory: file.isDirectory,
-      extension: path.extname(file.name).toLowerCase(),
-      excluded: shouldExcludeByDefault(file.path, folderPath),
-      content: file.content,
-      tokenCount: file.tokenCount,
-      isBinary: file.isBinary,
-      isSkipped: file.isSkipped,
-      error: file.error,
-    }));
+    const serializedFiles = files.map(file => { // Use a block body for clarity
+      return { // Return an object literal
+        path: file.path, // Keep the full path
+        relativePath: file.relativePath, // Use the relative path for display
+        name: file.name,
+        size: file.size,
+        isDirectory: file.isDirectory,
+        extension: path.extname(file.name).toLowerCase(),
+        excluded: shouldExcludeByDefault(file.path, folderPath),
+        content: file.content,
+        tokenCount: file.tokenCount,
+        isBinary: file.isBinary,
+        isSkipped: file.isSkipped,
+        error: file.error,
+      }; // Close the returned object
+    }); // Close the map function call
 
     event.sender.send("file-list-data", serializedFiles);
   } catch (err) {
