@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
-import { FileData } from "./types/FileTypes";
+import { FileData, IgnoreMode } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import IgnorePatternsViewer from "./components/IgnorePatternsViewer";
 import ThemeToggle from "./components/ThemeToggle";
@@ -50,6 +50,7 @@ const STORAGE_KEYS = {
   SORT_ORDER: "pastemax-sort-order",
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
+  IGNORE_MODE: "pastemax-ignore-mode",
 };
 
 /**
@@ -76,6 +77,7 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
+  const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE);
 
   // Normalize selectedFolder when loading from localStorage
   const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
@@ -87,6 +89,10 @@ const App = (): JSX.Element => {
   const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
   
   // Initialize ignore patterns functionality
+  const [ignoreMode, setIgnoreMode] = useState(() =>
+    (savedIgnoreMode === 'global' ? 'global' : 'automatic') as IgnoreMode
+  );
+
   const {
     isIgnoreViewerOpen,
     ignorePatterns,
@@ -197,6 +203,11 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
+
+  // Persist ignore mode when it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
+  }, [ignoreMode]);
 
   // Add a function to cancel directory loading
   const cancelDirectoryLoading = useCallback(() => {

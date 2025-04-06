@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { IgnoreMode } from '../types/FileTypes';
 
 interface IgnorePatternsState {
   default: string[];
@@ -38,14 +39,16 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    * - 'automatic': Scans for .gitignore files and combines with default excludes
    * - 'global': Uses only default excludes and custom ignores
    */
-  const [ignoreMode, _setIgnoreMode] = useState('automatic' as 'automatic' | 'global', () => {
-    const savedMode = typeof window !== 'undefined' ? localStorage.getItem('ignoreMode') : null;
-    return savedMode === 'global' ? 'global' : 'automatic';
+  const [ignoreMode, _setIgnoreMode] = useState(() => {
+    const savedMode = typeof window !== 'undefined'
+      ? localStorage.getItem('pastemax-ignore-mode')
+      : null;
+    return (savedMode === 'global' ? 'global' : 'automatic') as IgnoreMode;
   });
 
-  const setIgnoreMode = (mode: 'automatic' | 'global') => {
+  const setIgnoreMode = (mode: IgnoreMode) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ignoreMode', mode);
+      localStorage.setItem('pastemax-ignore-mode', mode);
     }
     _setIgnoreMode(mode);
     console.log(`Ignore mode changed to ${mode}`);

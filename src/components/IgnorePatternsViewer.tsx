@@ -166,12 +166,15 @@ export const IgnorePatternsViewer = ({
               </div>
 
               <div className="ignore-patterns-sections">
-                <PatternSection
-                  title="Global Exclusions"
-                  subtitle="From excluded-files.js"
-                  patterns={patterns.excludedFiles || []}
-                  searchTerm={searchTerm}
-                />
+                  {ignoreMode === 'global' && (
+                    <PatternSection
+                      title="Global Exclusions"
+                      subtitle="From excluded-files.js"
+                      patterns={patterns.excludedFiles || []}
+                      searchTerm={searchTerm}
+                    />
+                  )}
+                )
                 
                 {/* Custom ignores section - Only visible in global mode */}
                 {ignoreMode === 'global' && (
@@ -241,29 +244,31 @@ export const IgnorePatternsViewer = ({
                 )}
                 
                 {/* Render gitignore patterns from the Map */}
-                {patterns.gitignoreMap ? (
-                  Object.entries(patterns.gitignoreMap)
-                    .sort(([a], [b]) => {
-                      if (a === '.') return -1;
-                      if (b === '.') return 1;
-                      return a.localeCompare(b);
-                    })
-                    .map(([dirPath, dirPatterns]) => (
-                      <PatternSection
-                        key={dirPath}
-                        title={`Repository Rules (${dirPath === '.' ? './' : dirPath})`}
-                        subtitle={`From ${dirPath === '.' ? './' : dirPath}/.gitignore`}
-                        patterns={dirPatterns}
-                        searchTerm={searchTerm}
-                      />
-                    ))
-                ) : (
-                  <PatternSection
-                    title="Repository Rules (No Rules Found)"
-                    subtitle="No .gitignore rules found in the repository"
-                    patterns={[]}
-                    searchTerm={searchTerm}
-                  />
+                {ignoreMode === 'automatic' && (
+                  patterns.gitignoreMap ? (
+                    Object.entries(patterns.gitignoreMap)
+                      .sort(([a], [b]) => {
+                        if (a === '.') return -1;
+                        if (b === '.') return 1;
+                        return a.localeCompare(b);
+                      })
+                      .map(([dirPath, dirPatterns]) => (
+                        <PatternSection
+                          key={dirPath}
+                          title={`Repository Rules (${dirPath === '.' ? './' : dirPath})`}
+                          subtitle={`From ${dirPath === '.' ? './' : dirPath}/.gitignore`}
+                          patterns={dirPatterns}
+                          searchTerm={searchTerm}
+                        />
+                      ))
+                  ) : (
+                    <PatternSection
+                      title="Repository Rules (No Rules Found)"
+                      subtitle="No .gitignore rules found in the repository"
+                      patterns={[]}
+                      searchTerm={searchTerm}
+                    />
+                  )
                 )}
               </div>
             </React.Fragment>
