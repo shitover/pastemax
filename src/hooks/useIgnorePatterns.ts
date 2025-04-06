@@ -9,7 +9,7 @@ interface IgnorePatternsState {
 /**
  * Hook for managing ignore patterns functionality
  * Handles state and operations related to viewing git ignore patterns
- * 
+ *
  * @param selectedFolder - The currently selected folder path
  * @param isElectron - Whether the app is running in Electron environment
  * @returns Various states and handlers for ignore patterns functionality
@@ -18,6 +18,8 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
   const [isIgnoreViewerOpen, setIsIgnoreViewerOpen] = useState(false);
   const [ignorePatterns, setIgnorePatterns] = useState(null as IgnorePatternsState | null);
   const [ignorePatternsError, setIgnorePatternsError] = useState(null as string | null);
+  const [ignoreMode, setIgnoreMode] = useState('automatic' as 'automatic' | 'global');
+  const [customIgnores, setCustomIgnores] = useState([] as string[]);
 
   /**
    * Fetches and displays ignore patterns for the selected folder
@@ -30,7 +32,11 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     setIgnorePatternsError(null);
 
     try {
-      const result = await window.electron.ipcRenderer.invoke('get-ignore-patterns', selectedFolder);
+      const result = await window.electron.ipcRenderer.invoke('get-ignore-patterns', {
+        folderPath: selectedFolder,
+        mode: ignoreMode,
+        customIgnores: ignoreMode === 'global' ? customIgnores : []
+      });
       if (result.error) {
         setIgnorePatternsError(result.error);
       } else {
@@ -50,6 +56,10 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     ignorePatterns,
     ignorePatternsError,
     handleViewIgnorePatterns,
-    closeIgnoreViewer: () => setIsIgnoreViewerOpen(false)
+    closeIgnoreViewer: () => setIsIgnoreViewerOpen(false),
+    ignoreMode,
+    setIgnoreMode,
+    customIgnores,
+    setCustomIgnores
   };
 }
