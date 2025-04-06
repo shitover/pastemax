@@ -118,6 +118,25 @@ export const IgnorePatternsViewer = ({
 
   if (!isOpen) return null;
 
+  // Handle empty state when no folder is selected
+  if (!selectedFolder) {
+    return (
+      <div className="ignore-patterns-modal-overlay">
+        <div className="ignore-patterns-modal">
+          <div className="ignore-patterns-header">
+            <h2>Applied Ignore Patterns</h2>
+            <button onClick={onClose} className="close-button" aria-label="Close">×</button>
+          </div>
+          <div className="ignore-patterns-content">
+            <div className="ignore-patterns-empty-state">
+              No folder loaded. Select a folder to view ignore patterns.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ignore-patterns-modal-overlay">
       <div className="ignore-patterns-modal">
@@ -130,19 +149,19 @@ export const IgnorePatternsViewer = ({
             <div className="ignore-patterns-error">{error}</div>
           ) : patterns ? (
             <React.Fragment>
+              {/* Mode Toggle Switch */}
               <div className="ignore-patterns-mode-toggle">
-                <button
-                  className={`mode-toggle-button ${ignoreMode === 'automatic' ? 'active' : ''}`}
-                  onClick={() => setIgnoreMode('automatic')}
-                >
-                  Automatic Gitignore
-                </button>
-                <button
-                  className={`mode-toggle-button ${ignoreMode === 'global' ? 'active' : ''}`}
-                  onClick={() => setIgnoreMode('global')}
-                >
-                  Global Ignore
-                </button>
+                <span className="toggle-label">Automatic</span>
+                <label className="mode-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={ignoreMode === 'global'}
+                    onChange={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-slider"></span>
+                </label>
+                <span className="toggle-label">Global</span>
               </div>
 
               <div className="ignore-patterns-search">
@@ -202,11 +221,7 @@ export const IgnorePatternsViewer = ({
                 </div>
               )}
               <div className="ignore-patterns-sections">
-                <PatternSection
-                  title="Default Patterns"
-                  patterns={patterns.default || []} // Provide default empty array
-                  searchTerm={searchTerm}
-                />
+                {/* Default Patterns section removed as per requirement */}
                 <PatternSection
                   title="Global Exclusions"
                   subtitle="From excluded-files.js"
