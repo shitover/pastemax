@@ -1,14 +1,88 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, session } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-// Global variables for directory loading control
+// Configuration constants
+const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
+const CONCURRENT_DIRS = 4;  // Number of directories to process in parallel
+const CHUNK_SIZE = 20;      // Number of files to process in one chunk
+
+// Global state
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
-const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
-let processedDirectories = 0;
-let processedFiles = 0;
+
+/**
+ * @typedef {Object} DirectoryLoadingProgress
+ * @property {number} directories - Number of directories processed
+ * @property {number} files - Number of files processed
+ */
+
+/**
+ * @type {DirectoryLoadingProgress}
+ */
+let currentProgress = { directories: 0, files: 0 };
+
+// Global caches
+const ignoreCache = new Map();  // Cache for ignore filters keyed by normalized root directory
+const fileCache = new Map();    // Cache for file metadata keyed by normalized file path
+const fileTypeCache = new Map(); // Cache for binary file type detection results
+
+// Add handling for the 'ignore' module
+let ignore;
+try {
+  ignore = require("ignore");
+  console.log("Successfully loaded ignore module");
+} catch (err) {
+  console.error("Failed to load ignore module:", err);
+  // Simple fallback implementation for when the ignore module fails to load
+  ignore = {
+    // Simple implementation that just matches exact paths
+    createFilter: () => {
+      return (path) => !excludedFiles.includes(path);
+    },
+  };
+  console.log("Using fallback for ignore module");
+}
+
+// Initialize tokenizer with better error handling
+let tiktoken;
+try {
+  tiktoken = require("tiktoken");
+  console.log("Successfully loaded tiktoken module");
+} catch (err) {
+  console.error("Failed to load tiktoken module:", err);
+  tiktoken = null;
+}
+
+// Import the excluded files list
+const { excludedFiles, binaryExtensions } = require("./excluded-files");
+
+// Initialize the encoder once at startup with better error handling
+let encoder;
+try {
+  if (tiktoken) {
+    encoder = tiktoken.get_encoding("o200k_base"); // gpt-4o encoding
+    console.log("Tiktoken encoder initialized successfully");
+  } else {
+    throw new Error("Tiktoken module not available");
+  }
+} catch (err) {
+  console.error("Failed to initialize tiktoken encoder:", err);
+  // Fallback to a simpler method if tiktoken fails
+  console.log("Using fallback token counter");
+  encoder = null;
+}
+
+// Handler for clearing main process caches
+ipcMain.on("clear-main-cache", () => {
+  console.log("Clearing main process caches");
+  ignoreCache.clear();
+  fileCache.clear();
+  fileTypeCache.clear(); // Clear binary file type cache as well
+  console.log("Main process caches cleared");
+});
 
 /**
  * Enhanced path handling functions for cross-platform compatibility
@@ -96,73 +170,279 @@ function isValidPath(pathToCheck) {
   }
 }
 
-// Global cache for ignore filters keyed by normalized root directory
-const ignoreCache = new Map();
+/**
+ * Recursively collects .gitignore patterns from a directory tree, scanning downwards.
+ * @param {string} startDir - The directory to start scanning from
+ * @param {string} rootDir - The root directory (used for calculating relative paths)
+ * @param {Map<string, string[]>} [currentMap] - Map accumulating results during recursion
+ * @returns {Promise<Map<string, string[]>>} - Map where keys are directory paths (relative to root)
+ *                                            and values are arrays of patterns from that directory
+ */
+async function collectGitignoreMapRecursive(startDir, rootDir, currentMap = new Map()) {
+  const normalizedStartDir = normalizePath(startDir);
+  const normalizedRootDir = normalizePath(rootDir);
 
-// Global cache for file metadata keyed by normalized file path
-const fileCache = new Map();
-
-// Add handling for the 'ignore' module
-let ignore;
-try {
-  ignore = require("ignore");
-  console.log("Successfully loaded ignore module");
-} catch (err) {
-  console.error("Failed to load ignore module:", err);
-  // Simple fallback implementation for when the ignore module fails to load
-  ignore = {
-    // Simple implementation that just matches exact paths
-    createFilter: () => {
-      return (path) => !excludedFiles.includes(path);
-    },
-  };
-  console.log("Using fallback for ignore module");
-}
-
-// Initialize tokenizer with better error handling
-let tiktoken;
-try {
-  tiktoken = require("tiktoken");
-  console.log("Successfully loaded tiktoken module");
-} catch (err) {
-  console.error("Failed to load tiktoken module:", err);
-  tiktoken = null;
-}
-
-// Import the excluded files list
-const { excludedFiles, binaryExtensions } = require("./excluded-files");
-
-// Initialize the encoder once at startup with better error handling
-let encoder;
-try {
-  if (tiktoken) {
-    encoder = tiktoken.get_encoding("o200k_base"); // gpt-4o encoding
-    console.log("Tiktoken encoder initialized successfully");
-  } else {
-    throw new Error("Tiktoken module not available");
+  // Check if directory exists and is accessible
+  try {
+    await fs.promises.access(normalizedStartDir, fs.constants.R_OK);
+  } catch (err) {
+    console.warn(`Cannot access directory: ${normalizedStartDir}`, err);
+    return currentMap;
   }
-} catch (err) {
-  console.error("Failed to initialize tiktoken encoder:", err);
-  // Fallback to a simpler method if tiktoken fails
-  console.log("Using fallback token counter");
-  encoder = null;
+
+  // 1. Read .gitignore in the current directory
+  const gitignorePath = safePathJoin(normalizedStartDir, '.gitignore');
+  try {
+    const content = await fs.promises.readFile(gitignorePath, 'utf8');
+    const patterns = content.split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'));
+
+    if (patterns.length > 0) {
+      const relativeDirPath = safeRelativePath(normalizedRootDir, normalizedStartDir) || '.';
+      currentMap.set(relativeDirPath, patterns);
+      console.log(`Found .gitignore in ${relativeDirPath} with ${patterns.length} patterns`);
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.error(`Error reading ${gitignorePath}:`, err);
+    }
+  }
+
+  // 2. Recursively scan subdirectories
+  try {
+    const dirents = await fs.promises.readdir(normalizedStartDir, { withFileTypes: true });
+    for (const dirent of dirents) {
+      if (dirent.isDirectory()) {
+        const subDir = safePathJoin(normalizedStartDir, dirent.name);
+        const relativeSubDir = safeRelativePath(normalizedRootDir, subDir);
+        
+        // Skip obviously ignorable directories at the top level
+        if (!['node_modules', '.git'].includes(dirent.name)) {
+          await collectGitignoreMapRecursive(subDir, normalizedRootDir, currentMap);
+        } else {
+          console.log(`Skipping known ignored directory: ${relativeSubDir}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Error reading directory ${normalizedStartDir} for recursion:`, err);
+  }
+
+  return currentMap;
 }
 
-// Max file size to read (5MB) - BINARY_EXTENSIONS constant removed
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+/**
+ * Load or create an ignore filter with cached patterns
+ * Combines patterns from all .gitignore files in the directory tree
+ *
+ * @param {string} rootDir - The root directory containing .gitignore files
+ * @param {'automatic' | 'global'} [mode='automatic'] - The ignore pattern mode:
+ *   - 'automatic': Scans for .gitignore files and combines with default excludes
+ *   - 'global': Uses only default excludes and custom ignores
+ * @param {string[]} [customIgnores=[]] - Additional patterns to include in the filter
+ * @returns {Promise<object>} - Promise resolving to configured ignore filter with cached patterns
+ *
+ * @description The function uses a composite cache key combining:
+ *   - rootDir: Different directories have different .gitignore files
+ *   - mode: 'automatic' vs 'global' produce different pattern sets
+ *   - customIgnores: Additional patterns affect the final filter
+ * The cache ensures consistent behavior when the same parameters are used repeatedly.
+ */
+async function loadGitignore(rootDir, mode = 'automatic', customIgnores = []) {
+  // Ensure root directory path is absolute and normalized for consistent cache keys
+  rootDir = ensureAbsolutePath(rootDir);
+  
+  // Generate composite cache key that includes all parameters that affect ignore patterns:
+  // - rootDir: Different directories have different .gitignore files
+  // - mode: 'automatic' vs 'global' produce different pattern sets
+  // - customIgnores: Additional patterns affect the final filter
+  const cacheKey = `${rootDir}:${mode}:${JSON.stringify(customIgnores)}`;
+  
+  // Check cache first
+  if (ignoreCache.has(cacheKey)) {
+    console.log(`Using cached ignore filter for mode=${mode} in:`, rootDir);
+    const cached = ignoreCache.get(cacheKey);
+    console.log('Cache entry details:', {
+      mode: cached.patterns.global ? 'global' : 'automatic',
+      patternCount: cached.patterns.global?.length ||
+                   Object.keys(cached.patterns.gitignoreMap || {}).length
+    });
+    return cached.ig;
+  }
+  console.log(`Cache miss for key: ${cacheKey}`);
 
-// Handler for clearing main process caches
-ipcMain.on("clear-main-cache", () => {
-  console.log("Clearing main process caches");
-  ignoreCache.clear();
-  fileCache.clear();
-  console.log("Main process caches cleared");
-});
+  // Create new ignore filter
+  const ig = ignore();
+
+  if (mode === 'global') {
+    // Global mode behavior:
+    // - Only uses the default excludedFiles list plus any customIgnores
+    // - Doesn't scan for .gitignore files in the directory tree
+    const globalPatterns = [...excludedFiles, ...customIgnores].map(pattern => normalizePath(pattern));
+    ig.add(globalPatterns);
+    
+    console.log(`Created global ignore filter for ${rootDir} with ${globalPatterns.length} patterns`);
+    
+    // Cache the ignore filter with global patterns
+    ignoreCache.set(cacheKey, {
+      ig,
+      patterns: { global: globalPatterns }
+    });
+    return ig;
+  }
+
+  // Automatic mode processing
+  try {
+    // Add predefined default patterns first
+    const defaultPatterns = [
+      // Version control
+      ".git",
+      ".svn",
+      ".hg",
+      
+      // Package managers
+      "node_modules",
+      "bower_components",
+      "vendor",
+      
+      // Build directories
+      "dist",
+      "build",
+      "out",
+      ".next",
+      "target",
+      "bin",
+      "Debug",
+      "Release",
+      "x64",
+      "x86",
+      ".output",
+      
+      // Build files
+      "*.min.js",
+      "*.min.css",
+      "*.bundle.js",
+      "*.compiled.*",
+      "*.generated.*",
+      
+      // Cache directories
+      ".cache",
+      ".parcel-cache",
+      ".webpack",
+      ".turbo",
+      
+      // Editor configs
+      ".idea",
+      ".vscode",
+      ".vs",
+      
+      // System files
+      ".DS_Store",
+      "Thumbs.db",
+      "desktop.ini"
+    ];
+    ig.add(defaultPatterns);
+    console.log(`Added ${defaultPatterns.length} default ignore patterns`);
+
+    // Then add user-defined excluded files
+    const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
+    ig.add(normalizedExcludedFiles);
+    console.log(`Added ${normalizedExcludedFiles.length} excluded file patterns`);
+
+    // Collect patterns by scanning downwards from rootDir
+    console.log(`Collecting .gitignore patterns for: ${rootDir}`);
+    const gitignoreMap = await collectGitignoreMapRecursive(rootDir, rootDir);
+    let totalGitignorePatterns = 0;
+
+    // Add patterns from the map, respecting their directory context
+    for (const [relativeDirPath, patterns] of gitignoreMap) {
+      const patternsToAdd = patterns.map(pattern => {
+        if (!pattern.startsWith('/') && !pattern.includes('**')) {
+          const joinedPath = normalizePath(path.join(relativeDirPath === '.' ? '' : relativeDirPath, pattern));
+          return joinedPath.replace(/^\.\//, '');
+        }
+        return pattern;
+      });
+      
+      if (patternsToAdd.length > 0) {
+        ig.add(patternsToAdd);
+        totalGitignorePatterns += patternsToAdd.length;
+        console.log(`Added ${patternsToAdd.length} patterns from ${relativeDirPath}/.gitignore`);
+      }
+    }
+
+    if (totalGitignorePatterns > 0) {
+      console.log(`Added ${totalGitignorePatterns} total .gitignore patterns for:`, rootDir);
+    }
+
+    // Cache the ignore filter with gitignore map
+    ignoreCache.set(cacheKey, {
+      ig,
+      patterns: {
+        gitignoreMap: Object.fromEntries(gitignoreMap),
+        excludedFiles: normalizedExcludedFiles
+      }
+    });
+    return ig;
+  } catch (err) {
+    console.error(`Error in loadGitignore for ${rootDir}:`, err);
+    return ig;
+  }
+}
+
+/**
+ * Check if file is binary based on extension, using cache for performance
+ * @param {string} filePath - Path to the file
+ * @returns {boolean} - True if the file is binary
+ */
+function isBinaryFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  
+  // Check cache first
+  if (fileTypeCache.has(ext)) {
+    return fileTypeCache.get(ext);
+  }
+
+  // Calculate and cache the result
+  const isBinary = binaryExtensions.includes(ext);
+  fileTypeCache.set(ext, isBinary);
+  return isBinary;
+}
+
+// Count tokens using tiktoken with o200k_base encoding
+function countTokens(text) {
+  // Simple fallback implementation if encoder fails
+  if (!encoder) {
+    return Math.ceil(text.length / 4);
+  }
+
+  try {
+    // Remove any special tokens that might cause issues
+    const cleanText = text.replace(/<\|endoftext\|>/g, '');
+    const tokens = encoder.encode(cleanText);
+    return tokens.length;
+  } catch (err) {
+    console.error("Error counting tokens:", err);
+    // Fallback to character-based estimation on error
+    return Math.ceil(text.length / 4);
+  }
+}
 
 function createWindow() {
   // Check if we're starting in safe mode (Shift key pressed)
   const isSafeMode = process.argv.includes('--safe-mode');
-  
+
+  // Set up Content Security Policy
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self'; font-src 'self' https://fonts.gstatic.com"]
+      }
+    });
+  });
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -242,158 +522,168 @@ ipcMain.on("open-folder", async (event) => {
 });
 
 /**
- * Traverses a directory to find and merge all .gitignore files
- * Handles path normalization and duplicate patterns
- * 
- * @param {string} rootDir - The root directory to start traversal from
- * @returns {Promise<Set<string>>} - Set of unique normalized ignore patterns
+/**
+ * Handler for getting ignore patterns with mode support
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event
+ * @param {Object} params - Parameters object containing:
+ *   @param {string} params.folderPath - (Required) Root directory path to scan
+ *   @param {'automatic'|'global'} [params.mode='automatic'] - Pattern matching mode:
+ *     - 'automatic': Combines .gitignore files with default excludes
+ *     - 'global': Uses only default excludes and custom ignores
+ *   @param {string[]} [params.customIgnores=[]] - Additional ignore patterns to include
+ * @returns {Promise<{patterns?: Object, error?: string}>} Resolves with:
+ *   - patterns: Object containing loaded patterns when successful
+ *     - gitignoreMap: Map of directory paths to their patterns
+ *     - excludedFiles: Default excluded patterns
+ *     - global: Patterns when in global mode
+ *   - error: String error message if operation failed
  */
-async function collectCombinedGitignore(rootDir) {
-  const ignorePatterns = new Set();
-  
-  async function traverse(dir) {
-    try {
-      const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
-      
-      for (const dirent of dirents) {
-        const fullPath = safePathJoin(dir, dirent.name);
-        
-        // Skip invalid paths and system directories
-        if (fullPath.includes('.app') || fullPath === app.getAppPath()) {
-          continue;
-        }
-        
-        if (dirent.isDirectory()) {
-          await traverse(fullPath);
-        } else if (dirent.isFile() && dirent.name === '.gitignore') {
-          try {
-            const content = await fs.promises.readFile(fullPath, "utf8");
-            content.split(/\r?\n/)
-              .map(line => line.trim())
-              .filter(line => line && !line.startsWith('#'))
-              .forEach(pattern => ignorePatterns.add(normalizePath(pattern)));
-          } catch (err) {
-            console.error(`Error reading ${fullPath}:`, err);
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`Error reading directory ${dir}:`, err);
+if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
+  ipcMain.handle("get-ignore-patterns", async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
+    if (!folderPath) {
+      console.error("get-ignore-patterns called without folderPath");
+      return { error: "folderPath is required" };
     }
+
+  try {
+    const normalizedPath = normalizePath(folderPath);
+    console.log(`Getting ignore patterns for ${normalizedPath} (mode=${mode})`);
+    
+    // Generate the same cache key used in loadGitignore
+    const cacheKey = `${normalizedPath}:${mode}:${JSON.stringify(customIgnores)}`;
+    
+    // Check cache first
+    if (ignoreCache.has(cacheKey)) {
+      const cached = ignoreCache.get(cacheKey);
+      console.log(`Returning cached patterns for ${normalizedPath} (mode=${mode})`);
+      return { patterns: cached.patterns };
+    }
+
+    // Load the ignore filter (will be cached by loadGitignore)
+    await loadGitignore(normalizedPath, mode, customIgnores);
+    
+    // Return the cached patterns
+    if (ignoreCache.has(cacheKey)) {
+      return { patterns: ignoreCache.get(cacheKey).patterns };
+    }
+    
+    return { error: "Failed to load ignore patterns" };
+  } catch (err) {
+    console.error(`Error getting ignore patterns for ${folderPath}:`, err);
+    return { error: err.message };
   }
-  
-  await traverse(rootDir);
-  return ignorePatterns;
+});
 }
 
 /**
- * Load or create an ignore filter with cached patterns
- * Combines patterns from all .gitignore files in the directory tree
+ * Sets up a safety timeout for directory loading operations.
+ * Prevents infinite loading by automatically cancelling after MAX_DIRECTORY_LOAD_TIME.
  * 
- * @param {string} rootDir - The root directory containing .gitignore files
- * @returns {Promise<object>} - Promise resolving to configured ignore filter with cached patterns
+ * @param {BrowserWindow} window - The Electron window instance
+ * @param {string} folderPath - The path being processed (for logging)
  */
-async function loadGitignore(rootDir) {
-  // Ensure root directory path is absolute and normalized for consistent cache keys
-  rootDir = ensureAbsolutePath(rootDir);
+function setupDirectoryLoadingTimeout(window, folderPath) {
+  // Clear any existing timeout
+  if (loadingTimeoutId) {
+    clearTimeout(loadingTimeoutId);
+  }
   
-  // Check cache first
-  if (ignoreCache.has(rootDir)) {
-    console.log('Using cached ignore filter for:', rootDir);
-    return ignoreCache.get(rootDir).ig;
-  }
+  // Set a new timeout
+  loadingTimeoutId = setTimeout(() => {
+    console.log(`Directory loading timed out after ${MAX_DIRECTORY_LOAD_TIME / 1000} seconds: ${folderPath}`);
+    console.log(`Stats at timeout: Processed ${currentProgress.directories} directories and ${currentProgress.files} files`);
+    // Call cancelDirectoryLoading with timeout reason
+    cancelDirectoryLoading(window, "timeout");
+  }, MAX_DIRECTORY_LOAD_TIME);
 
-  // Create new ignore filter with default patterns
-  const ig = ignore();
-  
-  // Add default patterns first
-  const defaultPatterns = [
-    ".git",
-    "node_modules",
-    ".DS_Store",
-    "Thumbs.db",
-    "desktop.ini",
-    ".idea",
-    ".vscode",
-    "dist",
-    "build",
-    "out"
-  ];
-  ig.add(defaultPatterns);
-
-  // Add excluded files patterns
-  const normalizedExcludedFiles = excludedFiles.map(pattern => normalizePath(pattern));
-  ig.add(normalizedExcludedFiles);
-
-  try {
-    // Wait for all .gitignore patterns to be collected
-    const gitignorePatterns = await collectCombinedGitignore(rootDir);
-    if (gitignorePatterns.size > 0) {
-      console.log(`Adding ${gitignorePatterns.size} combined .gitignore patterns for:`, rootDir);
-      ig.add(Array.from(gitignorePatterns));
-    }
-
-    // Store categorized patterns alongside the ignore instance
-    const categorizedPatterns = {
-      default: defaultPatterns,
-      excludedFiles: normalizedExcludedFiles,
-      gitignore: Array.from(gitignorePatterns)
-    };
-
-    // Cache both the ignore instance and patterns
-    ignoreCache.set(rootDir, { ig, patterns: categorizedPatterns });
-    return ig;
-  } catch (err) {
-    console.error("Error collecting .gitignore patterns:", err);
-    // Still return the ig object with default patterns in case of error
-    return ig;
-  }
-}
-
-// Check if file is binary based on extension
-function isBinaryFile(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  // Use imported binaryExtensions directly
-  return binaryExtensions.includes(ext);
-}
-
-// Count tokens using tiktoken with o200k_base encoding
-function countTokens(text) {
-  // Simple fallback implementation if encoder fails
-  if (!encoder) {
-    return Math.ceil(text.length / 4);
-  }
-
-  try {
-    // Remove any special tokens that might cause issues
-    const cleanText = text.replace(/<\|endoftext\|>/g, '');
-    const tokens = encoder.encode(cleanText);
-    return tokens.length;
-  } catch (err) {
-    console.error("Error counting tokens:", err);
-    // Fallback to character-based estimation on error
-    return Math.ceil(text.length / 4);
-  }
+  // Reset progress when starting new directory load
+  currentProgress = { directories: 0, files: 0 };
 }
 
 /**
- * Recursively reads files from a directory with chunked processing and cancellation support.
- * Implements several performance and safety features:
- * - Processes files in small chunks to maintain UI responsiveness
- * - Supports immediate cancellation at any point
- * - Handles binary files and large files appropriately
- * - Respects .gitignore and custom exclusion patterns
- * - Provides progress updates to the UI
- * - Handles cross-platform path issues including UNC paths
+ * Handles the cancellation of directory loading operations.
+ * Ensures clean cancellation by:
+ * - Clearing all timeouts
+ * - Resetting loading flags and counters
+ * - Notifying the UI immediately with context
  * 
- * @param {string} dir - The directory to process
- * @param {string} rootDir - The root directory (used for relative path calculations)
- * @param {object} ignoreFilter - The ignore filter instance for file exclusions
- * @param {BrowserWindow} window - The Electron window instance for sending updates
- * @returns {Promise<Array>} Array of processed file objects
+ * @param {BrowserWindow} window - The Electron window instance to send updates to
+ * @param {string} reason - The reason for cancellation ("user" or "timeout")
  */
-async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
-  if (!isLoadingDirectory) return [];
+function cancelDirectoryLoading(window, reason = "user") {
+  if (!isLoadingDirectory) return;
+
+  console.log(`Cancelling directory loading process (Reason: ${reason})`);
+  console.log(`Stats at cancellation: Processed ${currentProgress.directories} directories and ${currentProgress.files} files`);
+
+  // Ensure flag is reset here as well
+  isLoadingDirectory = false;
+
+  if (loadingTimeoutId) {
+    clearTimeout(loadingTimeoutId);
+    loadingTimeoutId = null;
+  }
+
+  // Reset progress
+  currentProgress = { directories: 0, files: 0 };
+
+  // Send cancellation message immediately with appropriate context
+  // Add checks for window validity
+  if (window && window.webContents && !window.webContents.isDestroyed()) {
+    const message = reason === "timeout"
+      ? "Directory loading timed out after 5 minutes. Try clearing data and retrying."
+      : "Directory loading cancelled";
+
+    window.webContents.send("file-processing-status", {
+      status: "cancelled",
+      message: message,
+    });
+  } else {
+    console.log("Window not available to send cancellation status.");
+  }
+}
+
+
+// Add handler for cancel-directory-loading event
+ipcMain.on("cancel-directory-loading", (event) => {
+  cancelDirectoryLoading(BrowserWindow.fromWebContents(event.sender));
+});
+
+// Add a debug handler for file selection
+ipcMain.on("debug-file-selection", (event, data) => {
+  console.log("DEBUG - File Selection:", data);
+});
+
+/**
+ * Processes a single directory entry recursively
+ * @param {Object} params - Parameters for processing
+ * @returns {Promise<{results: Array, progress: Object}>} Results and updated progress
+ */
+async function processDirectory({ dirent, dir, rootDir, ignoreFilter, window, progress }) {
+  const fullPath = safePathJoin(dir, dirent.name);
+  const relativePath = safeRelativePath(rootDir, fullPath);
+
+  // Skip invalid paths and system directories
+  if (fullPath.includes('.app') || fullPath === app.getAppPath() ||
+      !isValidPath(relativePath) || relativePath.startsWith('..')) {
+    console.log('Skipping directory:', fullPath);
+    return { results: [], progress };
+  }
+
+  // Only process if not ignored
+  if (!ignoreFilter.ignores(relativePath)) {
+    progress.directories++; // Increment directory counter
+    window.webContents.send("file-processing-status", {
+      status: "processing",
+      message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
+    });
+    return readFilesRecursively(fullPath, rootDir, ignoreFilter, window, progress);
+  }
+  return { results: [], progress };
+}
+
+async function readFilesRecursively(dir, rootDir, ignoreFilter, window, progress = { directories: 0, files: 0 }) {
+  if (!isLoadingDirectory) return { results: [], progress };
   
   // Ensure absolute and normalized paths
   dir = ensureAbsolutePath(dir);
@@ -401,48 +691,41 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
   ignoreFilter = ignoreFilter || await loadGitignore(rootDir);
 
   let results = [];
-  let processedFiles = 0;
-  const CHUNK_SIZE = 20;
 
   try {
     const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
-    if (!isLoadingDirectory) return results;
+    if (!isLoadingDirectory) return { results: [], progress };
 
     const directories = dirents.filter(dirent => dirent.isDirectory());
     const files = dirents.filter(dirent => dirent.isFile());
 
-    // Process directories first
-    for (const dirent of directories) {
-      if (!isLoadingDirectory) return results;
+    // Process directories in parallel batches
+    for (let i = 0; i < directories.length; i += CONCURRENT_DIRS) {
+      if (!isLoadingDirectory) return { results: [], progress };
+      
+      const batch = directories.slice(i, Math.min(i + CONCURRENT_DIRS, directories.length));
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(dirent =>
+        processDirectory({ dirent, dir, rootDir, ignoreFilter, window, progress })
+      );
 
-      const fullPath = safePathJoin(dir, dirent.name);
-      // Calculate relative path safely
-      const relativePath = safeRelativePath(rootDir, fullPath);
-
-      // Skip PasteMax app directories and invalid paths
-      if (fullPath.includes('.app') || fullPath === app.getAppPath() || 
-          !isValidPath(relativePath) || relativePath.startsWith('..')) {
-        console.log('Skipping directory:', fullPath);
-        continue;
-      }
-
-      // Only process if not ignored
-      if (!ignoreFilter.ignores(relativePath)) {
-        processedDirectories++; // Increment directory counter
-        const subResults = await readFilesRecursively(fullPath, rootDir, ignoreFilter, window);
-        if (!isLoadingDirectory) return results;
-        results = results.concat(subResults);
-      }
-
-      window.webContents.send("file-processing-status", {
-        status: "processing",
-        message: `Scanning directories (${processedDirectories} processed)... (Press ESC to cancel)`,
-      });
+      // Wait for all directories in batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Combine results from this batch
+      const combinedResults = batchResults.reduce((acc, curr) => {
+        acc.results = acc.results.concat(curr.results);
+        return acc;
+      }, { results: [], progress });
+      
+      results = results.concat(combinedResults.results);
+      if (!isLoadingDirectory) return { results: [], progress };
     }
 
     // Process files in chunks
     for (let i = 0; i < files.length; i += CHUNK_SIZE) {
-      if (!isLoadingDirectory) return results;
+      if (!isLoadingDirectory) return { results: [], progress };
 
       const chunk = files.slice(i, i + CHUNK_SIZE);
       
@@ -450,8 +733,8 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
         if (!isLoadingDirectory) return null;
 
         const fullPath = safePathJoin(dir, dirent.name);
-        // Calculate relative path safely
         const relativePath = safeRelativePath(rootDir, fullPath);
+        const fullPathNormalized = normalizePath(fullPath);
 
         // Early validation checks
         if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
@@ -471,42 +754,50 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
           return null;
         }
 
-        // Early binary extension check without reading the file
-        if (isBinaryFile(fullPath)) {
-          console.log('Binary file by extension, skipping content read:', fullPath);
-          // Create and cache binary file metadata without file I/O
-          const fileData = {
-            name: dirent.name,
-            path: normalizePath(fullPath),
-            relativePath: relativePath,
-            tokenCount: 0,
-            size: 0, // We'll get actual size only if needed
-            content: "",
-            isBinary: true,
-            isSkipped: false,
-            fileType: path.extname(fullPath).substring(1).toUpperCase()
-          };
-          fileCache.set(normalizePath(fullPath), fileData);
-          return fileData;
-        }
-
-        // Check cache first
-        const fullPathNormalized = normalizePath(fullPath);
+        // Check cache first - this could be a complete hit from a previous scan
         if (fileCache.has(fullPathNormalized)) {
           console.log('Using cached file data for:', fullPathNormalized);
           return fileCache.get(fullPathNormalized);
         }
 
+        // Early binary check using cached extension info
+        if (isBinaryFile(fullPath)) {
+          console.log('Binary file by extension, skipping content read:', fullPath);
+          const fileData = {
+            name: dirent.name,
+            path: fullPathNormalized,
+            relativePath: relativePath,
+            tokenCount: 0,
+            size: 0,
+            content: "",
+            isBinary: true,
+            isSkipped: false,
+            fileType: path.extname(fullPath).substring(1).toUpperCase()
+          };
+
+          // Try to get the size without full file read
+          try {
+            const stats = await fs.promises.stat(fullPath);
+            if (!isLoadingDirectory) return null;
+            fileData.size = stats.size;
+          } catch (err) {
+            console.log('Could not get size for binary file:', fullPath);
+          }
+
+          fileCache.set(fullPathNormalized, fileData);
+          return fileData;
+        }
+
         try {
+          // Get stats first to check size before reading content
           const stats = await fs.promises.stat(fullPath);
           if (!isLoadingDirectory) return null;
 
-          let fileData;
-          
+          // Handle large files without reading content
           if (stats.size > MAX_FILE_SIZE) {
-            fileData = {
+            const fileData = {
               name: dirent.name,
-              path: normalizePath(fullPath),
+              path: fullPathNormalized,
               relativePath: relativePath,
               tokenCount: 0,
               size: stats.size,
@@ -519,28 +810,13 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
             return fileData;
           }
 
-          if (isBinaryFile(fullPath)) {
-            fileData = {
-              name: dirent.name,
-              path: normalizePath(fullPath),
-              relativePath: relativePath,
-              tokenCount: 0,
-              size: stats.size,
-              content: "",
-              isBinary: true,
-              isSkipped: false,
-              fileType: path.extname(fullPath).substring(1).toUpperCase()
-            };
-            fileCache.set(fullPathNormalized, fileData);
-            return fileData;
-          }
-
+          // File is not binary and not too large, read its content
           const fileContent = await fs.promises.readFile(fullPath, "utf8");
           if (!isLoadingDirectory) return null;
-          
-          fileData = {
+
+          const fileData = {
             name: dirent.name,
-            path: normalizePath(fullPath),
+            path: fullPathNormalized,
             relativePath: relativePath,
             content: fileContent,
             tokenCount: countTokens(fileContent),
@@ -574,26 +850,26 @@ async function readFilesRecursively(dir, rootDir, ignoreFilter, window) {
       
       const validResults = chunkResults.filter(result => result !== null);
       results = results.concat(validResults);
-      processedFiles += validResults.length;
+      progress.files += validResults.length;
       
       window.webContents.send("file-processing-status", {
         status: "processing",
-        message: `Processing files (${processedDirectories} dirs, ${processedFiles} files)... (Press ESC to cancel)`,
+        message: `Processing files (${progress.directories} dirs, ${progress.files} files)... (Press ESC to cancel)`,
       });
 
-      if (processedFiles % 100 === 0) {
-        console.log(`Progress update - Directories: ${processedDirectories}, Files: ${processedFiles}`);
+      if (progress.files % 100 === 0) {
+        console.log(`Progress update - Directories: ${progress.directories}, Files: ${progress.files}`);
       }
     }
   } catch (err) {
     console.error(`Error reading directory ${dir}:`, err);
     if (err.code === 'EPERM' || err.code === 'EACCES') {
       console.log(`Skipping inaccessible directory: ${dir}`);
-      return results;
+      return { results: [], progress };
     }
   }
 
-  return results;
+  return { results, progress };
 }
 
 // Modify the request-file-list handler to use async/await
@@ -625,8 +901,17 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
       message: "Scanning directory structure... (Press ESC to cancel)",
     });
 
+    // Initialize progress tracking
+    currentProgress = { directories: 0, files: 0 };
+
     // Process files with async/await
-    const files = await readFilesRecursively(folderPath, folderPath, null, BrowserWindow.fromWebContents(event.sender));
+    const { results: files } = await readFilesRecursively(
+      folderPath,
+      folderPath,
+      null,
+      BrowserWindow.fromWebContents(event.sender),
+      currentProgress
+    );
     
     // If loading was cancelled, return early
     if (!isLoadingDirectory) {
@@ -647,20 +932,22 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
     });
 
     // Process the files to ensure they're serializable
-    const serializedFiles = files.map(file => ({
-      path: file.path, // Keep the full path
-      relativePath: file.relativePath, // Use the relative path for display
-      name: file.name,
-      size: file.size,
-      isDirectory: file.isDirectory,
-      extension: path.extname(file.name).toLowerCase(),
-      excluded: shouldExcludeByDefault(file.path, folderPath),
-      content: file.content,
-      tokenCount: file.tokenCount,
-      isBinary: file.isBinary,
-      isSkipped: file.isSkipped,
-      error: file.error,
-    }));
+    const serializedFiles = files.map(file => { // Use a block body for clarity
+      return { // Return an object literal
+        path: file.path, // Keep the full path
+        relativePath: file.relativePath, // Use the relative path for display
+        name: file.name,
+        size: file.size,
+        isDirectory: file.isDirectory,
+        extension: path.extname(file.name).toLowerCase(),
+        excluded: shouldExcludeByDefault(file.path, folderPath),
+        content: file.content,
+        tokenCount: file.tokenCount,
+        isBinary: file.isBinary,
+        isSkipped: file.isSkipped,
+        error: file.error,
+      }; // Close the returned object
+    }); // Close the map function call
 
     event.sender.send("file-list-data", serializedFiles);
   } catch (err) {
@@ -684,11 +971,6 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
       loadingTimeoutId = null;
     }
   }
-});
-
-// Add handler for cancel-directory-loading event
-ipcMain.on("cancel-directory-loading", (event) => {
-  cancelDirectoryLoading(BrowserWindow.fromWebContents(event.sender));
 });
 
 /**
@@ -748,102 +1030,4 @@ function shouldExcludeByDefault(filePath, rootDir) {
 
   const ig = ignore().add(excludedFiles);
   return ig.ignores(relativePath);
-}
-
-// Add a debug handler for file selection
-ipcMain.on("debug-file-selection", (event, data) => {
-  console.log("DEBUG - File Selection:", data);
-});
-
-// Handler for retrieving ignore patterns
-ipcMain.handle('get-ignore-patterns', async (event, rootDir) => {
-  if (!rootDir) {
-    return { error: 'No directory selected' };
-  }
-
-  try {
-    // Ensure rules are loaded and cached
-    await loadGitignore(rootDir);
-    
-    const cachedData = ignoreCache.get(ensureAbsolutePath(rootDir));
-    if (cachedData?.patterns) {
-      console.log(`Returning ignore patterns for ${rootDir}`);
-      return { patterns: cachedData.patterns };
-    } 
-
-    return { error: 'Could not retrieve ignore patterns' };
-  } catch (error) {
-    console.error('Error retrieving ignore patterns:', error);
-    return { error: `Failed to get ignore patterns: ${error.message}` };
-  }
-});
-
-/**
- * Handles the cancellation of directory loading operations.
- * Ensures clean cancellation by:
- * - Clearing all timeouts
- * - Resetting loading flags and counters
- * - Notifying the UI immediately with context
- * 
- * @param {BrowserWindow} window - The Electron window instance to send updates to
- * @param {string} reason - The reason for cancellation ("user" or "timeout")
- */
-/**
- * Sets up a safety timeout for directory loading operations.
- * Prevents infinite loading by automatically cancelling after MAX_DIRECTORY_LOAD_TIME.
- * 
- * @param {BrowserWindow} window - The Electron window instance
- * @param {string} folderPath - The path being processed (for logging)
- */
-function setupDirectoryLoadingTimeout(window, folderPath) {
-  // Clear any existing timeout
-  if (loadingTimeoutId) {
-    clearTimeout(loadingTimeoutId);
-  }
-  
-  // Set a new timeout
-  loadingTimeoutId = setTimeout(() => {
-    console.log(`Directory loading timed out after ${MAX_DIRECTORY_LOAD_TIME / 1000} seconds: ${folderPath}`);
-    console.log(`Stats at timeout: Processed ${processedDirectories} directories and ${processedFiles} files`);
-    // Call cancelDirectoryLoading with timeout reason
-    cancelDirectoryLoading(window, "timeout");
-  }, MAX_DIRECTORY_LOAD_TIME);
-
-  // Reset counters when starting new directory load
-  processedDirectories = 0;
-  processedFiles = 0;
-}
-
-function cancelDirectoryLoading(window, reason = "user") {
-  if (!isLoadingDirectory) return;
-
-  console.log(`Cancelling directory loading process (Reason: ${reason})`);
-  console.log(`Stats at cancellation: Processed ${processedDirectories} directories and ${processedFiles} files`);
-
-  // Ensure flag is reset here as well
-  isLoadingDirectory = false;
-
-  if (loadingTimeoutId) {
-    clearTimeout(loadingTimeoutId);
-    loadingTimeoutId = null;
-  }
-
-  // Reset counters
-  processedDirectories = 0;
-  processedFiles = 0;
-
-  // Send cancellation message immediately with appropriate context
-  // Add checks for window validity
-  if (window && window.webContents && !window.webContents.isDestroyed()) {
-    const message = reason === "timeout" 
-      ? "Directory loading timed out after 5 minutes. Try clearing data and retrying."
-      : "Directory loading cancelled";
-
-    window.webContents.send("file-processing-status", {
-      status: "cancelled",
-      message: message,
-    });
-  } else {
-    console.log("Window not available to send cancellation status.");
-  }
 }

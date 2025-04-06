@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
-import { FileData } from "./types/FileTypes";
+import { FileData, IgnoreMode } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
 import IgnorePatternsViewer from "./components/IgnorePatternsViewer";
 import ThemeToggle from "./components/ThemeToggle";
@@ -50,6 +50,7 @@ const STORAGE_KEYS = {
   SORT_ORDER: "pastemax-sort-order",
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
+  IGNORE_MODE: "pastemax-ignore-mode",
 };
 
 /**
@@ -76,6 +77,7 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
+  const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE);
 
   // Normalize selectedFolder when loading from localStorage
   const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
@@ -87,6 +89,10 @@ const App = (): JSX.Element => {
   const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
   
   // Initialize ignore patterns functionality
+  const [ignoreMode, setIgnoreMode] = useState(() =>
+    (savedIgnoreMode === 'global' ? 'global' : 'automatic') as IgnoreMode
+  );
+
   const {
     isIgnoreViewerOpen,
     ignorePatterns,
@@ -124,6 +130,7 @@ const App = (): JSX.Element => {
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
+    console.time('clearSavedState');
     // Clear all localStorage items
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
@@ -153,6 +160,7 @@ const App = (): JSX.Element => {
 
     // Reload the application window
     window.location.reload();
+    console.timeEnd('clearSavedState');
   }, [isElectron]); // Added isElectron dependency
 
   // Load expanded nodes state from localStorage
@@ -195,6 +203,11 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
+
+  // Persist ignore mode when it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
+  }, [ignoreMode]);
 
   // Add a function to cancel directory loading
   const cancelDirectoryLoading = useCallback(() => {
@@ -563,21 +576,26 @@ const App = (): JSX.Element => {
 
   // Handle select all files
   const selectAllFiles = () => {
-    const selectablePaths = displayedFiles
-      .filter((file: FileData) => !file.isBinary && !file.isSkipped)
-      .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
+    console.time('selectAllFiles');
+    try {
+      const selectablePaths = displayedFiles
+        .filter((file: FileData) => !file.isBinary && !file.isSkipped)
+        .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
-    setSelectedFiles((prev: string[]) => {
-      const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
-      const newSelection = [...normalizedPrev];
-      selectablePaths.forEach((pathToAdd: string) => {
-        // Use arePathsEqual for checking existence
-        if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
-          newSelection.push(pathToAdd);
-        }
+      setSelectedFiles((prev: string[]) => {
+        const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
+        const newSelection = [...normalizedPrev];
+        selectablePaths.forEach((pathToAdd: string) => {
+          // Use arePathsEqual for checking existence
+          if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
+            newSelection.push(pathToAdd);
+          }
+        });
+        return newSelection;
       });
-      return newSelection;
-    });
+    } finally {
+      console.timeEnd('selectAllFiles');
+    }
   };
 
   // Handle deselect all files
@@ -649,7 +667,6 @@ const App = (): JSX.Element => {
               </button>
               <ViewIgnoresButton
                 onClick={handleViewIgnorePatterns}
-                disabled={!selectedFolder || !isElectron}
               />
             </div>
           </div>
@@ -688,40 +705,40 @@ const App = (): JSX.Element => {
               toggleExpanded={toggleExpanded}
             />
             <div className="content-area">
-              <div className="content-header">
+                <div className="content-header">
                 <div className="content-title">Selected Files</div>
                 <div className="content-actions">
-                  <div className="sort-dropdown">
-                    <button
-                      className="sort-dropdown-button"
-                      onClick={toggleSortDropdown}
-                    >
-                      Sort:{" "}
-                      {sortOptions.find((opt) => opt.value === sortOrder)
-                        ?.label || sortOrder}
-                    </button>
-                    {sortDropdownOpen && (
-                      <div className="sort-options">
-                        {sortOptions.map((option) => (
-                          <div
-                            key={option.value}
-                            className={`sort-option ${
-                              sortOrder === option.value ? "active" : ""
-                            }`}
-                            onClick={() => handleSortChange(option.value)}
-                          >
-                            {option.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                   <div className="file-stats">
-                    {selectedFiles.length} files | ~
-                    {calculateTotalTokens().toLocaleString()} tokens
+                  {selectedFiles.length} files | ~
+                  {calculateTotalTokens().toLocaleString()} tokens
+                  </div>
+                  <div className="sort-dropdown">
+                  <button
+                    className="sort-dropdown-button"
+                    onClick={toggleSortDropdown}
+                  >
+                    Sort:{" "}
+                    {sortOptions.find((opt) => opt.value === sortOrder)
+                    ?.label || sortOrder}
+                  </button>
+                  {sortDropdownOpen && (
+                    <div className="sort-options">
+                    {sortOptions.map((option) => (
+                      <div
+                      key={option.value}
+                      className={`sort-option ${
+                        sortOrder === option.value ? "active" : ""
+                      }`}
+                      onClick={() => handleSortChange(option.value)}
+                      >
+                      {option.label}
+                      </div>
+                    ))}
+                    </div>
+                  )}
                   </div>
                 </div>
-              </div>
+                </div>
 
               <FileList
                 files={displayedFiles}
@@ -741,8 +758,8 @@ const App = (): JSX.Element => {
               />
 
               <div className="copy-button-container">
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", maxWidth: "400px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <div className="copy-button-wrapper">
+                  <label className="file-tree-option">
                     <input
                       type="checkbox"
                       checked={includeFileTree}
@@ -758,9 +775,9 @@ const App = (): JSX.Element => {
                    */}
                   <CopyButton
                     text={getSelectedFilesContent()}
-                    className="primary full-width"
+                    className="primary full-width copy-button-main"
                   >
-                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                    <span className="copy-button-text">COPY ALL SELECTED ({selectedFiles.length} files)</span>
                   </CopyButton>
                 </div>
               </div>
@@ -774,6 +791,8 @@ const App = (): JSX.Element => {
           onClose={closeIgnoreViewer}
           patterns={ignorePatterns}
           error={ignorePatternsError}
+          selectedFolder={selectedFolder}
+          isElectron={isElectron}
         />
       </div>
     } />

@@ -1,0 +1,13 @@
+ok now i just want you to modify the UI of the @/src/components/IgnorePatternsViewer.tsx i dont like it, its bad. (refer to image)
+
+first of all no need to get values for default paterns, second when choosing automatic, shouldn't show the global values, when choosing the global mode, should show all the repoignores (automatic ignores).
+
+Make UI clean and nice, make the search bar search pattern actually look good and distinguishable. Make the insert for custom additional ignore actually good and distinguishable (note this only show if global mode is on).
+
+For the toggle between automatic/global make it looks like an on and off toggle button modern UI, show the texts soo user know which they are using.
+
+Also there might seem to be a logical error in the back end. What ever settings user has set it should be saved and retained upon next load, current session and next reload @/src/App.tsx @/main.js .
+
+Also change the text in @/src\components\ViewIgnoresButton.tsx to 'Ignore Filters' Make it soo that user can still click this button even if no files are loaded yet.
+
+Also since it now allow for the set of the ignore mode and settings when files are not loaded add a text onto the relevant part that are emtpy to something 'that says no ignores yet, as no folder is loaded' something like that.
