@@ -90,6 +90,9 @@ export const IgnorePatternsViewer = ({
   error
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [ignoreMode, setIgnoreMode] = useState('automatic' as 'automatic' | 'global');
+  const [customIgnoreInput, setCustomIgnoreInput] = useState('');
+  const [customIgnores, setCustomIgnores] = useState([] as string[]);
 
   // Log the received patterns prop for debugging
   useEffect(() => {
@@ -120,6 +123,21 @@ export const IgnorePatternsViewer = ({
             <div className="ignore-patterns-error">{error}</div>
           ) : patterns ? (
             <React.Fragment>
+              <div className="ignore-patterns-mode-toggle">
+                <button
+                  className={`mode-toggle-button ${ignoreMode === 'automatic' ? 'active' : ''}`}
+                  onClick={() => setIgnoreMode('automatic')}
+                >
+                  Automatic Gitignore
+                </button>
+                <button
+                  className={`mode-toggle-button ${ignoreMode === 'global' ? 'active' : ''}`}
+                  onClick={() => setIgnoreMode('global')}
+                >
+                  Global Ignore
+                </button>
+              </div>
+
               <div className="ignore-patterns-search">
                 <input
                   type="text"
@@ -130,6 +148,52 @@ export const IgnorePatternsViewer = ({
                   autoFocus
                 />
               </div>
+
+              {ignoreMode === 'global' && (
+                <div className="custom-global-ignores">
+                  <div className="custom-ignore-input">
+                    <input
+                      type="text"
+                      placeholder="Enter additional ignore pattern"
+                      value={customIgnoreInput}
+                      onChange={(e) => setCustomIgnoreInput(e.target.value)}
+                      className="search-input"
+                    />
+                    <button
+                      className="add-pattern-button"
+                      onClick={() => {
+                        const trimmed = customIgnoreInput.trim();
+                        if (trimmed) {
+                          setCustomIgnores([...customIgnores, trimmed]);
+                          setCustomIgnoreInput('');
+                        }
+                      }}
+                    >
+                      Add Pattern
+                    </button>
+                  </div>
+                  {customIgnores.length > 0 && (
+                    <div className="custom-ignore-list">
+                      <h4>Custom Global Ignores</h4>
+                      <ul>
+                        {customIgnores.map((pattern: string, index: number) => (
+                          <li key={index}>
+                            {pattern}
+                            <button
+                              className="remove-pattern-button"
+                              onClick={() => {
+                                setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
+                              }}
+                            >
+                              ×
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="ignore-patterns-sections">
                 <PatternSection
                   title="Default Patterns"
