@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface IgnorePatternsState {
   default: string[];
@@ -55,7 +55,34 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    * Custom ignore patterns that will be included when mode is 'global'
    * These patterns are passed to the IPC handler when fetching ignore patterns
    */
-  const [customIgnores, setCustomIgnores] = useState([] as string[]);
+  const [customIgnores, _setCustomIgnores] = useState(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+    try {
+      const saved = localStorage.getItem('pastemax-custom-ignores');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error("Failed to parse custom ignores from localStorage:", error);
+      return [];
+    }
+  });
+
+  // Effect to save customIgnores to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('pastemax-custom-ignores', JSON.stringify(customIgnores));
+      } catch (error) {
+        console.error("Failed to save custom ignores to localStorage:", error);
+      }
+    }
+  }, [customIgnores]);
+
+  // Wrapper function to update state and potentially trigger side effects if needed later
+  const setCustomIgnores = (newIgnores: string[] | ((prevIgnores: string[]) => string[])) => {
+    _setCustomIgnores(newIgnores);
+  };
 
   /**
    * Fetches and displays ignore patterns for the selected folder

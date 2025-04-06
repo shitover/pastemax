@@ -656,7 +656,6 @@ const App = (): JSX.Element => {
               </button>
               <ViewIgnoresButton
                 onClick={handleViewIgnorePatterns}
-                disabled={!selectedFolder || !isElectron}
               />
             </div>
           </div>
