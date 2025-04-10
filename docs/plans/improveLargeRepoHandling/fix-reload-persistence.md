@@ -1,4 +1,5 @@
 # FIXED! [X]
+
 # Plan: Fix State Persistence Issue on Reload (Ctrl+R)
 
 ## Problem
@@ -7,7 +8,7 @@ When the user reloads the application (Ctrl+R), the selected files and folders a
 
 ## Root Cause
 
-The `TypeError` occurs because the `loadGitignore` function in `main.js` caches an object `{ ig: ignoreInstance, patterns: categorizedPatterns }` but returns the *entire object* when retrieving from the cache (line 303). The `readFilesRecursively` function expects `loadGitignore` to return only the `ignoreInstance` (which has the `.ignores` method). When it receives the object instead, the call `ignoreFilter.ignores(...)` fails. This crash prevents `readFilesRecursively` from completing and sending the file list to the renderer.
+The `TypeError` occurs because the `loadGitignore` function in `main.js` caches an object `{ ig: ignoreInstance, patterns: categorizedPatterns }` but returns the _entire object_ when retrieving from the cache (line 303). The `readFilesRecursively` function expects `loadGitignore` to return only the `ignoreInstance` (which has the `.ignores` method). When it receives the object instead, the call `ignoreFilter.ignores(...)` fails. This crash prevents `readFilesRecursively` from completing and sending the file list to the renderer.
 
 ## Solution
 
@@ -17,8 +18,8 @@ Modify the `loadGitignore` function in `main.js` to consistently return only the
 2.  **Function:** `loadGitignore`
 3.  **Line:** 303
 4.  **Change:** Modify the return statement for cached data.
-    *   **From:** `return ignoreCache.get(rootDir);`
-    *   **To:** `return ignoreCache.get(rootDir).ig;`
+    - **From:** `return ignoreCache.get(rootDir);`
+    - **To:** `return ignoreCache.get(rootDir).ig;`
 
 ## Verification
 
@@ -61,3 +62,4 @@ sequenceDiagram
     Renderer->>Renderer: Validate saved selectedFiles against correct allFiles
     Renderer->>Renderer: Update selectedFiles state (Persists correctly)
     Renderer->>User: Display UI (Selection is correct)
+```

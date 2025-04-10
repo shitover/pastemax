@@ -33,8 +33,8 @@ const formatPatterns = (patterns: string[]): string[] => {
   return patterns
     .slice()
     .sort((a, b) => a.localeCompare(b))
-    .map(pattern => pattern.trim())
-    .filter(pattern => pattern.length > 0);
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern.length > 0);
 };
 
 /**
@@ -51,18 +51,16 @@ const PatternSection = ({
   title,
   subtitle,
   patterns,
-  searchTerm
+  searchTerm,
 }: PatternSectionProps): JSX.Element | null => {
   const filteredPatterns = useMemo(() => {
     // Ensure patterns is always an array, even if undefined initially
     const normalized = formatPatterns(patterns || []);
- 
+
     if (!searchTerm) return normalized;
-    
+
     const searchLower = searchTerm.toLowerCase();
-    return normalized.filter(pattern => 
-      pattern.toLowerCase().includes(searchLower)
-    );
+    return normalized.filter((pattern) => pattern.toLowerCase().includes(searchLower));
   }, [patterns, searchTerm]);
 
   // Don't render section if no patterns match search
@@ -78,11 +76,11 @@ const PatternSection = ({
       </div>
       {subtitle && <div className="section-subtitle">{subtitle}</div>}
       {filteredPatterns.length > 0 ? (
-        <pre className="pattern-list">
-          {filteredPatterns.join('\n')}
-        </pre>
+        <pre className="pattern-list">{filteredPatterns.join('\n')}</pre>
       ) : (
-        <p className="no-patterns">No patterns found, Please reload (Ctrl + r / ⌘ + r) to use this mode</p>
+        <p className="no-patterns">
+          No patterns found, Please reload (Ctrl + r / ⌘ + r) to use this mode
+        </p>
       )}
     </section>
   );
@@ -94,7 +92,7 @@ export const IgnorePatternsViewer = ({
   patterns,
   error,
   selectedFolder,
-  isElectron
+  isElectron,
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
   const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
@@ -106,10 +104,13 @@ export const IgnorePatternsViewer = ({
   // Log the received patterns prop for debugging
   useEffect(() => {
     if (isOpen) {
-      console.log("DEBUG: IgnorePatternsViewer received patterns:", JSON.stringify(patterns, null, 2));
+      console.log(
+        'DEBUG: IgnorePatternsViewer received patterns:',
+        JSON.stringify(patterns, null, 2)
+      );
       // Only log gitignoreMap entries when in automatic mode
       if (ignoreMode === 'automatic' && patterns?.gitignoreMap) {
-        console.log("DEBUG: gitignoreMap entries:", Object.keys(patterns.gitignoreMap).length);
+        console.log('DEBUG: gitignoreMap entries:', Object.keys(patterns.gitignoreMap).length);
       }
     }
   }, [isOpen, patterns, ignoreMode]);
@@ -120,7 +121,6 @@ export const IgnorePatternsViewer = ({
       setSearchTerm('');
     }
   }, [isOpen]);
-  
 
   const handleClose = onClose;
 
@@ -130,12 +130,14 @@ export const IgnorePatternsViewer = ({
     <div className="ignore-patterns-container">
       {/* Overlay div that closes the modal when clicked */}
       <div className="ignore-patterns-modal-overlay" onClick={handleClose}></div>
-      
+
       {/* Modal dialog - stopPropagation prevents clicks inside from closing */}
       <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
-          <button onClick={handleClose} className="close-button" aria-label="Close">×</button>
+          <button onClick={handleClose} className="close-button" aria-label="Close">
+            ×
+          </button>
         </div>
         <div className="ignore-patterns-content">
           {/* Mode Toggle Switch - Always visible */}
@@ -145,17 +147,23 @@ export const IgnorePatternsViewer = ({
               onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
             />
           </div>
-          
+
           {/* Mode explanation */}
           <div className="ignore-mode-explanation">
-                <div className={`mode-description ${ignoreMode === 'automatic' ? 'active' : ''}`}>
-                  <h4>Automatic Mode</h4>
-                  <p>Uses project's existing <code>.gitignore</code> files to determine what to ignore. More accurate for large repositories and monorepos, but may be slower to process.</p>
-                </div>
-                <div className={`mode-description ${ignoreMode === 'global' ? 'active' : ''}`}>
-                  <h4>Global Mode</h4>
-                  <p>Uses a static global ignore pattern system. Allows for additional Custom Ignore Patterns. Faster processing with less precision.</p>
-                </div>
+            <div className={`mode-description ${ignoreMode === 'automatic' ? 'active' : ''}`}>
+              <h4>Automatic Mode</h4>
+              <p>
+                Uses project's existing <code>.gitignore</code> files to determine what to ignore.
+                More accurate for large repositories and monorepos, but may be slower to process.
+              </p>
+            </div>
+            <div className={`mode-description ${ignoreMode === 'global' ? 'active' : ''}`}>
+              <h4>Global Mode</h4>
+              <p>
+                Uses a static global ignore pattern system. Allows for additional Custom Ignore
+                Patterns. Faster processing with less precision.
+              </p>
+            </div>
           </div>
           {/* Conditional content based on folder selection */}
           {!selectedFolder ? (
@@ -176,7 +184,7 @@ export const IgnorePatternsViewer = ({
                   style={{
                     border: '2px solid #0e6098', // Changed to black color
                     borderRadius: '8px',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
                   }}
                   autoFocus
                 />
@@ -196,10 +204,10 @@ export const IgnorePatternsViewer = ({
                 {/* Custom ignores section - Only visible in global mode */}
                 {ignoreMode === 'global' && selectedFolder && (
                   <div className="custom-global-ignores">
-                    <h4 
-                      tabIndex={0} 
+                    <h4
+                      tabIndex={0}
                       role="button"
-                      aria-label="Custom Global Ignores section" 
+                      aria-label="Custom Global Ignores section"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
@@ -209,7 +217,7 @@ export const IgnorePatternsViewer = ({
                     >
                       Custom Global Ignores
                     </h4>
-                    
+
                     <div className="custom-ignore-input">
                       <input
                         type="text"
@@ -221,7 +229,7 @@ export const IgnorePatternsViewer = ({
                           border: '2px solid var(--color-primary)',
                           borderRadius: '8px',
                           padding: '10px 12px',
-                          transition: 'all 0.3s ease'
+                          transition: 'all 0.3s ease',
                         }}
                       />
                       <button
@@ -237,7 +245,7 @@ export const IgnorePatternsViewer = ({
                         Add Pattern
                       </button>
                     </div>
-                    
+
                     {customIgnores.length > 0 && (
                       <div className="custom-ignore-list">
                         <ul>
@@ -247,7 +255,9 @@ export const IgnorePatternsViewer = ({
                               <button
                                 className="remove-pattern-button"
                                 onClick={() => {
-                                  setCustomIgnores(customIgnores.filter((_: string, i: number) => i !== index));
+                                  setCustomIgnores(
+                                    customIgnores.filter((_: string, i: number) => i !== index)
+                                  );
                                 }}
                               >
                                 ×
@@ -259,10 +269,10 @@ export const IgnorePatternsViewer = ({
                     )}
                   </div>
                 )}
-                
+
                 {/* Render gitignore patterns from the Map */}
-                {ignoreMode === 'automatic' && (
-                  patterns.gitignoreMap ? (
+                {ignoreMode === 'automatic' &&
+                  (patterns.gitignoreMap ? (
                     Object.entries(patterns.gitignoreMap)
                       .sort(([a], [b]) => {
                         if (a === '.') return -1;
@@ -285,8 +295,7 @@ export const IgnorePatternsViewer = ({
                       patterns={[]}
                       searchTerm={searchTerm}
                     />
-                  )
-                )}
+                  ))}
               </div>
             </React.Fragment>
           ) : (

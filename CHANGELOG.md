@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 ## 1.2.3
 
 ### Added
+
 - View Applied Ignore Patterns feature:
+
   - Added modal interface to view all active ignore patterns
   - Organized patterns by source (default, excluded-files.js, .gitignore)
   - Live search functionality for quick pattern finding
@@ -15,6 +17,7 @@ All notable changes to this project will be documented in this file.
   - Theme-aware styling with improved readability
 
 - Enhanced large repository handling:
+
   - Extended directory loading timeout to 5 minutes for very large repositories
   - Added detailed progress tracking for directories and files processed
   - Improved logging and status messages with processing statistics
@@ -24,22 +27,26 @@ All notable changes to this project will be documented in this file.
     - Better support for complex repository structures with nested git repositories
 
 - Enhanced cache clearing functionality:
+
   - Added main process cache clearing to "Clear Data" operation
   - Complete clearing of ignoreCache and fileCache in main process
   - Synchronized clearing of renderer and main process caches
   - Improved state reset during cache clearing operations
 
 - Implemented intelligent caching system:
+
   - New file metadata cache for faster reprocessing
   - Unified .gitignore pattern cache with deep repository support
   - Session-persistent caching for improved performance
 
 - Enhanced file processing architecture:
+
   - Smart validation checks before file I/O
   - Early binary file detection without content reads
   - Efficient path validation system
 
 - Enhanced binary file handling:
+
   - Added binary flag propagation through directory structure
   - New visual indicators for folders containing binary files
   - Improved badge system with theme-aware styling
@@ -51,7 +58,9 @@ All notable changes to this project will be documented in this file.
   - Added italicized indicators for folders with binary content
 
 ### Improved
+
 - View Applied Ignore Patterns UI Improvements:
+
   - Added sorting for better pattern organization
   - Enhanced section styling with clear visual hierarchy
   - Added hover effects for pattern lists
@@ -60,7 +69,7 @@ All notable changes to this project will be documented in this file.
   - Fixed search state management for better UX
 
 - Optimized large repository handling:
-  - Reordered file processing checks for better performance 
+  - Reordered file processing checks for better performance
   - Reduced unnecessary file I/O operations
   - Improved handling of deep directory structures
 - Enhanced directory tree metadata:
@@ -75,6 +84,7 @@ All notable changes to this project will be documented in this file.
 ## v1.2.1 (2024-06-19)
 
 ### Added
+
 - Added "Clean" npm script with rimraf for cross-platform build directory cleanup
 - Added "Clear Data" button to explicitly reset application state
 - Added enhanced state management during page reload
@@ -91,6 +101,7 @@ All notable changes to this project will be documented in this file.
   - Cross-browser compatibility with Firefox and WebKit support
 
 ### Fixed
+
 - Fixed file path normalization in copied content to ensure cross-platform compatibility
 - Fixed state preservation issue when refreshing the application
 - Fixed selected files not being properly maintained after reload
@@ -98,6 +109,7 @@ All notable changes to this project will be documented in this file.
 - Fixed language detection for many uncommon file types
 
 ### Improved
+
 - Improved path handling in contentFormatUtils.ts with explicit normalization
 - Enhanced localStorage synchronization before page reload
 - Optimized file selection preservation logic
@@ -120,14 +132,17 @@ All notable changes to this project will be documented in this file.
 ## v1.2.0
 
 ### Added
+
 - Added enhanced logging for file selection and deselection actions.
 - Expanded the ignore list to include additional binary file types.
 
 ### Fixed
+
 - Fixed app reloading issue caused by testing configuration being merged into main.
 - Fixed issue where Windows paths were duplicated, making folders unrecognizable.
 
 ### Improved
+
 - Improved folder selection to automatically select/deselect all files within the folder.
 - Optimized repository and project loading for better performance.
 - Improved path normalization for better cross-platform compatibility.
@@ -135,6 +150,7 @@ All notable changes to this project will be documented in this file.
 ## 2024-03-21
 
 ### Added
+
 - Enhanced cross-platform path handling system
   - New utility functions for consistent path operations:
     - `normalizePath()`: Ensures consistent path separators across platforms
@@ -148,6 +164,7 @@ All notable changes to this project will be documented in this file.
   - Platform-specific file system restrictions handling
 
 ### Fixed
+
 - "Path Should Be a Relative String" error in file processing
   - Now properly handles path conversions between absolute and relative formats
   - Maintains both full path and relative path properties for each file
@@ -160,6 +177,7 @@ All notable changes to this project will be documented in this file.
   - Fixed path comparison issues in tree view
 
 ### Improved
+
 - Cross-platform compatibility
   - Added support for Windows network paths (UNC)
   - Better handling of Windows drive letter case-sensitivity
@@ -176,6 +194,7 @@ All notable changes to this project will be documented in this file.
   - More informative error messages for file system issues
 
 ### Security
+
 - Added validation for file paths to prevent directory traversal
 - Improved handling of inaccessible directories and files
 - Better error handling for file system operations
@@ -185,6 +204,7 @@ All notable changes to this project will be documented in this file.
   - macOS: System integrity protection awareness
 
 ### Performance
+
 - Optimized path normalization operations
   - Reduced redundant path conversions
   - Improved caching of normalized paths
@@ -199,6 +219,7 @@ All notable changes to this project will be documented in this file.
 ## 2024-03-01
 
 ### Added
+
 - Initial release
 - Basic file system operations
 - File selection and copying

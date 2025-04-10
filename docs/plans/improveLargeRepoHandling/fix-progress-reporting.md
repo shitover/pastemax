@@ -1,4 +1,5 @@
 # DONE [X]
+
 # Plan: Fix Inaccurate Progress Reporting During Directory Loading
 
 ## Problem
@@ -14,16 +15,18 @@ The counters are currently global variables in `main.js`. While there is logic t
 Refactor the counter logic to avoid global state and ensure counts are scoped to individual directory loading operations.
 
 1.  **Scope Counters:**
-    *   Modify the `readFilesRecursively` function signature in `main.js` to accept a counter object (e.g., `{ dirs: number, files: number }`).
-    *   Pass this counter object down through recursive calls, incrementing its properties directly instead of modifying global variables.
-    *   Return the updated counter object from recursive calls if necessary (though direct modification might suffice).
+
+    - Modify the `readFilesRecursively` function signature in `main.js` to accept a counter object (e.g., `{ dirs: number, files: number }`).
+    - Pass this counter object down through recursive calls, incrementing its properties directly instead of modifying global variables.
+    - Return the updated counter object from recursive calls if necessary (though direct modification might suffice).
 
 2.  **Initialize Counters:**
-    *   In the `ipcMain.on("request-file-list", ...)` handler in `main.js`, create a *new* counter object initialized to `{ dirs: 0, files: 0 }` *every time* the handler is invoked.
-    *   Pass this newly created object to the initial call of `readFilesRecursively`.
+
+    - In the `ipcMain.on("request-file-list", ...)` handler in `main.js`, create a _new_ counter object initialized to `{ dirs: 0, files: 0 }` _every time_ the handler is invoked.
+    - Pass this newly created object to the initial call of `readFilesRecursively`.
 
 3.  **Update IPC Messages:**
-    *   Modify the `window.webContents.send("file-processing-status", ...)` calls within `readFilesRecursively` to use the values from the *scoped* counter object passed into the function.
+    - Modify the `window.webContents.send("file-processing-status", ...)` calls within `readFilesRecursively` to use the values from the _scoped_ counter object passed into the function.
 
 ## Diagram
 
@@ -53,6 +56,6 @@ sequenceDiagram
 
 ## Benefits
 
-*   **Accuracy:** Ensures progress counts are specific to the current operation.
-*   **Robustness:** Eliminates potential race conditions or state pollution from global variables.
-*   **Clarity:** Makes the data flow for progress reporting clearer within the code.
+- **Accuracy:** Ensures progress counts are specific to the current operation.
+- **Robustness:** Eliminates potential race conditions or state pollution from global variables.
+- **Clarity:** Makes the data flow for progress reporting clearer within the code.

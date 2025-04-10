@@ -40,9 +40,8 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    * - 'global': Uses only default excludes and custom ignores
    */
   const [ignoreMode, _setIgnoreMode] = useState(() => {
-    const savedMode = typeof window !== 'undefined'
-      ? localStorage.getItem('pastemax-ignore-mode')
-      : null;
+    const savedMode =
+      typeof window !== 'undefined' ? localStorage.getItem('pastemax-ignore-mode') : null;
     return (savedMode === 'global' ? 'global' : 'automatic') as IgnoreMode;
   });
 
@@ -54,7 +53,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
   const setIgnoreMode = (mode: IgnoreMode) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('pastemax-ignore-mode', mode);
-    if (isElectron) window.electron.ipcRenderer.send("clear-ignore-cache");
+      if (isElectron) window.electron.ipcRenderer.send('clear-ignore-cache');
       localStorage.setItem('pastemax-ignore-settings-modified', 'true');
     }
     _setIgnoreMode(mode);
@@ -74,7 +73,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
       const saved = localStorage.getItem('pastemax-custom-ignores');
       return saved ? JSON.parse(saved) : [];
     } catch (error) {
-      console.error("Failed to parse custom ignores from localStorage:", error);
+      console.error('Failed to parse custom ignores from localStorage:', error);
       return [];
     }
   });
@@ -92,7 +91,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
           _setIgnoreSettingsModified(true);
         }
       } catch (error) {
-        console.error("Failed to save custom ignores to localStorage:", error);
+        console.error('Failed to save custom ignores to localStorage:', error);
       }
     }
   }, [customIgnores]);
@@ -101,7 +100,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
   const setCustomIgnores = (newIgnores: string[] | ((prevIgnores: string[]) => string[])) => {
     _setCustomIgnores(newIgnores);
     if (typeof window !== 'undefined') {
-    if (isElectron) window.electron.ipcRenderer.send("clear-ignore-cache");
+      if (isElectron) window.electron.ipcRenderer.send('clear-ignore-cache');
       localStorage.setItem('pastemax-ignore-settings-modified', 'true');
     }
     _setIgnoreSettingsModified(true);
@@ -113,17 +112,17 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
    */
   const handleViewIgnorePatterns = async () => {
     console.time('handleViewIgnorePatterns');
-    
+
     // Always open the viewer, even if no folder is selected
     setIsIgnoreViewerOpen(true);
-    
+
     // Only attempt to fetch patterns if both conditions are met
     if (!selectedFolder || !isElectron) {
       console.log('Ignore patterns viewer opened with no folder selected or not in Electron');
       console.timeEnd('handleViewIgnorePatterns');
       return;
     }
-    
+
     setIgnorePatterns(null);
     setIgnorePatternsError(null);
 
@@ -134,7 +133,7 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
       const result = await window.electron.ipcRenderer.invoke('get-ignore-patterns', {
         folderPath: selectedFolder,
         mode: ignoreMode,
-        customIgnores: ignoreMode === 'global' ? customIgnores : []
+        customIgnores: ignoreMode === 'global' ? customIgnores : [],
       });
       console.log('Received ignore patterns:', result.patterns ? 'success' : 'error', result);
       if (result.error) {
@@ -143,12 +142,14 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
         console.log('DEBUG: Setting patterns with excludedFiles:', result.patterns?.excludedFiles);
         setIgnorePatterns({
           ...result.patterns,
-          excludedFiles: result.patterns?.excludedFiles || []
+          excludedFiles: result.patterns?.excludedFiles || [],
         });
       }
     } catch (err) {
-      console.error("Error invoking get-ignore-patterns:", err);
-      setIgnorePatternsError(err instanceof Error ? err.message : "Failed to fetch ignore patterns.");
+      console.error('Error invoking get-ignore-patterns:', err);
+      setIgnorePatternsError(
+        err instanceof Error ? err.message : 'Failed to fetch ignore patterns.'
+      );
     } finally {
       console.timeEnd('handleViewIgnorePatterns');
     }
@@ -172,6 +173,6 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     customIgnores,
     setCustomIgnores,
     ignoreSettingsModified,
-    resetIgnoreSettingsModified
+    resetIgnoreSettingsModified,
   };
 }

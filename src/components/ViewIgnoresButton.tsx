@@ -9,7 +9,7 @@ interface ViewIgnoreButtonProps {
  * Button component for viewing ignore patterns
  * Displays a button that triggers the ignore patterns viewer
  * Used in the header section alongside folder selection controls
- * 
+ *
  * @component
  * @example
  * ```tsx
@@ -19,9 +19,9 @@ interface ViewIgnoreButtonProps {
  * />
  * ```
  */
-function ViewIgnoreButton({ 
-  onClick, 
-  disabled = false // Default to false if not provided
+function ViewIgnoreButton({
+  onClick,
+  disabled = false, // Default to false if not provided
 }: ViewIgnoreButtonProps) {
   return (
     <button

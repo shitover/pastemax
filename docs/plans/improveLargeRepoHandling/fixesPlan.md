@@ -1,4 +1,5 @@
 # DONE [X]
+
 # Implementation Plan: Performance & .gitignore Improvements 1.2.2
 
 This plan addresses performance issues and .gitignore handling based on the KnownIssue.md report. The goal is to optimize file scanning through caching, reordering processing checks, and enhancing file tree metadata while keeping all existing features intact.
@@ -8,10 +9,12 @@ This plan addresses performance issues and .gitignore handling based on the Know
 ## Objectives
 
 1. **Performance Improvements**
+
    - **Reduce Load Times:** Optimize chunk processing and introduce caching for file metadata.
    - **Enhance UI Responsiveness:** Prevent UI slowdowns with large repositories.
 
 2. **.gitignore Handling**
+
    - **Unified Ignore Filter:** Merge multiple `.gitignore` files from deep repositories into one unified filter.
    - **Persistent Cache:** Cache the ignore filter for the entire session.
    - **Reorder Checks:** Apply ignore filtering before expensive file I/O operations.
@@ -31,6 +34,7 @@ Refer to this flow diagram for visual detail of change
 ### 1. Unified & Cached .gitignore Handling ✅
 
 - [x] **Task 1.1: Create Global Ignore Cache**
+
   - **File:** `main.js`
   - **Action:** Declare an in‑memory cache (using a `Map`) keyed by the normalized root directory.
   - **Example:**
@@ -41,6 +45,7 @@ Refer to this flow diagram for visual detail of change
   - **Outcome:** Reuse the ignore filter for subsequent loads to reduce disk I/O.
 
 - [x] **Task 1.2: Implement `collectCombinedGitignore(rootDir)`**
+
   - **File:** `main.js`
   - **Action:** Create an async function to traverse `rootDir`, find all `.gitignore` files, parse and merge unique patterns into a `Set`.
   - **Example:**
@@ -55,11 +60,12 @@ Refer to this flow diagram for visual detail of change
             await traverse(fullPath);
           } else if (dirent.isFile() && dirent.name === '.gitignore') {
             try {
-              const content = await fs.promises.readFile(fullPath, "utf8");
-              content.split(/\r?\n/)
-                .map(line => line.trim())
-                .filter(line => line && !line.startsWith('#'))
-                .forEach(pattern => ignorePatterns.add(normalizePath(pattern)));
+              const content = await fs.promises.readFile(fullPath, 'utf8');
+              content
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line && !line.startsWith('#'))
+                .forEach((pattern) => ignorePatterns.add(normalizePath(pattern)));
             } catch (err) {
               console.error(`Error reading ${fullPath}:`, err);
             }
@@ -82,19 +88,30 @@ Refer to this flow diagram for visual detail of change
       if (ignoreCache.has(rootDir)) {
         return ignoreCache.get(rootDir);
       }
-      
+
       const ig = ignore();
       // Add default ignores
-      ig.add([".git", "node_modules", ".DS_Store", "Thumbs.db", "desktop.ini", ".idea", ".vscode", "dist", "build", "out"]);
-      ig.add(excludedFiles.map(pattern => normalizePath(pattern)));
-      
+      ig.add([
+        '.git',
+        'node_modules',
+        '.DS_Store',
+        'Thumbs.db',
+        'desktop.ini',
+        '.idea',
+        '.vscode',
+        'dist',
+        'build',
+        'out',
+      ]);
+      ig.add(excludedFiles.map((pattern) => normalizePath(pattern)));
+
       collectCombinedGitignore(rootDir)
-        .then(patterns => {
+        .then((patterns) => {
           ig.add(Array.from(patterns));
           ignoreCache.set(rootDir, ig);
         })
-        .catch(err => console.error("Error merging .gitignore files:", err));
-      
+        .catch((err) => console.error('Error merging .gitignore files:', err));
+
       return ig;
     }
     ```
@@ -105,6 +122,7 @@ Refer to this flow diagram for visual detail of change
 ### 2. File Metadata Caching ✅
 
 - [x] **Task 2.1: Introduce Global File Cache**
+
   - **File:** `main.js`
   - **Action:** Declare a global cache using a `Map` to store file metadata (size, content, token count) keyed by full file path.
   - **Example:**
@@ -134,6 +152,7 @@ Refer to this flow diagram for visual detail of change
 ### 3. Reordering File Processing Checks ✅
 
 - [x] **Task 3.1: Update Order in `readFilesRecursively`**
+
   - **File:** `main.js`
   - **Action:** After calculating the `relativePath` of a file, immediately check if it should be ignored using the ignore filter. Only process the file further (e.g., size and binary checks) if it is not ignored.
   - **Example:**
@@ -157,22 +176,24 @@ Refer to this flow diagram for visual detail of change
 ### 4. Propagating a `hasBinaries` Flag in the File Tree ✅
 
 - [x] **Task 4.1: Update the Data Model**
+
   - **File:** `FileTypes.ts`
   - **Action:** Extended the `TreeNode` interface to include `hasBinaries` property
   - **Status:** Completed - Interface updated and working
 
 - [x] **Task 4.2: Update Tree Building in `Sidebar.tsx`**
+
   - **File:** `Sidebar.tsx`
   - **Action:** Implemented binary flag propagation through tree structure
   - **Status:** Completed - Binary detection properly propagates up the tree
   - **Implementation:**
     ```ts
     const updateBinaryFlag = (node: TreeNode): boolean => {
-      if (node.type === "file") {
+      if (node.type === 'file') {
         return node.fileData?.isBinary || false;
       }
       if (node.children) {
-        node.hasBinaries = node.children.some(child => updateBinaryFlag(child));
+        node.hasBinaries = node.children.some((child) => updateBinaryFlag(child));
         return node.hasBinaries;
       }
       return false;
@@ -192,10 +213,12 @@ Refer to this flow diagram for visual detail of change
 ### 5. Documentation & Code Comments
 
 - [x] **Task 5.1: Update Inline Comments in `main.js`**
+
   - **Action:** All new components fully documented with JSDoc comments
   - **Status:** Completed - Added clear documentation for caching mechanisms and processing logic
 
 - [x] **Task 5.2: Revise Comments in `Sidebar.tsx` and `FileTypes.ts`**
+
   - **Action:** Added documentation for:
     - `hasBinaries` property in TreeNode interface
     - Binary flag propagation logic in Sidebar.tsx
@@ -211,12 +234,12 @@ Refer to this flow diagram for visual detail of change
 
 ## Final Testing & Rollout
 
-- **Manual Verification:**  
+- **Manual Verification:**
   - Confirm folder selection, file tree generation, file copying, and search functionalities behave as before.
   - Validate performance improvements on large repositories.
-- **Regression Testing:**  
+- **Regression Testing:**
   - Ensure that caching and new ignore filters do not introduce inconsistencies.
-- **Performance Monitoring:**  
+- **Performance Monitoring:**
   - Check load times and UI responsiveness to verify improvements meet the project’s objectives.
 
 ---
@@ -238,13 +261,13 @@ This section outlines further improvements focusing on UI responsiveness for lar
 ## Additional Objectives
 
 1.  **Backend Reliability & Feedback:**
-    *   Improve chunk loading mechanism in `main.js` to be time-based, preventing main thread blockage.
-    *   Enhance IPC progress messages with more granular details (counts, current directory).
+    - Improve chunk loading mechanism in `main.js` to be time-based, preventing main thread blockage.
+    - Enhance IPC progress messages with more granular details (counts, current directory).
 2.  **Frontend UI Performance:**
-    *   Implement UI virtualization for the file tree in `Sidebar.tsx` to handle large datasets efficiently.
-    *   Optimize `TreeItem.tsx` rendering using memoization.
-    *   Review and optimize state update logic for selection/expansion in `App.tsx`.
+    - Implement UI virtualization for the file tree in `Sidebar.tsx` to handle large datasets efficiently.
+    - Optimize `TreeItem.tsx` rendering using memoization.
+    - Review and optimize state update logic for selection/expansion in `App.tsx`.
 3.  **Documentation:**
-    *   Update this plan and `CHANGELOG.md` to reflect these new enhancements.
+    - Update this plan and `CHANGELOG.md` to reflect these new enhancements.
 
 ---
