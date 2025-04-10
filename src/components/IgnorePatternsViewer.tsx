@@ -97,19 +97,23 @@ export const IgnorePatternsViewer = ({
   isElectron
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
+  const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores, ignoreSettingsModified } = useIgnorePatterns(
     selectedFolder,
     isElectron
   );
   const [customIgnoreInput, setCustomIgnoreInput] = useState('');
+  const [shouldReload, setShouldReload] = useState(false);
 
   // Log the received patterns prop for debugging
   useEffect(() => {
     if (isOpen) {
       console.log("DEBUG: IgnorePatternsViewer received patterns:", JSON.stringify(patterns, null, 2));
-      console.log("DEBUG: gitignoreMap entries:", patterns?.gitignoreMap ? Object.keys(patterns.gitignoreMap).length : 0);
+      // Only log gitignoreMap entries when in automatic mode
+      if (ignoreMode === 'automatic' && patterns?.gitignoreMap) {
+        console.log("DEBUG: gitignoreMap entries:", Object.keys(patterns.gitignoreMap).length);
+      }
     }
-  }, [isOpen, patterns]);
+  }, [isOpen, patterns, ignoreMode]);
 
   // Reset search when modal is closed
   useEffect(() => {
@@ -117,19 +121,41 @@ export const IgnorePatternsViewer = ({
       setSearchTerm('');
     }
   }, [isOpen]);
+  
+  // Handle auto-reload when modal is closed and settings were modified
+  useEffect(() => {
+    if (shouldReload) {
+      // Small delay to ensure the modal closing animation completes
+      const reloadTimer = setTimeout(() => {
+        console.log("Auto-reloading application after ignore settings change");
+        window.location.reload();
+      }, 300);
+      
+      return () => clearTimeout(reloadTimer);
+    }
+  }, [shouldReload]);
+
+  // Custom close handler that triggers reload if settings were modified
+  const handleClose = () => {
+    if (ignoreSettingsModified) {
+      console.log("Ignore settings were modified, will reload on close");
+      setShouldReload(true);
+    }
+    onClose();
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="ignore-patterns-container">
       {/* Overlay div that closes the modal when clicked */}
-      <div className="ignore-patterns-modal-overlay" onClick={onClose}></div>
+      <div className="ignore-patterns-modal-overlay" onClick={handleClose}></div>
       
       {/* Modal dialog - stopPropagation prevents clicks inside from closing */}
       <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
-          <button onClick={onClose} className="close-button" aria-label="Close">×</button>
+          <button onClick={handleClose} className="close-button" aria-label="Close">×</button>
         </div>
         <div className="ignore-patterns-content">
           {/* Mode Toggle Switch - Always visible */}

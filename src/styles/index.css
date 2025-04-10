@@ -735,9 +735,9 @@ input[type="checkbox"][disabled] {
 }
 
 .ignore-mode-toggle button.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-primary);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-primary);
 }
 
 /* -------------------- Custom Global Ignores Section -------------------- */
@@ -892,7 +892,7 @@ input[type="checkbox"][disabled] {
 }
 
 .file-card.selected {
-  border: 2px solid var(--accent-blue); /* Use thicker border for selection */
+  border: 2px solid var(--color-primary); /* Use primary color for selection */
   background-color: var(--background-selected);
   padding: 9px; /* Adjust padding to account for thicker border */
 }
@@ -970,8 +970,8 @@ input[type="checkbox"][disabled] {
 
 .file-card-action:hover {
   background-color: var(--hover-color);
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
   transform: translateY(-1px); /* Subtle lift effect */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -995,8 +995,8 @@ input[type="checkbox"][disabled] {
 }
 
 .search-bar.focused { /* Class added via JS */
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
 }
 
 .search-icon {
@@ -1111,7 +1111,7 @@ input[type="text"].search-input:focus {
 .sort-option.active { /* Class added via JS */
   background-color: var(--background-selected);
   font-weight: 600;
-  color: var(--accent-blue); /* Highlight active option */
+  color: var(--color-primary); /* Highlight active option */
 }
 
 /* -------------------- User Instructions (in Content Area) -------------------- */
@@ -1144,8 +1144,8 @@ input[type="text"].search-input:focus {
 }
 
 .user-instructions textarea:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
   outline: none;
   background-color: var(--background-primary); /* Change background on focus */
 }
@@ -1422,7 +1422,7 @@ textarea::-webkit-scrollbar-thumb {
 }
 
 .dark-mode .file-card.selected {
-  border-color: var(--accent-blue); /* Keep accent for selection */
+  border-color: var(--color-primary); /* Keep selection color consistent */
   background-color: var(--background-selected);
 }
 
@@ -1482,9 +1482,9 @@ textarea::-webkit-scrollbar-thumb {
 .dark-mode input[type="text"]:focus,
 .dark-mode input[type="search"]:focus,
 .dark-mode .user-instructions textarea:focus {
-  border-color: var(--accent-blue); /* Keep accent focus */
+  border-color: var(--color-primary); /* Use primary color for focus */
   background-color: #252526; /* Slightly darker background on focus */
-  box-shadow: 0 0 0 1px var(--accent-blue);
+  box-shadow: var(--focus-ring);
 }
 
 /* Input text and caret color */
@@ -1674,7 +1674,7 @@ label {
 .ignore-patterns-sections {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 15px;
 }
 
 .ignore-patterns-sections .ignore-patterns-section {
@@ -1733,7 +1733,7 @@ label {
 }
 
 .pattern-list:hover {
-  border-color: var(--accent-blue);
+  border-color: var(--color-primary);
 }
 
 .ignore-patterns-error {
@@ -1828,7 +1828,7 @@ label {
 .ignore-patterns-mode-toggle {
   display: flex;
   justify-content: center;
-  margin: 18px 0;
+  margin: 18px 0 0 0; /* Removed bottom margin, kept top margin */
   width: 100%;
   display: flex;
   align-items: center;
@@ -1860,7 +1860,7 @@ label {
 }
 
 .mode-toggle button.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-primary);
   color: white;
 }
 
@@ -2406,7 +2406,7 @@ button:hover svg.lucide {
 
 .custom-global-ignores h4:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-blue);
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 
