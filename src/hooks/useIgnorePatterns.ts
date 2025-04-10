@@ -46,11 +46,19 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     return (savedMode === 'global' ? 'global' : 'automatic') as IgnoreMode;
   });
 
+  const [ignoreSettingsModified, _setIgnoreSettingsModified] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('pastemax-ignore-settings-modified') === 'true';
+  });
+
   const setIgnoreMode = (mode: IgnoreMode) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('pastemax-ignore-mode', mode);
+    if (isElectron) window.electron.ipcRenderer.send("clear-ignore-cache");
+      localStorage.setItem('pastemax-ignore-settings-modified', 'true');
     }
     _setIgnoreMode(mode);
+    _setIgnoreSettingsModified(true);
     console.log(`Ignore mode changed to ${mode}`);
   };
 
@@ -75,7 +83,14 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('pastemax-custom-ignores', JSON.stringify(customIgnores));
+        const normalizedIgnores = customIgnores
+          .map((pattern: string) => pattern.trim()) // Trim whitespace
+          .sort(); // Sort alphabetically
+        localStorage.setItem('pastemax-custom-ignores', JSON.stringify(normalizedIgnores));
+        if (normalizedIgnores.length > 0) {
+          localStorage.setItem('pastemax-ignore-settings-modified', 'true');
+          _setIgnoreSettingsModified(true);
+        }
       } catch (error) {
         console.error("Failed to save custom ignores to localStorage:", error);
       }
@@ -85,6 +100,11 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
   // Wrapper function to update state and potentially trigger side effects if needed later
   const setCustomIgnores = (newIgnores: string[] | ((prevIgnores: string[]) => string[])) => {
     _setCustomIgnores(newIgnores);
+    if (typeof window !== 'undefined') {
+    if (isElectron) window.electron.ipcRenderer.send("clear-ignore-cache");
+      localStorage.setItem('pastemax-ignore-settings-modified', 'true');
+    }
+    _setIgnoreSettingsModified(true);
   };
 
   /**
@@ -120,7 +140,11 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
       if (result.error) {
         setIgnorePatternsError(result.error);
       } else {
-        setIgnorePatterns(result.patterns);
+        console.log('DEBUG: Setting patterns with excludedFiles:', result.patterns?.excludedFiles);
+        setIgnorePatterns({
+          ...result.patterns,
+          excludedFiles: result.patterns?.excludedFiles || []
+        });
       }
     } catch (err) {
       console.error("Error invoking get-ignore-patterns:", err);
@@ -128,6 +152,13 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     } finally {
       console.timeEnd('handleViewIgnorePatterns');
     }
+  };
+
+  const resetIgnoreSettingsModified = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pastemax-ignore-settings-modified', 'false');
+    }
+    _setIgnoreSettingsModified(false);
   };
 
   return {
@@ -139,6 +170,8 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     ignoreMode,
     setIgnoreMode,
     customIgnores,
-    setCustomIgnores
+    setCustomIgnores,
+    ignoreSettingsModified,
+    resetIgnoreSettingsModified
   };
 }

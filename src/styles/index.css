@@ -1057,6 +1057,7 @@ input[type="text"].search-input:focus {
 .search-clear-btn:hover {
   background-color: var(--hover-color);
   opacity: 1;
+  transform: translateY(-50%); /* Keep the same transform as the non-hover state */
 }
 
 /* -------------------- Sort Dropdown (in Content Header) -------------------- */
@@ -1281,11 +1282,11 @@ input[type="text"].search-input:focus {
   display: flex;
   background-color: var(--background-secondary);
   border-radius: 6px;
-  padding: 2px;
+  padding: 2.2px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   width: fit-content;
   position: relative;
-  height: 32px; /* Fixed height */
+  height: 34px; /* Fixed height */
   overflow: hidden; /* Clip the background */
   border: 1px solid var(--border-color); /* Add subtle border */
 }
@@ -1296,7 +1297,7 @@ input[type="text"].search-input:focus {
   justify-content: center;
   gap: 6px;
   padding: 0 12px;
-  height: 28px; /* Inner height */
+  height: 28.8px; /* Inner height */
   border: none;
   background: none;
   font-size: 13px;
@@ -1316,7 +1317,7 @@ input[type="text"].search-input:focus {
 }
 
 .theme-segment span { /* Icon size */
-  font-size: 12px;
+  font-size: 13.5px;
 }
 
 .theme-segment.active { /* Class added via JS */
@@ -1383,7 +1384,7 @@ input[type="text"].search-input:focus {
 /* -------------------- Firefox -------------------- */
 /* Apply scrollbar styles globally or to specific scrollable elements */
 * {
-  scrollbar-width: thin; /* Or 'auto' or 'none' */
+  scrollbar-width: auto; /* Or 'auto' or 'none' */
   scrollbar-color: var(--scrollbar-thumb) var (--scrollbar-track); /* thumb track */
 }
 
@@ -1397,7 +1398,7 @@ textarea::-webkit-scrollbar {
 .file-tree::-webkit-scrollbar-thumb,
 .file-list::-webkit-scrollbar-thumb,
 textarea::-webkit-scrollbar-thumb {
-  border-width: 1px; /* Adjust border for thinner scrollbar */
+  border-width: 0px; /* Adjust border for thinner scrollbar */
 }
 
 /* Firefox thin scrollbar (already handled by global `scrollbar-width: thin;`) */
@@ -1641,7 +1642,7 @@ label {
   width: 100%;
   padding: 10px 14px;
   background-color: var(--background-secondary);
-  border: 2px solid var(--border-color); /* Thicker visible border */
+  border: 2px solid #000000; /* Changed from var(--border-color) to black */
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 15px;
@@ -2091,7 +2092,9 @@ button:not(.text-button):active::after {
 }
 
 .search-clear-btn:hover {
+  background-color: var(--hover-color);
   opacity: 1;
+  transform: translateY(-50%); /* Keep the same transform as the non-hover state */
 }
 
 /* Checkbox smooth transition */
@@ -2213,13 +2216,13 @@ svg.lucide-lg {
 }
 
 /* Style for Lucide icons in buttons */
-button svg.lucide {
+/* button svg.lucide {
   transition: transform 0.2s ease;
 }
 
 button:hover svg.lucide {
   transform: scale(1.1);
-}
+} */
 
 /* Fix for checkbox with Lucide icon if used */
 .tree-item-checkbox svg.lucide {

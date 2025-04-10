@@ -8,6 +8,7 @@ interface IgnorePatternsViewerProps {
   patterns?: {
     default?: string[];
     excludedFiles?: string[];
+    global?: string[];
     // Expect the Map structure (serialized as object) now
     gitignoreMap?: { [key: string]: string[] };
   };
@@ -138,12 +139,10 @@ export const IgnorePatternsViewer = ({
               onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
             />
           </div>
-
           {/* Conditional content based on folder selection */}
           {!selectedFolder ? (
             <div className="ignore-patterns-empty-state">
-              <p>No folder selected. Select a folder to view active ignore patterns.</p>
-              <p>You can still configure global ignore settings above.</p>
+              <p>Select a folder to view ignore patterns.</p>
             </div>
           ) : error ? (
             <div className="ignore-patterns-error">{error}</div>
@@ -157,7 +156,7 @@ export const IgnorePatternsViewer = ({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
                   style={{
-                    border: '2px solid var(--border-color)',
+                    border: '2px solid #0e6098', // Changed to black color
                     borderRadius: '8px',
                     transition: 'all 0.3s ease'
                   }}
@@ -166,18 +165,18 @@ export const IgnorePatternsViewer = ({
               </div>
 
               <div className="ignore-patterns-sections">
-                  {ignoreMode === 'global' && (
-                    <PatternSection
-                      title="Global Exclusions"
-                      subtitle="From excluded-files.js"
-                      patterns={patterns.excludedFiles || []}
-                      searchTerm={searchTerm}
-                    />
-                  )}
-                )
-                
+                {/* Global Exclusions section - Only visible in global mode */}
+                {ignoreMode === 'global' && selectedFolder && (
+                  <PatternSection
+                    title="Global Exclusions"
+                    subtitle="From excluded-files.js"
+                    patterns={patterns?.global || []}
+                    searchTerm={searchTerm}
+                  />
+                )}
+
                 {/* Custom ignores section - Only visible in global mode */}
-                {ignoreMode === 'global' && (
+                {ignoreMode === 'global' && selectedFolder && (
                   <div className="custom-global-ignores">
                     <h4 
                       tabIndex={0} 

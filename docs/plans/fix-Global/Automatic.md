@@ -8,21 +8,21 @@ Below is a very detailed markdown checklist that breaks down every single story 
 
 ## Story 1: Persist Global Ignore Mode State and Custom Ignores
 
-- [ ] **Verify LocalStorage Key for Ignore Mode**
-  - [ ] Confirm that the key `"pastemax-ignore-mode"` is used in the `useIgnorePatterns` hook (File: `src/hooks/useIgnorePatterns.ts`) to save and retrieve the current ignore mode.
-  - [ ] Check that the initial state is correctly set using the value from localStorage.
+- [x] **Verify LocalStorage Key for Ignore Mode**
+  - [x] Confirm that the key `"pastemax-ignore-mode"` is used in the `useIgnorePatterns` hook (File: `src/hooks/useIgnorePatterns.ts`) to save and retrieve the current ignore mode.
+  - [x] Check that the initial state is correctly set using the value from localStorage.
 
-- [ ] **Ensure `setIgnoreMode` Persists Mode Changes**
-  - [ ] In `src/hooks/useIgnorePatterns.ts`, review the `setIgnoreMode` function:
+- [x] **Ensure `setIgnoreMode` Persists Mode Changes**
+  - [x] In `src/hooks/useIgnorePatterns.ts`, review the `setIgnoreMode` function:
     - Example signature:
       ```typescript
       const setIgnoreMode = (mode: IgnoreMode): void => { ... }
       ```
-  - [ ] Confirm that this function calls `localStorage.setItem('pastemax-ignore-mode', mode)` before updating the state.
+  - [x] Confirm that this function calls `localStorage.setItem('pastemax-ignore-mode', mode)` before updating the state.
 
-- [ ] **Persist Custom Ignores to LocalStorage**
-  - [ ] Verify that the custom ignore patterns are retrieved from localStorage under `"pastemax-custom-ignores"` during hook initialization.
-  - [ ] In the custom ignores state initializer, ensure parsing is robust:
+- [x] **Persist Custom Ignores to LocalStorage**
+  - [x] Verify that the custom ignore patterns are retrieved from localStorage under `"pastemax-custom-ignores"` during hook initialization.
+  - [x] In the custom ignores state initializer, ensure parsing is robust:
     - Example snippet:
       ```typescript
       const [customIgnores, _setCustomIgnores] = useState<string[]>(() => {
@@ -30,38 +30,38 @@ Below is a very detailed markdown checklist that breaks down every single story 
         return saved ? JSON.parse(saved) : [];
       });
       ```
-  - [ ] Confirm that any update via `setCustomIgnores` triggers a corresponding `localStorage.setItem` update.
-  - [ ] **Normalize Custom Ignores Before Saving**
-    - [ ] Add logic to trim and (optionally) sort the custom ignore strings before storing.
+  - [x] Confirm that any update via `setCustomIgnores` triggers a corresponding `localStorage.setItem` update.
+  - [x] **Normalize Custom Ignores Before Saving**
+    - [x] Add logic to trim and (optionally) sort the custom ignore strings before storing.
 
 ---
 
 ## Story 2: Ensure Custom Global Ignores Are Applied in the Backend
 
-- [ ] **Verify IPC Parameter Passing in Renderer**
-  - [ ] In `src/hooks/useIgnorePatterns.ts` within `handleViewIgnorePatterns`, ensure the IPC call includes customIgnores when `ignoreMode` is `'global'`:
+- [x] **Verify IPC Parameter Passing in Renderer**
+  - [x] In `src/hooks/useIgnorePatterns.ts` within `handleViewIgnorePatterns`, ensure the IPC call includes customIgnores when `ignoreMode` is `'global'`:
     - Check that:
       ```typescript
       customIgnores: ignoreMode === 'global' ? customIgnores : []
       ```
       is correctly sent via `ipcRenderer.invoke('get-ignore-patterns', { ... })`.
 
-- [ ] **Confirm Composite Cache Key in Backend Includes Custom Ignores**
-  - [ ] In `main.js`, within the `loadGitignore` function, check that the cache key is generated as:
+- [x] **Confirm Composite Cache Key in Backend Includes Custom Ignores**
+  - [x] In `main.js`, within the `loadGitignore` function, check that the cache key is generated as:
     ```javascript
     const cacheKey = `${rootDir}:${mode}:${JSON.stringify(customIgnores)}`;
     ```
-  - [ ] **Normalize Custom Ignores for Cache Key**
-    - [ ] Modify the code to sort and trim the `customIgnores` array before stringifying:
+  - [x] **Normalize Custom Ignores for Cache Key**
+    - [x] Modify the code to sort and trim the `customIgnores` array before stringifying:
       - Example snippet:
         ```javascript
         const normalizedCustomIgnores = customIgnores.map(p => p.trim()).sort();
         const cacheKey = `${rootDir}:${mode}:${JSON.stringify(normalizedCustomIgnores)}`;
         ```
 
-- [ ] **Implement Cache Invalidation if Custom Ignores Change**
-  - [ ] In `main.js`, before creating a new ignore filter in global mode, check if a cache entry exists with the new composite key.
-  - [ ] If not, or if the custom list has changed, explicitly delete the old cache entry:
+- [x] **Implement Cache Invalidation if Custom Ignores Change**
+  - [x] In `main.js`, before creating a new ignore filter in global mode, check if a cache entry exists with the new composite key.
+  - [x] If not, or if the custom list has changed, explicitly delete the old cache entry:
     - Example:
       ```javascript
       if (ignoreCache.has(cacheKey)) {
@@ -69,42 +69,42 @@ Below is a very detailed markdown checklist that breaks down every single story 
       }
       ```
 
-- [ ] **Test That Backend Filter Incorporates Custom Ignores**
-  - [ ] Validate through logging that the global ignore filter includes patterns from `excludedFiles` combined with the user’s custom ignores.
+- [x] **Test That Backend Filter Incorporates Custom Ignores**
+  - [x] Validate through logging that the global ignore filter includes patterns from `excludedFiles` combined with the user's custom ignores.
 
 ---
 
 ## Story 3: Correct loadGitignore Behavior for Automatic vs. Global Mode
 
-- [ ] **Always Add Default Patterns in loadGitignore**
-  - [ ] In `main.js` within `loadGitignore`, confirm that the `defaultPatterns` array is defined and added before branching into mode‑specific logic.
-  - [ ] Ensure that this is done regardless of the value of `mode`.
+- [x] **Always Add Default Patterns in loadGitignore**
+  - [x] In `main.js` within `loadGitignore`, confirm that the `defaultPatterns` array is defined and added before branching into mode‑specific logic.
+  - [x] Ensure that this is done regardless of the value of `mode`.
 
-- [ ] **Update Global Mode Branch**
-  - [ ] In the `if (mode === 'global')` branch:
-    - [ ] First, add the `defaultPatterns`:
+- [x] **Update Global Mode Branch**
+  - [x] In the `if (mode === 'global')` branch:
+    - [x] First, add the `defaultPatterns`:
       ```javascript
       ig.add(defaultPatterns);
       ```
-    - [ ] Then, add global excluded files (`excludedFiles`) and the normalized custom ignores:
+    - [x] Then, add global excluded files (`excludedFiles`) and the normalized custom ignores:
       ```javascript
       const globalPatterns = [...excludedFiles, ...normalizedCustomIgnores];
       ig.add(globalPatterns);
       ```
-    - [ ] Update console logs to indicate the number of default patterns and global patterns added.
+    - [x] Update console logs to indicate the number of default patterns and global patterns added.
   
-- [ ] **Update Automatic Mode Branch**
-  - [ ] In the automatic mode branch (else case):
-    - [ ] Add only the `defaultPatterns`.
-    - [ ] Do not add global `excludedFiles`; instead, proceed to collect patterns from repository `.gitignore` files:
+- [x] **Update Automatic Mode Branch**
+  - [x] In the automatic mode branch (else case):
+    - [x] Add only the `defaultPatterns`.
+    - [x] Do not add global `excludedFiles`; instead, proceed to collect patterns from repository `.gitignore` files:
       ```javascript
       // Collect .gitignore patterns recursively
       const gitignoreMap = await collectGitignoreMapRecursive(rootDir, rootDir);
       ```
-    - [ ] Confirm that the ignore filter in automatic mode reflects repository-specific ignore rules.
+    - [x] Confirm that the ignore filter in automatic mode reflects repository-specific ignore rules.
 
-- [ ] **Review Logging in loadGitignore**
-  - [ ] Ensure that log messages clearly distinguish which patterns are added in global versus automatic mode.
+- [x] **Review Logging in loadGitignore**
+  - [x] Ensure that log messages clearly distinguish which patterns are added in global versus automatic mode.
 
 ---
 
@@ -200,7 +200,7 @@ Below is a very detailed markdown checklist that breaks down every single story 
     - In automatic mode, repository .gitignore patterns are applied.
   
 - [ ] **Confirm UI Feedback**
-  - [ ] Check that status messages (e.g., “Loading files...”, “Processing files…”) correctly reflect the mode and any errors if patterns fail to load.
+  - [ ] Check that status messages (e.g., "Loading files...", "Processing files…") correctly reflect the mode and any errors if patterns fail to load.
 
 ---
 

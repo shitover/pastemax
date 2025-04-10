@@ -51,6 +51,7 @@ const STORAGE_KEYS = {
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
   IGNORE_MODE: "pastemax-ignore-mode",
+  IGNORE_SETTINGS_MODIFIED: "pastemax-ignore-settings-modified",
 };
 
 /**
@@ -88,17 +89,17 @@ const App = (): JSX.Element => {
 
   const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
   
-  // Initialize ignore patterns functionality
-  const [ignoreMode, setIgnoreMode] = useState(() =>
-    (savedIgnoreMode === 'global' ? 'global' : 'automatic') as IgnoreMode
-  );
-
   const {
     isIgnoreViewerOpen,
     ignorePatterns,
     ignorePatternsError,
     handleViewIgnorePatterns,
-    closeIgnoreViewer
+    closeIgnoreViewer,
+    ignoreMode,
+    setIgnoreMode,
+    customIgnores,
+    ignoreSettingsModified,
+    resetIgnoreSettingsModified
   } = useIgnorePatterns(selectedFolder, isElectron);
   // Normalize paths loaded from localStorage
   const [selectedFiles, setSelectedFiles] = useState( // Remove type argument
@@ -131,9 +132,11 @@ const App = (): JSX.Element => {
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
     console.time('clearSavedState');
-    // Clear all localStorage items
+    // Clear all localStorage items except ignore mode, custom ignores, and ignore settings modified flag
     Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key);
+      if (key !== STORAGE_KEYS.IGNORE_MODE && key !== STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED) {
+        localStorage.removeItem(key);
+      }
     });
     
     // Clear any session storage items
@@ -254,9 +257,14 @@ const App = (): JSX.Element => {
       status: "processing",
       message: "Loading files from previously selected folder...",
     });
-    
     // Request file list from the main process
-    window.electron.ipcRenderer.send("request-file-list", selectedFolder);
+    console.log('[useEffect Load] Sending request-file-list:', { folderPath: selectedFolder, ignoreMode, customIgnores, ignoreSettingsModified });
+    window.electron.ipcRenderer.send("request-file-list", {
+      folderPath: selectedFolder,
+      ignoreMode,
+      customIgnores,
+      ignoreSettingsModified
+    });
     
     // We intentionally don't set any session flags because we want this to run
     // on every refresh to ensure state is fully restored
@@ -289,16 +297,24 @@ const App = (): JSX.Element => {
       
       const normalizedFolderPath = normalizePath(folderPath); // Normalize before setting
       console.log("Folder selected:", normalizedFolderPath);
-      setSelectedFolder(normalizedFolderPath); // Set normalized path
-      // Reset selections when a *new* folder is selected
-      if (!arePathsEqual(normalizedFolderPath, selectedFolder)) { // Compare normalized path
-        setSelectedFiles([]); 
-      }
+      // Set processing status *before* setting the folder to prevent useEffect duplicate request
       setProcessingStatus({
         status: "processing",
         message: "Requesting file list...",
       });
-      window.electron.ipcRenderer.send("request-file-list", folderPath);
+      setSelectedFolder(normalizedFolderPath); // Set normalized path
+      // Reset selections when a *new* folder is selected
+      if (!arePathsEqual(normalizedFolderPath, selectedFolder)) { // Compare normalized path
+        setSelectedFiles([]);
+      }
+      console.log('[handleFolderSelected] Sending request-file-list:', { folderPath, ignoreMode, customIgnores, ignoreSettingsModified });
+      window.electron.ipcRenderer.send("request-file-list", {
+        folderPath,
+        ignoreMode,
+        customIgnores,
+        ignoreSettingsModified
+      });
+      resetIgnoreSettingsModified();
     };
 
     const handleFileListData = (files: FileData[]) => {
@@ -663,7 +679,7 @@ const App = (): JSX.Element => {
                 onClick={clearSavedState}
                 title="Clear all saved data and start fresh"
               >
-                Clear Data
+                Clear All
               </button>
               <ViewIgnoresButton
                 onClick={handleViewIgnorePatterns}
