@@ -162,8 +162,8 @@ const App = (): JSX.Element => {
     console.log("All saved state cleared");
 
     // Reload the application window
-    window.location.reload();
     console.timeEnd('clearSavedState');
+    window.location.reload();
   }, [isElectron]); // Added isElectron dependency
 
   // Load expanded nodes state from localStorage
@@ -304,7 +304,8 @@ const App = (): JSX.Element => {
       });
       setSelectedFolder(normalizedFolderPath); // Set normalized path
       // Reset selections when a *new* folder is selected
-      if (!arePathsEqual(normalizedFolderPath, selectedFolder)) { // Compare normalized path
+      const currentFolder = selectedFolder; // Capture the current folder value locally
+      if (!arePathsEqual(normalizedFolderPath, currentFolder)) { // Compare with the captured value
         setSelectedFiles([]);
       }
       console.log('[handleFolderSelected] Sending request-file-list:', { folderPath, ignoreMode, customIgnores, ignoreSettingsModified });
@@ -401,7 +402,7 @@ const App = (): JSX.Element => {
   };
 
   // Apply filters and sorting to files
-  const applyFiltersAndSort = (
+  const applyFiltersAndSort = useCallback((
     files: FileData[],
     sort: string,
     filter: string,
@@ -435,7 +436,66 @@ const App = (): JSX.Element => {
     });
 
     setDisplayedFiles(sorted);
-  };
+  }, [setDisplayedFiles]);
+
+  // Listen for live file changes from main process
+  useEffect(() => {
+    if (!isElectron) return;
+
+    const handleFileAdded = (newFile: FileData) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log("<<< IPC RECEIVED: file-added >>>", newFile);
+      }
+      setAllFiles((prevFiles: FileData[]) => {
+        // Avoid duplicates
+        if (prevFiles.some((f: FileData) => arePathsEqual(f.path, newFile.path))) {
+          console.log("[State Update] File already exists, ignoring:", newFile.path);
+          return prevFiles;
+        }
+        const updatedFiles = [...prevFiles, newFile];
+        applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
+        return updatedFiles;
+      });
+      // Optionally auto-select the new file if it meets criteria
+      if (!newFile.isBinary && !newFile.isSkipped && !newFile.excludedByDefault) {
+        setSelectedFiles((prev: string[]) => [...prev, normalizePath(newFile.path)]);
+      }
+    };
+
+    const handleFileUpdated = (updatedFile: FileData) => {
+      console.log("<<< IPC RECEIVED: file-updated >>>", updatedFile);
+      setAllFiles((prevFiles: FileData[]) => {
+        const updatedFiles = prevFiles.map((file: FileData) =>
+          arePathsEqual(file.path, updatedFile.path) ? updatedFile : file
+        );
+        applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
+        return updatedFiles;
+      });
+    };
+
+    const handleFileRemoved = (filePath: string) => {
+      console.log("<<< IPC RECEIVED: file-removed >>>", filePath);
+      const normalizedPath = normalizePath(filePath);
+      setAllFiles((prevFiles: FileData[]) => {
+        const updatedFiles = prevFiles.filter((file: FileData) => !arePathsEqual(file.path, normalizedPath));
+        applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
+        return updatedFiles;
+      });
+      setSelectedFiles((prevSelected: string[]) =>
+        prevSelected.filter((path: string) => !arePathsEqual(path, normalizedPath))
+      );
+    };
+
+    window.electron.ipcRenderer.on("file-added", handleFileAdded);
+    window.electron.ipcRenderer.on("file-updated", handleFileUpdated);
+    window.electron.ipcRenderer.on("file-removed", handleFileRemoved);
+
+    return () => {
+      window.electron.ipcRenderer.removeListener("file-added", handleFileAdded);
+      window.electron.ipcRenderer.removeListener("file-updated", handleFileUpdated);
+      window.electron.ipcRenderer.removeListener("file-removed", handleFileRemoved);
+    };
+  }, [isElectron, sortOrder, searchTerm, applyFiltersAndSort]);
 
   // Toggle file selection
   const toggleFileSelection = (filePath: string) => {
