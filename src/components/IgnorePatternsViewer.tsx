@@ -82,7 +82,7 @@ const PatternSection = ({
           {filteredPatterns.join('\n')}
         </pre>
       ) : (
-        <p className="no-patterns">No patterns found</p>
+        <p className="no-patterns">No patterns found, Please reload (Ctrl + r / ⌘ + r) to use this mode</p>
       )}
     </section>
   );
@@ -138,6 +138,18 @@ export const IgnorePatternsViewer = ({
               isOn={ignoreMode === 'global'}
               onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
             />
+          </div>
+          
+          {/* Mode explanation */}
+          <div className="ignore-mode-explanation">
+                <div className={`mode-description ${ignoreMode === 'automatic' ? 'active' : ''}`}>
+                  <h4>Automatic Mode</h4>
+                  <p>Uses project's existing <code>.gitignore</code> files to determine what to ignore. More accurate for large repositories and monorepos, but may be slower to process.</p>
+                </div>
+                <div className={`mode-description ${ignoreMode === 'global' ? 'active' : ''}`}>
+                  <h4>Global Mode</h4>
+                  <p>Uses a static global ignore pattern system. Allows for additional Custom Ignore Patterns. Faster processing with less precision.</p>
+                </div>
           </div>
           {/* Conditional content based on folder selection */}
           {!selectedFolder ? (

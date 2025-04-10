@@ -1776,10 +1776,60 @@ label {
 }
 
 /* ----------------- New Styles for Updated IgnorePatterns Modal ----------------- */
+/* Mode explanation styling */
+.ignore-mode-explanation {
+  margin: 8px auto 20px auto;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+}
+
+.mode-description {
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.mode-description.active {
+  background-color: var(--background-primary);
+  border-left-color: var(--color-primary);
+  opacity: 1;
+}
+
+.mode-description h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.mode-description p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.mode-description code {
+  font-family: var(--font-family-code);
+  background-color: var(--background-tertiary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 13px;
+}
 
 /* Toggle Switch for Ignore Mode */
 .ignore-patterns-mode-toggle {
-  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  margin: 18px 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
