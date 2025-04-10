@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { default: PQueue } = require('p-queue'); // Added for controlled concurrency
+const chokidar = require('chokidar'); // Added for file watching
 
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
@@ -27,6 +28,7 @@ const DEFAULT_PATTERNS = [
 // ======================
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
+let currentWatcher = null; // Added for file watching
 
 /**
  * @typedef {Object} DirectoryLoadingProgress
@@ -277,7 +279,7 @@ function createContextualIgnoreFilter(rootDir, currentDir, parentIgnoreFilter, i
   return ig;
 }
 
-async function loadGitignore(rootDir) {
+async function loadGitignore(rootDir, window) {
   rootDir = ensureAbsolutePath(rootDir);
   const cacheKey = `${rootDir}:automatic`;
   
@@ -337,6 +339,44 @@ async function loadGitignore(rootDir) {
         patternOrigins: Object.fromEntries(patternOrigins)
       }
     });
+
+    // Start file watcher after initial scan completes
+    if (chokidar) {
+      currentWatcher = chokidar.watch(rootDir, {
+        ignored: (path) => shouldIgnorePath(path, rootDir, rootDir, ig),
+        ignoreInitial: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 2000,
+          pollInterval: 100
+        }
+      }).on('error', (error) => {
+        console.error('File watcher encountered an error:', error);
+      });
+
+      currentWatcher
+        .on('add', path => {
+          processSingleFile(path, rootDir, ig)
+            .then(fileData => {
+              if (fileData && window && !window.isDestroyed()) {
+                window.webContents.send('file-added', fileData);
+              }
+            });
+        })
+        .on('change', path => {
+          processSingleFile(path, rootDir, ig)
+            .then(fileData => {
+              if (fileData) {
+                window.webContents.send('file-updated', fileData);
+              }
+            });
+        })
+        .on('unlink', path => {
+          window.webContents.send('file-removed', {
+            path: normalizePath(path),
+            relativePath: safeRelativePath(rootDir, path)
+          });
+        });
+    }
     return ig;
   } catch (err) {
     console.error(`Error in loadGitignore for ${rootDir}:`, err);
@@ -413,6 +453,69 @@ function countTokens(text) {
   } catch (err) {
     console.error("Error counting tokens:", err);
     return Math.ceil(text.length / 4);
+  }
+}
+
+// Process a single file for the file watcher
+async function processSingleFile(fullPath, rootDir, ignoreFilter) {
+  try {
+    fullPath = ensureAbsolutePath(fullPath);
+    rootDir = ensureAbsolutePath(rootDir);
+    const relativePath = safeRelativePath(rootDir, fullPath);
+
+    if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
+      return null;
+    }
+
+    if (ignoreFilter.ignores(relativePath)) {
+      return null;
+    }
+
+    const stats = await fs.promises.stat(fullPath);
+    const fileData = {
+      name: path.basename(fullPath),
+      path: normalizePath(fullPath),
+      relativePath: relativePath,
+      size: stats.size,
+      isBinary: false,
+      isSkipped: false,
+      content: "",
+      tokenCount: 0,
+      excludedByDefault: shouldExcludeByDefault(fullPath, rootDir)
+    };
+
+    if (stats.size > MAX_FILE_SIZE) {
+      fileData.isSkipped = true;
+      fileData.error = "File too large to process";
+      return fileData;
+    }
+
+    const ext = path.extname(fullPath).toLowerCase();
+    if (binaryExtensions.includes(ext)) {
+      fileData.isBinary = true;
+      fileData.fileType = ext.toUpperCase();
+      return fileData;
+    }
+
+    const content = await fs.promises.readFile(fullPath, "utf8");
+    fileData.content = content;
+    fileData.tokenCount = countTokens(content);
+
+    return fileData;
+  } catch (err) {
+    console.error(`Error processing single file ${fullPath}:`, err);
+    return {
+      name: path.basename(fullPath),
+      path: normalizePath(fullPath),
+      relativePath: safeRelativePath(rootDir, fullPath),
+      size: 0,
+      isBinary: false,
+      isSkipped: true,
+      error: `Error: ${err.message}`,
+      content: "",
+      tokenCount: 0,
+      excludedByDefault: shouldExcludeByDefault(fullPath, rootDir)
+    };
   }
 }
 
@@ -821,7 +924,7 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
       ignoreFilter = createGlobalIgnoreFilter(folderPath.customIgnores);
     } else { // Default to automatic
       console.log('Using automatic ignore filter (loading .gitignore)');
-      ignoreFilter = await loadGitignore(folderPath.folderPath);
+      ignoreFilter = await loadGitignore(folderPath.folderPath, BrowserWindow.fromWebContents(event.sender));
     }
     if (!ignoreFilter) {
       throw new Error('Failed to load ignore patterns');
@@ -930,21 +1033,36 @@ function createWindow() {
     },
   });
 
-  mainWindow.webContents.once('did-finish-load', () => {
-    mainWindow.webContents.send('startup-mode', { 
-      safeMode: isSafeMode 
-    });
-  });
-
+  // Register the escape key to cancel directory loading
   globalShortcut.register('Escape', () => {
     if (isLoadingDirectory) {
       cancelDirectoryLoading(mainWindow);
     }
   });
 
+  // Clean up watcher when window is closed
   mainWindow.on('closed', () => {
     globalShortcut.unregisterAll();
+    if (currentWatcher) {
+      currentWatcher.close().then(() => console.log('File watcher closed.'));
+    }
   });
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.send('startup-mode', {
+      safeMode: isSafeMode
+    });
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      if (currentWatcher) {
+        currentWatcher.close().then(() => console.log('File watcher closed before quit.'));
+      }
+      app.quit();
+    }
+  });
+
 
   if (process.env.NODE_ENV === "development") {
     mainWindow.loadURL("http://localhost:5173");

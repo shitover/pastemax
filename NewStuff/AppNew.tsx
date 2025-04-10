@@ -2,12 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
-import { FileData, IgnoreMode } from "./types/FileTypes";
+import { FileData } from "./types/FileTypes";
 import { ThemeProvider } from "./context/ThemeContext";
-import IgnorePatternsViewer from "./components/IgnorePatternsViewer";
 import ThemeToggle from "./components/ThemeToggle";
-import ViewIgnoresButton from "./components/ViewIgnoresButton";
-import { useIgnorePatterns } from "./hooks/useIgnorePatterns";
 import UserInstructions from "./components/UserInstructions";
 
 /**
@@ -34,7 +31,6 @@ declare global {
           channel: string,
           func: (...args: any[]) => void,
         ) => void;
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
       };
     };
   }
@@ -50,8 +46,6 @@ const STORAGE_KEYS = {
   SORT_ORDER: "pastemax-sort-order",
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
-  IGNORE_MODE: "pastemax-ignore-mode",
-  IGNORE_SETTINGS_MODIFIED: "pastemax-ignore-settings-modified",
 };
 
 /**
@@ -78,29 +72,12 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE);
 
   // Normalize selectedFolder when loading from localStorage
   const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
     savedFolder ? normalizePath(savedFolder) : null
   );
-  // Check if we're running in Electron or browser environment
-  const isElectron = window.electron !== undefined;
-
   const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
-  
-  const {
-    isIgnoreViewerOpen,
-    ignorePatterns,
-    ignorePatternsError,
-    handleViewIgnorePatterns,
-    closeIgnoreViewer,
-    ignoreMode,
-    setIgnoreMode,
-    customIgnores,
-    ignoreSettingsModified,
-    resetIgnoreSettingsModified
-  } = useIgnorePatterns(selectedFolder, isElectron);
   // Normalize paths loaded from localStorage
   const [selectedFiles, setSelectedFiles] = useState( // Remove type argument
     (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[] // Explicitly type initial value
@@ -126,17 +103,16 @@ const App = (): JSX.Element => {
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
+  // Check if we're running in Electron or browser environment
+  const isElectron = window.electron !== undefined;
 
   const [isSafeMode, setIsSafeMode] = useState(false);
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
-    console.time('clearSavedState');
-    // Clear all localStorage items except ignore mode, custom ignores, and ignore settings modified flag
+    // Clear all localStorage items
     Object.values(STORAGE_KEYS).forEach(key => {
-      if (key !== STORAGE_KEYS.IGNORE_MODE && key !== STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED) {
-        localStorage.removeItem(key);
-      }
+      localStorage.removeItem(key);
     });
     
     // Clear any session storage items
@@ -153,16 +129,14 @@ const App = (): JSX.Element => {
     setIncludeFileTree(false);
     setProcessingStatus({ status: "idle", message: "All saved data cleared" });
 
-    // Also cancel any ongoing directory loading and clear main process caches
+    // Also cancel any ongoing directory loading
     if (isElectron) {
       window.electron.ipcRenderer.send("cancel-directory-loading");
-      window.electron.ipcRenderer.send("clear-main-cache");
     }
     
     console.log("All saved state cleared");
 
     // Reload the application window
-    console.timeEnd('clearSavedState');
     window.location.reload();
   }, [isElectron]); // Added isElectron dependency
 
@@ -206,11 +180,6 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
-
-  // Persist ignore mode when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
-  }, [ignoreMode]);
 
   // Add a function to cancel directory loading
   const cancelDirectoryLoading = useCallback(() => {
@@ -257,14 +226,9 @@ const App = (): JSX.Element => {
       status: "processing",
       message: "Loading files from previously selected folder...",
     });
+    
     // Request file list from the main process
-    console.log('[useEffect Load] Sending request-file-list:', { folderPath: selectedFolder, ignoreMode, customIgnores, ignoreSettingsModified });
-    window.electron.ipcRenderer.send("request-file-list", {
-      folderPath: selectedFolder,
-      ignoreMode,
-      customIgnores,
-      ignoreSettingsModified
-    });
+    window.electron.ipcRenderer.send("request-file-list", selectedFolder);
     
     // We intentionally don't set any session flags because we want this to run
     // on every refresh to ensure state is fully restored
@@ -297,25 +261,16 @@ const App = (): JSX.Element => {
       
       const normalizedFolderPath = normalizePath(folderPath); // Normalize before setting
       console.log("Folder selected:", normalizedFolderPath);
-      // Set processing status *before* setting the folder to prevent useEffect duplicate request
+      setSelectedFolder(normalizedFolderPath); // Set normalized path
+      // Reset selections when a *new* folder is selected
+      if (!arePathsEqual(normalizedFolderPath, selectedFolder)) { // Compare normalized path
+        setSelectedFiles([]); 
+      }
       setProcessingStatus({
         status: "processing",
         message: "Requesting file list...",
       });
-      setSelectedFolder(normalizedFolderPath); // Set normalized path
-      // Reset selections when a *new* folder is selected
-      const currentFolder = selectedFolder; // Capture the current folder value locally
-      if (!arePathsEqual(normalizedFolderPath, currentFolder)) { // Compare with the captured value
-        setSelectedFiles([]);
-      }
-      console.log('[handleFolderSelected] Sending request-file-list:', { folderPath, ignoreMode, customIgnores, ignoreSettingsModified });
-      window.electron.ipcRenderer.send("request-file-list", {
-        folderPath,
-        ignoreMode,
-        customIgnores,
-        ignoreSettingsModified
-      });
-      resetIgnoreSettingsModified();
+      window.electron.ipcRenderer.send("request-file-list", folderPath);
     };
 
     const handleFileListData = (files: FileData[]) => {
@@ -443,9 +398,7 @@ const App = (): JSX.Element => {
     if (!isElectron) return;
 
     const handleFileAdded = (newFile: FileData) => {
-      if (process.env.NODE_ENV === "development") {
-        console.log("<<< IPC RECEIVED: file-added >>>", newFile);
-      }
+      console.log("<<< IPC RECEIVED: file-added >>>", newFile);
       setAllFiles((prevFiles: FileData[]) => {
         // Avoid duplicates
         if (prevFiles.some((f: FileData) => arePathsEqual(f.path, newFile.path))) {
@@ -458,7 +411,10 @@ const App = (): JSX.Element => {
       });
       // Optionally auto-select the new file if it meets criteria
       if (!newFile.isBinary && !newFile.isSkipped && !newFile.excludedByDefault) {
-        setSelectedFiles((prev: string[]) => [...prev, normalizePath(newFile.path)]);
+        setSelectedFiles((prev: string[]) => {
+          const newSelection = [...prev, normalizePath(newFile.path)];
+          return newSelection;
+        });
       }
     };
 
@@ -466,7 +422,7 @@ const App = (): JSX.Element => {
       console.log("<<< IPC RECEIVED: file-updated >>>", updatedFile);
       setAllFiles((prevFiles: FileData[]) => {
         const updatedFiles = prevFiles.map((file: FileData) =>
-          arePathsEqual(file.path, updatedFile.path) ? updatedFile : file
+          arePathsEqual(file.path, updatedFile.path) ? updatedFile : file,
         );
         applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
         return updatedFiles;
@@ -481,9 +437,10 @@ const App = (): JSX.Element => {
         applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
         return updatedFiles;
       });
-      setSelectedFiles((prevSelected: string[]) =>
-        prevSelected.filter((path: string) => !arePathsEqual(path, normalizedPath))
-      );
+      setSelectedFiles((prevSelected: string[]) => {
+        const newSelection = prevSelected.filter((path: string) => !arePathsEqual(path, normalizedPath));
+        return newSelection;
+      });
     };
 
     window.electron.ipcRenderer.on("file-added", handleFileAdded);
@@ -496,6 +453,7 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.removeListener("file-removed", handleFileRemoved);
     };
   }, [isElectron, sortOrder, searchTerm, applyFiltersAndSort]);
+
 
   // Toggle file selection
   const toggleFileSelection = (filePath: string) => {
@@ -652,26 +610,21 @@ const App = (): JSX.Element => {
 
   // Handle select all files
   const selectAllFiles = () => {
-    console.time('selectAllFiles');
-    try {
-      const selectablePaths = displayedFiles
-        .filter((file: FileData) => !file.isBinary && !file.isSkipped)
-        .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
+    const selectablePaths = displayedFiles
+      .filter((file: FileData) => !file.isBinary && !file.isSkipped)
+      .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
-      setSelectedFiles((prev: string[]) => {
-        const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
-        const newSelection = [...normalizedPrev];
-        selectablePaths.forEach((pathToAdd: string) => {
-          // Use arePathsEqual for checking existence
-          if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
-            newSelection.push(pathToAdd);
-          }
-        });
-        return newSelection;
+    setSelectedFiles((prev: string[]) => {
+      const normalizedPrev = prev.map(normalizePath); // Normalize existing selection
+      const newSelection = [...normalizedPrev];
+      selectablePaths.forEach((pathToAdd: string) => {
+        // Use arePathsEqual for checking existence
+        if (!newSelection.some(existingPath => arePathsEqual(existingPath, pathToAdd))) {
+          newSelection.push(pathToAdd);
+        }
       });
-    } finally {
-      console.timeEnd('selectAllFiles');
-    }
+      return newSelection;
+    });
   };
 
   // Handle deselect all files
@@ -739,11 +692,8 @@ const App = (): JSX.Element => {
                 onClick={clearSavedState}
                 title="Clear all saved data and start fresh"
               >
-                Clear All
+                Clear Data
               </button>
-              <ViewIgnoresButton
-                onClick={handleViewIgnorePatterns}
-              />
             </div>
           </div>
         </header>
@@ -781,40 +731,40 @@ const App = (): JSX.Element => {
               toggleExpanded={toggleExpanded}
             />
             <div className="content-area">
-                <div className="content-header">
+              <div className="content-header">
                 <div className="content-title">Selected Files</div>
                 <div className="content-actions">
-                  <div className="file-stats">
-                  {selectedFiles.length} files | ~
-                  {calculateTotalTokens().toLocaleString()} tokens
-                  </div>
                   <div className="sort-dropdown">
-                  <button
-                    className="sort-dropdown-button"
-                    onClick={toggleSortDropdown}
-                  >
-                    Sort:{" "}
-                    {sortOptions.find((opt) => opt.value === sortOrder)
-                    ?.label || sortOrder}
-                  </button>
-                  {sortDropdownOpen && (
-                    <div className="sort-options">
-                    {sortOptions.map((option) => (
-                      <div
-                      key={option.value}
-                      className={`sort-option ${
-                        sortOrder === option.value ? "active" : ""
-                      }`}
-                      onClick={() => handleSortChange(option.value)}
-                      >
-                      {option.label}
+                    <button
+                      className="sort-dropdown-button"
+                      onClick={toggleSortDropdown}
+                    >
+                      Sort:{" "}
+                      {sortOptions.find((opt) => opt.value === sortOrder)
+                        ?.label || sortOrder}
+                    </button>
+                    {sortDropdownOpen && (
+                      <div className="sort-options">
+                        {sortOptions.map((option) => (
+                          <div
+                            key={option.value}
+                            className={`sort-option ${
+                              sortOrder === option.value ? "active" : ""
+                            }`}
+                            onClick={() => handleSortChange(option.value)}
+                          >
+                            {option.label}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    </div>
-                  )}
+                    )}
+                  </div>
+                  <div className="file-stats">
+                    {selectedFiles.length} files | ~
+                    {calculateTotalTokens().toLocaleString()} tokens
                   </div>
                 </div>
-                </div>
+              </div>
 
               <FileList
                 files={displayedFiles}
@@ -834,8 +784,8 @@ const App = (): JSX.Element => {
               />
 
               <div className="copy-button-container">
-                <div className="copy-button-wrapper">
-                  <label className="file-tree-option">
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", maxWidth: "400px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                     <input
                       type="checkbox"
                       checked={includeFileTree}
@@ -851,25 +801,15 @@ const App = (): JSX.Element => {
                    */}
                   <CopyButton
                     text={getSelectedFilesContent()}
-                    className="primary full-width copy-button-main"
+                    className="primary full-width"
                   >
-                    <span className="copy-button-text">COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
                   </CopyButton>
                 </div>
               </div>
             </div>
           </div>
         )}
-
-        {/* Ignore Patterns Viewer Modal */}
-        <IgnorePatternsViewer
-          isOpen={isIgnoreViewerOpen}
-          onClose={closeIgnoreViewer}
-          patterns={ignorePatterns}
-          error={ignorePatternsError}
-          selectedFolder={selectedFolder}
-          isElectron={isElectron}
-        />
       </div>
     } />
   );
