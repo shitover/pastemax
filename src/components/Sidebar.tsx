@@ -45,25 +45,35 @@ const Sidebar = ({
     setIsResizing(true);
   };
 
-  // Handle resize effect
+  // Handle resize effect - optimized with requestAnimationFrame and passive listeners
   useEffect(() => {
-    const handleResize = (e: any) => {
-      if (isResizing) {
-        const newWidth = e.clientX;
-        if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
-          setSidebarWidth(newWidth);
-        }
-      }
+    let animationFrameId: number;
+    
+    const handleResize = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      // Use requestAnimationFrame for smoother updates
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        const newWidth = Math.max(
+          MIN_SIDEBAR_WIDTH, 
+          Math.min(e.clientX, MAX_SIDEBAR_WIDTH)
+        );
+        setSidebarWidth(newWidth);
+      });
     };
 
     const handleResizeEnd = () => {
+      cancelAnimationFrame(animationFrameId);
       setIsResizing(false);
     };
 
-    document.addEventListener("mousemove", handleResize);
-    document.addEventListener("mouseup", handleResizeEnd);
+    // Use passive event listeners for better performance
+    document.addEventListener("mousemove", handleResize, { passive: true });
+    document.addEventListener("mouseup", handleResizeEnd, { passive: true });
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       document.removeEventListener("mousemove", handleResize);
       document.removeEventListener("mouseup", handleResizeEnd);
     };

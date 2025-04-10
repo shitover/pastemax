@@ -97,12 +97,11 @@ export const IgnorePatternsViewer = ({
   isElectron
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores, ignoreSettingsModified } = useIgnorePatterns(
+  const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
     selectedFolder,
     isElectron
   );
   const [customIgnoreInput, setCustomIgnoreInput] = useState('');
-  const [shouldReload, setShouldReload] = useState(false);
 
   // Log the received patterns prop for debugging
   useEffect(() => {
@@ -122,27 +121,8 @@ export const IgnorePatternsViewer = ({
     }
   }, [isOpen]);
   
-  // Handle auto-reload when modal is closed and settings were modified
-  useEffect(() => {
-    if (shouldReload) {
-      // Small delay to ensure the modal closing animation completes
-      const reloadTimer = setTimeout(() => {
-        console.log("Auto-reloading application after ignore settings change");
-        window.location.reload();
-      }, 300);
-      
-      return () => clearTimeout(reloadTimer);
-    }
-  }, [shouldReload]);
 
-  // Custom close handler that triggers reload if settings were modified
-  const handleClose = () => {
-    if (ignoreSettingsModified) {
-      console.log("Ignore settings were modified, will reload on close");
-      setShouldReload(true);
-    }
-    onClose();
-  };
+  const handleClose = onClose;
 
   if (!isOpen) return null;
 

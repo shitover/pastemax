@@ -1,3 +1,4 @@
+/* ============================== IMPORTS ============================== */
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
@@ -23,6 +24,7 @@ import { generateAsciiFileTree, normalizePath, arePathsEqual, isSubPath, join } 
  */
 import { formatContentForCopying } from "./utils/contentFormatUtils";
 
+/* ============================== GLOBAL DECLARATIONS ============================== */
 // Access the electron API from the window object
 declare global {
   interface Window {
@@ -40,6 +42,7 @@ declare global {
   }
 }
 
+/* ============================== CONSTANTS ============================== */
 /**
  * Keys used for storing app state in localStorage.
  * Keeping them in one place makes them easier to manage and update.
@@ -54,6 +57,7 @@ const STORAGE_KEYS = {
   IGNORE_SETTINGS_MODIFIED: "pastemax-ignore-settings-modified",
 };
 
+/* ============================== MAIN APP COMPONENT ============================== */
 /**
  * The main App component that handles:
  * - File selection and management
@@ -62,33 +66,22 @@ const STORAGE_KEYS = {
  * - UI state management
  */
 const App = (): JSX.Element => {
-  // This useEffect was clearing saved data on every reload
-  // It was marked as "temporary, for testing" but was preventing
-  // selections from persisting after a page refresh (Ctrl+R)
-  /* 
-  useEffect(() => {
-    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
-    localStorage.removeItem("hasLoadedInitialData");
-    sessionStorage.removeItem("hasLoadedInitialData");
-  }, []);
-  */
 
-  // Load initial state from localStorage if available
+  /* ============================== STATE: Load initial state from localStorage ============================== */
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
   const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE);
 
-  // Normalize selectedFolder when loading from localStorage
-  const [selectedFolder, setSelectedFolder] = useState( // Remove type argument
+  /* ============================== STATE: Core App State ============================== */
+  const [selectedFolder, setSelectedFolder] = useState(
     savedFolder ? normalizePath(savedFolder) : null
   );
-  // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
+  const [allFiles, setAllFiles] = useState([] as FileData[]);
 
-  const [allFiles, setAllFiles] = useState([] as FileData[]); // Explicitly type initial value
-  
+  /* ============================== STATE: Ignore Patterns ============================== */
   const {
     isIgnoreViewerOpen,
     ignorePatterns,
@@ -101,18 +94,15 @@ const App = (): JSX.Element => {
     ignoreSettingsModified,
     resetIgnoreSettingsModified
   } = useIgnorePatterns(selectedFolder, isElectron);
-  // Normalize paths loaded from localStorage
-  const [selectedFiles, setSelectedFiles] = useState( // Remove type argument
-    (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[] // Explicitly type initial value
+
+  /* ============================== STATE: File Selection and Sorting ============================== */
+  const [selectedFiles, setSelectedFiles] = useState(
+    (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[]
   );
-  const [sortOrder, setSortOrder] = useState( // Remove type argument
-    savedSortOrder || "tokens-desc"
-  );
-  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || ""); // Remove type argument
-  const [expandedNodes, setExpandedNodes] = useState(
-    {} as Record<string, boolean>
-  );
-  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]); // Keep explicit type for initial value
+  const [sortOrder, setSortOrder] = useState(savedSortOrder || "tokens-desc");
+  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
+  const [expandedNodes, setExpandedNodes] = useState({} as Record<string, boolean>);
+  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
   const [processingStatus, setProcessingStatus] = useState(
     { status: "idle", message: "" } as {
       status: "idle" | "processing" | "complete" | "error";
@@ -120,14 +110,24 @@ const App = (): JSX.Element => {
     }
   );
   const [includeFileTree, setIncludeFileTree] = useState(false);
-  
 
-
-  // State for sort dropdown
+  /* ============================== STATE: UI Controls ============================== */
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-
-
   const [isSafeMode, setIsSafeMode] = useState(false);
+
+  /* ============================== STATE: User Instructions ============================== */
+  const [userInstructions, setUserInstructions] = useState("");
+
+  // This useEffect was clearing saved data on every reload
+  // It was marked as "temporary, for testing" but was preventing
+  // selections from persisting after a page refresh (Ctrl+R)
+  /* 
+  useEffect(() => {
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+    localStorage.removeItem("hasLoadedInitialData");
+    sessionStorage.removeItem("hasLoadedInitialData");
+  }, []);
+  */
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
@@ -165,6 +165,8 @@ const App = (): JSX.Element => {
     console.timeEnd('clearSavedState');
     window.location.reload();
   }, [isElectron]); // Added isElectron dependency
+
+  /* ============================== EFFECTS ============================== */
 
   // Load expanded nodes state from localStorage
   useEffect(() => {
@@ -211,17 +213,6 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
   }, [ignoreMode]);
-
-  // Add a function to cancel directory loading
-  const cancelDirectoryLoading = useCallback(() => {
-    if (isElectron) {
-      window.electron.ipcRenderer.send("cancel-directory-loading");
-      setProcessingStatus({
-        status: "idle",
-        message: "Directory loading cancelled",
-      });
-    }
-  }, [isElectron]);
 
   // Add this new useEffect for safe mode detection
   useEffect(() => {
@@ -270,7 +261,6 @@ const App = (): JSX.Element => {
     // on every refresh to ensure state is fully restored
   }, [isElectron, selectedFolder, isSafeMode]);
   
-
   // Listen for folder selection from main process
   useEffect(() => {
     if (!isElectron) {
@@ -384,12 +374,25 @@ const App = (): JSX.Element => {
         handleProcessingStatus,
       );
     };
-  }, [isElectron]); // Removed sortOrder and searchTerm dependencies
+  }, [isElectron, selectedFolder, allFiles, processingStatus]); // Added dependencies to ensure up-to-date values
 
   // Apply filters and sort whenever relevant state changes
   useEffect(() => {
     applyFiltersAndSort(allFiles, sortOrder, searchTerm);
   }, [allFiles, sortOrder, searchTerm]); // Added allFiles dependency
+
+  /* ============================== HANDLERS & UTILITIES ============================== */
+
+  // Add a function to cancel directory loading
+  const cancelDirectoryLoading = useCallback(() => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("cancel-directory-loading");
+      setProcessingStatus({
+        status: "idle",
+        message: "Directory loading cancelled",
+      });
+    }
+  }, [isElectron]);
 
   const openFolder = () => {
     if (isElectron) {
@@ -633,7 +636,6 @@ const App = (): JSX.Element => {
    * This text will be appended at the end of all copied content
    * to provide context or special notes to recipients
    */
-  const [userInstructions, setUserInstructions] = useState("");
 
   /**
    * Assembles the final content for copying by using the utility function
@@ -713,6 +715,12 @@ const App = (): JSX.Element => {
       return newState;
     });
   };
+
+
+  /* ===================================================================== */
+  /* ============================== RENDER =============================== */
+  /* ===================================================================== */
+  // Main JSX rendering
 
   return (
     <ThemeProvider children={

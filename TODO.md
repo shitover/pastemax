@@ -1,6 +1,17 @@
-# TODO: (DONE! 2023-10-03)
-- ✅ improve chunk loading
-- ✅ introduce caching
-- ✅ Ensure to test build in Mac and maybe Linux
-- ✅ add view ignore UI
-- ✅ add option for user to automatically use gitignore / gitignores OR using their own global specified ignores app settings
+# TODO
+
+## UI Improvements
+- [ ] Modularize index.css into component-specific stylesheets
+- [ ] Implement file tree navigation option
+- [ ] Improve user instruction UI/UX
+- [ ] Add better icon integration with Lucide icons
+
+## Technical Tasks
+- [ ] Create meta prompt system for user instructions
+- [ ] Further modularize component styling
+- [ ] Evaluate and add additional components as needed
+
+## Future Considerations
+- [ ] Performance optimization
+- [ ] Accessibility improvements
+- [ ] Unit tests for components

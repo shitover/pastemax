@@ -13,7 +13,7 @@
   --background-primary: #ffffff;
   --background-secondary: #f8f8f8;
   --background-tertiary: #f1f1f1;
-  --background-selected: rgba(0,0,0,0.06);
+  --background-selected: rgba(101, 101, 101, 0.06);
   
   /* Text Colors */
   --text-primary: #000000;
@@ -580,6 +580,24 @@ input[type="checkbox"][disabled] {
    Component Styles
    ========================================================================== */
 
+/* -------------------- Sidebar Resize Handle -------------------- */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 10;
+  background-color: transparent;
+  will-change: transform; /* Optimize for performance */
+}
+
+.sidebar-resize-handle:hover {
+  background-color: var(--color-primary);
+  opacity: 0.2;
+}
+
 /* -------------------- File Tree (in Sidebar) -------------------- */
 .file-tree {
   flex: 1; /* Allow tree to grow and fill sidebar space */
@@ -746,7 +764,7 @@ input[type="checkbox"][disabled] {
 }
 .custom-global-ignores input {
   flex-grow: 1;
-  border: 2px solid transparent;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 15px;
@@ -798,15 +816,21 @@ input[type="checkbox"][disabled] {
 
 .dark-mode .custom-global-ignores li {
   background-color: var(--background-secondary); /* Keep the same for dark mode */
+  border: 1px solid var(--border-color);
 }
 
 .custom-global-ignores li button {
   color: var(--error-color);
   background: none;
-  border: none;
   padding: 4px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
+  height: auto;
+  border: none;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
 }
 
 .custom-global-ignores li button:hover {
@@ -1668,51 +1692,56 @@ label {
 .ignore-patterns-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--standard-padding);
+  padding: var(--space-md);
 }
 
 .ignore-patterns-sections {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: var(--space-md);
 }
 
 .ignore-patterns-sections .ignore-patterns-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
+  gap: var(--space-sm);
+  padding: var(--space-md);
   background-color: var(--background-secondary);
-  border-radius: 8px;
+  border-radius: var(--border-radius-md);
   border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.ignore-patterns-sections .ignore-patterns-section:hover {
+  border-color: var(--color-primary-light);
 }
 
 .ignore-patterns-section .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-xs);
 }
 
 .ignore-patterns-section h3 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;
 }
 
 .ignore-patterns-section .pattern-count {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  padding: 4px 8px;
+  padding: var(--space-xs) var(--space-sm);
   background-color: var(--background-primary);
-  border-radius: 12px;
+  border-radius: var(--border-radius-pill);
   border: 1px solid var(--border-color);
 }
 
 .ignore-patterns-section .section-subtitle {
-  font-size: 12px;
-  color: var (--text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
   margin-top: -8px;
   font-style: italic;
 }
@@ -1720,20 +1749,21 @@ label {
 .pattern-list {
   background-color: var(--background-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 16px;
+  border-radius: var(--border-radius-md);
+  padding: var(--space-md);
   margin: 0;
   font-family: var(--font-family-code);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   line-height: 1.6;
   color: var(--text-primary);
   white-space: pre;
   overflow-x: auto;
   max-height: 200px;
+  transition: border-color var(--transition-fast);
 }
 
 .pattern-list:hover {
-  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .ignore-patterns-error {
@@ -1762,13 +1792,128 @@ label {
   border-radius: 4px;
 }
 
+/* Custom Global Ignores Section (Dark Mode) - Matched to ignore-patterns-section */
+.custom-global-ignores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.custom-global-ignores:hover {
+  border-color: var(--color-primary-light);
+}
+
+.custom-global-ignores h4 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.custom-global-ignores .custom-ignore-input {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.custom-global-ignores input {
+  flex-grow: 1;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  background-color: var(--background-primary);
+  transition: all var(--transition-fast);
+}
+
+.custom-global-ignores input:hover {
+  border-color: var(--border-color-focus);
+}
+
+.custom-global-ignores input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.add-pattern-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-pattern-button:hover {
+  background-color: var(--color-primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.add-pattern-button:active {
+  transform: translateY(0);
+}
+
+.custom-global-ignores .custom-ignore-list ul {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-sm) 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.custom-global-ignores .custom-ignore-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.custom-global-ignores .custom-ignore-list li:hover {
+  background-color: var(--hover-color);
+  border-color: var(--color-primary-light);
+}
+
+.remove-pattern-button {
+  background: none;
+  border: none;
+  color: var(--error-color);
+  cursor: pointer;
+  padding: var(--space-xs);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.remove-pattern-button:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.remove-pattern-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Dark mode specific styles for ignore patterns modal */
 .dark-mode .ignore-patterns-modal {
   border-color: var(--border-color);
 }
 
 .dark-mode .pattern-list {
-  border: var(--standard-border);
+  border: 2px solid var(--border-color);
 }
 
 .dark-mode .ignore-patterns-error {
@@ -1779,7 +1924,7 @@ label {
 /* Mode explanation styling */
 .ignore-mode-explanation {
   margin: 8px auto 20px auto;
-  max-width: 600px;
+  max-width: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1828,7 +1973,6 @@ label {
 .ignore-patterns-mode-toggle {
   display: flex;
   justify-content: center;
-  margin: 18px 0 0 0; /* Removed bottom margin, kept top margin */
   width: 100%;
   display: flex;
   align-items: center;
@@ -2408,5 +2552,3 @@ button:hover svg.lucide {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-primary);
 }
-
-
