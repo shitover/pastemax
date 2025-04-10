@@ -403,7 +403,6 @@ const App = (): JSX.Element => {
 
   // Apply filters and sorting to files
   const applyFiltersAndSort = useCallback((
-  const applyFiltersAndSort = useCallback((
     files: FileData[],
     sort: string,
     filter: string,

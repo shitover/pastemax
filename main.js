@@ -889,10 +889,6 @@ ipcMain.on("debug-file-selection", (event, data) => {
 ipcMain.on("request-file-list", async (event, folderPath) => {
   console.log("Received request-file-list payload:", folderPath); // Log the entire payload
   if (isLoadingDirectory) {
-    if (currentWatcher) {
-      await currentWatcher.close();
-      currentWatcher = null;
-    }
     console.log("Already processing a directory, ignoring new request for:", folderPath);
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window && window.webContents && !window.webContents.isDestroyed()) {
@@ -986,88 +982,6 @@ ipcMain.on("request-file-list", async (event, folderPath) => {
     });
 
     event.sender.send("file-list-data", serializedFiles);
-
-    // Start the file watcher only if chokidar loaded successfully
-    if (chokidar) {
-      console.log(`Starting file watcher for: ${rootDir}`);
-      currentWatcher = chokidar.watch(rootDir, {
-        ignored: (filePath) => {
-          const absolutePath = ensureAbsolutePath(filePath);
-          let relative = ''; // Initialize relative path
-
-          try {
-            relative = safeRelativePath(rootDir, absolutePath);
-          } catch (err) {
-            console.error(`Error calculating relative path for ${absolutePath} from ${rootDir}:`, err);
-            return true; // Ignore if path calculation fails
-          }
-
-          // If relative path is empty, it's the root dir itself.
-          // Don't pass empty string to ignores(). The root itself shouldn't be ignored by rules.
-          if (relative === '') {
-            return false; // Don't ignore the root directory based on patterns
-          }
-
-          const isInvalidOrOutside = !isValidPath(relative) || relative.startsWith('..');
-          let isIgnoredByRules = false;
-
-          if (!isInvalidOrOutside) {
-            try {
-              // Ensure ignoreFilter exists before calling ignores
-              if (ignoreFilter && typeof ignoreFilter.ignores === 'function') {
-                 isIgnoredByRules = ignoreFilter.ignores(relative); // 'relative' is guaranteed not empty here
-              } else {
-                 console.warn('ignoreFilter or ignoreFilter.ignores is not available.');
-                 return true;
-              }
-            } catch(err) {
-               console.error(`Error checking ignore rules for relative path '${relative}':`, err);
-               return true; // Ignore if rules check fails
-            }
-          }
-
-          const isIgnored = isInvalidOrOutside || isIgnoredByRules;
-          return isIgnored;
-        },
-        ignoreInitial: true,
-        persistent: true,
-        awaitWriteFinish: {
-          stabilityThreshold: 500,
-          pollInterval: 100
-        },
-        depth: 99
-      });
-
-      currentWatcher
-        .on('add', async (filePath) => {
-          const normalizedPath = normalizePath(filePath);
-          console.log(`<<< CHOKIDAR EVENT: add - ${normalizedPath} >>>`);
-          const fileData = await processSingleFile(normalizedPath, rootDir, ignoreFilter);
-          if (fileData) { // Send update even if skipped
-            console.log(`[Watcher Sending IPC] file-added for ${normalizedPath}`);
-            event.sender.send('file-added', fileData);
-          }
-        })
-        .on('change', async (filePath) => {
-          const normalizedPath = normalizePath(filePath);
-          console.log(`<<< CHOKIDAR EVENT: change - ${normalizedPath} >>>`);
-          const fileData = await processSingleFile(normalizedPath, rootDir, ignoreFilter);
-          if (fileData) { // Send update even if skipped
-            event.sender.send('file-updated', fileData);
-          }
-        })
-        .on('unlink', (filePath) => {
-          const normalizedPath = normalizePath(filePath);
-          console.log(`<<< CHOKIDAR EVENT: unlink - ${normalizedPath} >>>`);
-          event.sender.send('file-removed', normalizedPath);
-        })
-        .on('error', (error) => {
-          console.error(`<<< CHOKIDAR ERROR: ${error} >>>`);
-        })
-        .on('ready', () => console.log('Initial scan complete. File watcher is ready.'));
-    } else {
-      console.warn("Chokidar module not available, live file watching disabled.");
-    }
   } catch (err) {
     console.error("Error processing file list:", err);
     isLoadingDirectory = false;
