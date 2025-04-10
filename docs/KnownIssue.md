@@ -1,4 +1,4 @@
-# Known Issues
+# Known Issues (FIXED 2023-10-23)
 
 ## FIXED ✅
 - Auto gitignore works
@@ -13,7 +13,6 @@
 - Default patterns are not consistently applied in automatic mode nor global mode
 
 ## More Issues
-hmm ok some more issues,
 - first of all cache should be cleared @/src/App.tsx when, ignore mode is changed and a custom pattern is changed.
 - so next reload it will use the correct actual pattern and new cache.
 - 'Clear All' should actually clear cache of ignores.
@@ -22,7 +21,5 @@ hmm ok some more issues,
 - also default pattern should be array constant in @/main.js , excludedFiles array are only used for global ignores @/excluded-files.js .
 - default pattern should be used on both mode, this is because default pattern is to just make it soo that these default files/folder are just automatically skipped/ignored in loading soo it will make load soo much faster.
 - also the default pattern should be used in the global mode as well, because it is just a global ignore for all repos and folders.
-- global should be able to handle custom patterns that is added, everytime custom is edited and updated should update cache already stated in @/src/App.tsx 
+- global should be able to handle custom patterns that is added, everytime custom is edited and updated should update cache already stated in App.tsx.
 
-Refer to these files:
-@/main.js , @/src/App.tsx , @/src\hooks\useIgnorePatterns.ts, @/excluded-files.js  
