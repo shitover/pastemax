@@ -1,5 +1,5 @@
 /* ============================== IMPORTS ============================== */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';
@@ -231,36 +231,37 @@ const App = (): JSX.Element => {
     };
   }, [isElectron]);
 
-  // Modify the existing useEffect for loading initial data
+  // Simplified useEffect for loading initial data
   useEffect(() => {
-    // Prevent this hook from running if not in Electron, no folder selected, in safe mode, or already processing
-    if (!isElectron || !selectedFolder || isSafeMode || processingStatus.status === 'processing')
-      return;
+    if (!isElectron || !selectedFolder || isSafeMode) return;
 
-    // Always reload the folder data when the component mounts (after page refresh)
-    // We want to ensure the exact same state is restored, including all selected files
-    console.log('Loading saved folder on startup:', selectedFolder);
+    // Only run if we're not already processing
+    if (processingStatus.status === 'processing') {
+      console.log('[useEffect] Skipping - already processing');
+      return;
+    }
+
+    console.log('[useEffect] Loading folder:', selectedFolder);
     setProcessingStatus({
       status: 'processing',
-      message: 'Loading files from previously selected folder...',
-    });
-    // Request file list from the main process
-    console.log('[useEffect Load] Sending request-file-list:', {
-      folderPath: selectedFolder,
-      ignoreMode,
-      customIgnores,
-      ignoreSettingsModified,
-    });
-    window.electron.ipcRenderer.send('request-file-list', {
-      folderPath: selectedFolder,
-      ignoreMode,
-      customIgnores,
-      ignoreSettingsModified,
+      message: 'Loading files...',
     });
 
-    // We intentionally don't set any session flags because we want this to run
-    // on every refresh to ensure state is fully restored
-  }, [isElectron, selectedFolder, isSafeMode]);
+    const timer = setTimeout(() => {
+      console.log('[useEffect] Sending request-file-list after debounce');
+      window.electron.ipcRenderer.send('request-file-list', {
+        folderPath: selectedFolder,
+        ignoreMode,
+        customIgnores,
+        ignoreSettingsModified,
+      });
+    }, 300); // 300ms debounce
+
+    return () => {
+      clearTimeout(timer);
+      console.log('[useEffect] Cleanup - canceling pending request');
+    };
+  }, [selectedFolder, isSafeMode]); // Only depend on these core states
 
   // Memoize event handlers to maintain reference equality
   const handleFolderSelected = useCallback(
@@ -309,43 +310,19 @@ const App = (): JSX.Element => {
       });
       resetIgnoreSettingsModified();
     },
-    [selectedFolder, allFiles, processingStatus, ignoreMode, customIgnores, ignoreSettingsModified]
+    [
+      selectedFolder,
+      allFiles,
+      processingStatus,
+      ignoreMode,
+      customIgnores,
+      ignoreSettingsModified,
+      resetIgnoreSettingsModified,
+    ]
   );
 
-  const handleFileListData = useCallback(
-    (files: FileData[]) => {
-      console.log('Received file list data:', files.length, 'files');
-      setAllFiles(files);
-      setProcessingStatus({
-        status: 'complete',
-        message: `Loaded ${files.length} files`,
-      });
-
-      if (selectedFiles.length > 0) {
-        console.log('Preserving', selectedFiles.length, 'file selections from before reload');
-        const validSelectedFiles = selectedFiles.filter((selectedPath: string) =>
-          files.some((file) => arePathsEqual(file.path, selectedPath))
-        );
-
-        if (validSelectedFiles.length !== selectedFiles.length) {
-          console.log(
-            'Removed',
-            selectedFiles.length - validSelectedFiles.length,
-            'invalid selections'
-          );
-          setSelectedFiles(validSelectedFiles);
-        }
-      } else {
-        console.log('No existing selections, selecting all eligible files');
-        const selectablePaths = files
-          .filter((file: FileData) => !file.isBinary && !file.isSkipped && !file.excludedByDefault)
-          .map((file: FileData) => file.path);
-
-        setSelectedFiles(selectablePaths);
-      }
-    },
-    [selectedFiles]
-  );
+  // The handleFileListData function is implemented as stableHandleFileListData below
+  // with proper dependency tracking
 
   const handleProcessingStatus = useCallback(
     (status: { status: 'idle' | 'processing' | 'complete' | 'error'; message: string }) => {
@@ -356,29 +333,93 @@ const App = (): JSX.Element => {
   );
 
   // Listen for folder selection from main process
-  useEffect(() => {
-    if (!isElectron) {
-      console.warn('Not running in Electron environment');
-      return;
-    }
+  // Removed listenersAddedRef as it's no longer needed with the new IPC listener implementation
 
-    console.log('Adding IPC event listeners');
+  // Memoize handlers with stable dependencies
+  const stableHandleFolderSelected = useCallback(
+    (folderPath: string) => {
+      handleFolderSelected(folderPath);
+    },
+    [handleFolderSelected]
+  );
+
+  const stableHandleFileListData = useCallback(
+    (files: FileData[]) => {
+      console.log('[handleFileListData] Received file list data:', files.length, 'files');
+      console.log('[handleFileListData] Current selectedFiles:', selectedFiles.length);
+      
+      setAllFiles((prevFiles: FileData[]) => {
+        console.log('[handleFileListData] Previous allFiles count:', prevFiles.length);
+        return files;
+      });
+      
+      setProcessingStatus({
+        status: 'complete',
+        message: `Loaded ${files.length} files`,
+      });
+
+      if (selectedFiles.length > 0) {
+        console.log('[handleFileListData] Preserving existing selections');
+        const validSelectedFiles = selectedFiles.filter((selectedPath: string) =>
+          files.some((file) => arePathsEqual(file.path, selectedPath))
+        );
+
+        if (validSelectedFiles.length !== selectedFiles.length) {
+          console.log(
+            '[handleFileListData] Removed invalid selections:',
+            selectedFiles.length - validSelectedFiles.length
+          );
+          setSelectedFiles(validSelectedFiles);
+        } else {
+          console.log('[handleFileListData] All existing selections are valid');
+        }
+      } else {
+        console.log('[handleFileListData] No existing selections, selecting all eligible files');
+        const selectablePaths = files
+          .filter((file: FileData) => !file.isBinary && !file.isSkipped && !file.excludedByDefault)
+          .map((file: FileData) => file.path);
+
+        setSelectedFiles(selectablePaths);
+      }
+    },
+    [selectedFiles, setAllFiles, setProcessingStatus, setSelectedFiles]
+  );
+
+  const stableHandleProcessingStatus = useCallback(handleProcessingStatus, [
+    handleProcessingStatus,
+  ]);
+
+  // Improved IPC listener setup with proper cleanup
+  useEffect(() => {
+    if (!isElectron) return;
+
+    const handleFolderSelected = (folderPath: string) => {
+      console.log('[IPC] Received folder-selected:', folderPath);
+      stableHandleFolderSelected(folderPath);
+    };
+
+    const handleFileListData = (files: FileData[]) => {
+      console.log('[IPC] Received file-list-data:', files.length, 'files');
+      stableHandleFileListData(files);
+    };
+
+    const handleProcessingStatus = (status: {status: string, message: string}) => {
+      console.log('[IPC] Received file-processing-status:', status);
+      stableHandleProcessingStatus(status);
+    };
+
+    console.log('[useEffect] Setting up IPC listeners');
     window.electron.ipcRenderer.on('folder-selected', handleFolderSelected);
     window.electron.ipcRenderer.on('file-list-data', handleFileListData);
     window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatus);
 
     return () => {
-      console.log('Removing IPC event listeners');
+      console.log('[useEffect] Cleaning up IPC listeners');
       window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelected);
       window.electron.ipcRenderer.removeListener('file-list-data', handleFileListData);
       window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
     };
-  }, [isElectron, handleFolderSelected, handleFileListData, handleProcessingStatus]);
-
-  // Apply filters and sort whenever relevant state changes
-  useEffect(() => {
-    applyFiltersAndSort(allFiles, sortOrder, searchTerm);
-  }, [allFiles, sortOrder, searchTerm]); // Added allFiles dependency
+  }, [isElectron]); // Only depend on isElectron
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 
@@ -438,6 +479,11 @@ const App = (): JSX.Element => {
     },
     [setDisplayedFiles]
   );
+
+  // Apply filters and sort whenever relevant state changes
+  useEffect(() => {
+    applyFiltersAndSort(allFiles, sortOrder, searchTerm);
+  }, [applyFiltersAndSort, allFiles, sortOrder, searchTerm]); // Added all dependencies
 
   // Listen for live file changes from main process
   useEffect(() => {
