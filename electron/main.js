@@ -1136,6 +1136,7 @@ ipcMain.on('request-file-list', async (event, folderPath) => {
 // ======================
 // ELECTRON WINDOW SETUP
 // ======================
+console.log('--- createWindow() ENTERED ---');
 function createWindow() {
   const isSafeMode = process.argv.includes('--safe-mode');
 
@@ -1161,8 +1162,20 @@ function createWindow() {
         isDevToolsExtension: false,
         htmlFullscreen: false,
       },
+      webSecurity: false, // Disable web security to allow file:// access
+      allowRunningInsecureContent: true // Allow loading local resources
     },
   });
+
+  // Verify file exists before loading
+  const prodPath = path.join(__dirname, 'dist', 'index.html');
+  console.log('Production path:', prodPath);
+  try {
+    fs.accessSync(prodPath, fs.constants.R_OK);
+    console.log('File exists and is readable');
+  } catch (err) {
+    console.error('File access error:', err);
+  }
 
   // Register the escape key to cancel directory loading
   globalShortcut.register('Escape', () => {
@@ -1198,7 +1211,30 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    const prodPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
+      : path.join(__dirname, 'dist', 'index.html');
+      
+    console.log('--- PRODUCTION LOAD ---');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('app.isPackaged:', app.isPackaged);
+    console.log('__dirname:', __dirname);
+    console.log('Resources Path:', process.resourcesPath);
+    console.log('Attempting to load file:', prodPath);
+    console.log('File exists:', fs.existsSync(prodPath));
+    
+    mainWindow.loadFile(prodPath)
+      .then(() => {
+        console.log('Successfully loaded index.html');
+        mainWindow.webContents.on('did-finish-load', () => {
+          console.log('Finished loading all page resources');
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load index.html:', err);
+        // Fallback to showing error page
+        mainWindow.loadURL(`data:text/html,<h1>Loading Error</h1><p>${encodeURIComponent(err.message)}</p>`);
+      });
   }
 }
 
