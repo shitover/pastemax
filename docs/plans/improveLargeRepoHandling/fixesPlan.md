@@ -79,9 +79,11 @@ Refer to this flow diagram for visual detail of change
   - **Outcome:** All .gitignore patterns are collected and merged for the session.
 
 - [x] **Task 1.3: Modify `loadGitignore(rootDir)` to Use the Cache**
+
   - **File:** `main.js`
   - **Action:** Update `loadGitignore` to first check the cache. If not cached, add default patterns, merge excluded files, then asynchronously add the combined .gitignore patterns and cache the result.
   - **Example:**
+
     ```js
     function loadGitignore(rootDir) {
       rootDir = ensureAbsolutePath(rootDir);
@@ -115,6 +117,7 @@ Refer to this flow diagram for visual detail of change
       return ig;
     }
     ```
+
   - **Outcome:** Efficient, unified ignore processing for the duration of the session.
 
 ---

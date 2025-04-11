@@ -1163,7 +1163,7 @@ function createWindow() {
         htmlFullscreen: false,
       },
       webSecurity: false, // Disable web security to allow file:// access
-      allowRunningInsecureContent: true // Allow loading local resources
+      allowRunningInsecureContent: true, // Allow loading local resources
     },
   });
 
@@ -1214,7 +1214,7 @@ function createWindow() {
     const prodPath = app.isPackaged
       ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
       : path.join(__dirname, 'dist', 'index.html');
-      
+
     console.log('--- PRODUCTION LOAD ---');
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('app.isPackaged:', app.isPackaged);
@@ -1222,18 +1222,21 @@ function createWindow() {
     console.log('Resources Path:', process.resourcesPath);
     console.log('Attempting to load file:', prodPath);
     console.log('File exists:', fs.existsSync(prodPath));
-    
-    mainWindow.loadFile(prodPath)
+
+    mainWindow
+      .loadFile(prodPath)
       .then(() => {
         console.log('Successfully loaded index.html');
         mainWindow.webContents.on('did-finish-load', () => {
           console.log('Finished loading all page resources');
         });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to load index.html:', err);
         // Fallback to showing error page
-        mainWindow.loadURL(`data:text/html,<h1>Loading Error</h1><p>${encodeURIComponent(err.message)}</p>`);
+        mainWindow.loadURL(
+          `data:text/html,<h1>Loading Error</h1><p>${encodeURIComponent(err.message)}</p>`
+        );
       });
   }
 }
