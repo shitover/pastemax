@@ -36,8 +36,8 @@ viteProcess.stdout?.on('data', (data) => {
   const output = data.toString();
   console.log(output); // Echo output to console
 
-  // Extract port from the output (e.g., "Local: http://localhost:3001/")
-  const portMatch = output.match(/Local:\s+http:\/\/localhost:(\d+)/);
+  // Extract port from Vite output (supports both formats)
+  const portMatch = output.match(/(?:Local|➜\s+Local):\s+http:\/\/localhost:(\d+)/);
   if (portMatch && portMatch[1]) {
     vitePort = parseInt(portMatch[1], 10);
     console.log(`🔍 Detected Vite server running on port ${vitePort}`);
@@ -45,7 +45,7 @@ viteProcess.stdout?.on('data', (data) => {
 
   if (output.includes('Local:') && !viteStarted) {
     viteStarted = true;
-    startElectron();
+    startElectron(vitePort);
   }
 });
 
@@ -72,7 +72,7 @@ setTimeout(() => {
   }
 }, 5000); // Wait 5 seconds before attempting to start Electron
 
-function startElectron() {
+function startElectron(port) {
   console.log(`🔌 Starting Electron app with Vite server at port ${vitePort}...`);
   const electronProcess = spawn('npm', ['start'], {
     stdio: 'inherit',
@@ -80,7 +80,7 @@ function startElectron() {
     env: {
       ...process.env,
       NODE_ENV: 'development',
-      ELECTRON_START_URL: `http://localhost:${vitePort}`,
+      ELECTRON_START_URL: `http://localhost:${port}`,
     },
   });
 

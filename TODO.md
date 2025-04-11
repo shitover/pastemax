@@ -19,3 +19,9 @@
 - [ ] Performance optimization
 - [ ] Accessibility improvements
 - [ ] Unit tests for components
+- [ ] Better Docker integration for deployment
+- [ ] Docker watcher integration
+- [ ] Explore alternative libraries for file tree navigation
+- [ ] Consider using a different library for the file tree navigation
+- [ ] Chokidar for file watching
+- [ ] Zustand for state management

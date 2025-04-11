@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SidebarProps, TreeNode } from '../types/FileTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
@@ -7,7 +7,7 @@ import TreeItem from './TreeItem';
  * Import path utilities for handling file paths across different operating systems.
  * While not all utilities are used directly, they're kept for consistency and future use.
  */
-import { normalizePath, join, isSubPath, arePathsEqual } from '../utils/pathUtils';
+import { normalizePath, join, isSubPath } from '../utils/pathUtils';
 
 /**
  * The Sidebar component displays a tree view of files and folders, allowing users to:

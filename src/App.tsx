@@ -1,9 +1,9 @@
 /* ============================== IMPORTS ============================== */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';
-import { FileData, IgnoreMode } from './types/FileTypes';
+import { FileData } from './types/FileTypes';
 import { ThemeProvider } from './context/ThemeContext';
 import IgnorePatternsViewer from './components/IgnorePatternsViewer';
 import ThemeToggle from './components/ThemeToggle';
@@ -16,11 +16,11 @@ import UserInstructions from './components/UserInstructions';
  * While not all utilities are used directly, they're kept for consistency and future use.
  */
 import {
-  generateAsciiFileTree,
+  // generateAsciiFileTree, unused
   normalizePath,
   arePathsEqual,
   isSubPath,
-  join,
+  // join, unused
 } from './utils/pathUtils';
 
 /**
@@ -74,7 +74,7 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE);
+  // const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE); no longer needed
 
   /* ============================== STATE: Core App State ============================== */
   const [selectedFolder, setSelectedFolder] = useState(
@@ -91,7 +91,6 @@ const App = (): JSX.Element => {
     handleViewIgnorePatterns,
     closeIgnoreViewer,
     ignoreMode,
-    setIgnoreMode,
     customIgnores,
     ignoreSettingsModified,
     resetIgnoreSettingsModified,
@@ -261,7 +260,7 @@ const App = (): JSX.Element => {
       clearTimeout(timer);
       console.log('[useEffect] Cleanup - canceling pending request');
     };
-  }, [selectedFolder, isSafeMode]); // Only depend on these core states
+  }, [selectedFolder, isSafeMode]); // Only depend on these core states (Leave it as is)
 
   // Memoize event handlers to maintain reference equality
   const handleFolderSelected = useCallback(
@@ -347,12 +346,12 @@ const App = (): JSX.Element => {
     (files: FileData[]) => {
       console.log('[handleFileListData] Received file list data:', files.length, 'files');
       console.log('[handleFileListData] Current selectedFiles:', selectedFiles.length);
-      
+
       setAllFiles((prevFiles: FileData[]) => {
         console.log('[handleFileListData] Previous allFiles count:', prevFiles.length);
         return files;
       });
-      
+
       setProcessingStatus({
         status: 'complete',
         message: `Loaded ${files.length} files`,
@@ -403,7 +402,7 @@ const App = (): JSX.Element => {
       stableHandleFileListData(files);
     };
 
-    const handleProcessingStatus = (status: {status: string, message: string}) => {
+    const handleProcessingStatus = (status: { status: string; message: string }) => {
       console.log('[IPC] Received file-processing-status:', status);
       stableHandleProcessingStatus(status);
     };
@@ -419,7 +418,7 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.removeListener('file-list-data', handleFileListData);
       window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
     };
-  }, [isElectron]); // Only depend on isElectron
+  }, [isElectron]); // Only depend on isElectron (Leave it as is)
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 

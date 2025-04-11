@@ -12,7 +12,7 @@ const chokidar = require('chokidar'); // Added for file watching
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
 const CONCURRENT_DIRS = 4; // Number of directories to process in parallel
-const CHUNK_SIZE = 30; // Number of files to process in one chunk
+// const CHUNK_SIZE = 30; // Number of files to process in one chunk (no longer used, might bring back)
 
 // Default ignore patterns that should always be applied
 const DEFAULT_PATTERNS = [
@@ -126,10 +126,6 @@ function normalizePath(filePath) {
   }
 
   return filePath.replace(/\\/g, '/');
-}
-
-function getPathSeparator() {
-  return path.sep;
 }
 
 function ensureAbsolutePath(inputPath) {
@@ -942,7 +938,7 @@ ipcMain.on('clear-main-cache', () => {
   console.log('Main process caches cleared (including ignoreCache)');
 });
 
-ipcMain.on('clear-ignore-cache', (event) => {
+ipcMain.on('clear-ignore-cache', () => {
   console.log('Clearing ignore cache due to ignore settings change');
   ignoreCache.clear();
   console.log('Ignore cache cleared');
@@ -1140,17 +1136,17 @@ console.log('--- createWindow() ENTERED ---');
 function createWindow() {
   const isSafeMode = process.argv.includes('--safe-mode');
 
+  // Set CSP header for all environments
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self'; font-src 'self' https://fonts.gstatic.com",
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* ws://localhost:*; object-src 'none';",
         ],
       },
     });
   });
-
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -1162,8 +1158,10 @@ function createWindow() {
         isDevToolsExtension: false,
         htmlFullscreen: false,
       },
-      webSecurity: false, // Disable web security to allow file:// access
-      allowRunningInsecureContent: true, // Allow loading local resources
+      // Always enable security
+      // Disable manually for testing
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
   });
 
@@ -1250,6 +1248,12 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {

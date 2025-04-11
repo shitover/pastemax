@@ -1,5 +1,4 @@
-import React, { useRef, useEffect } from 'react';
-import type { MouseEvent, ChangeEvent } from 'react';
+import { useRef, useEffect } from 'react';
 import { TreeItemProps, TreeNode } from '../types/FileTypes';
 import { ChevronRight, File, Folder } from 'lucide-react';
 import { arePathsEqual } from '../utils/pathUtils';
@@ -133,7 +132,7 @@ const TreeItem = ({
     toggleExpanded(id);
   };
 
-  const handleItemClick = (e: any) => {
+  const handleItemClick = () => {
     if (type === 'directory') {
       toggleExpanded(id);
     } else if (type === 'file' && !isDisabled) {
