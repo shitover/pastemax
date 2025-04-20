@@ -544,7 +544,7 @@ input[type='checkbox'][disabled] {
   font-size: 13px;
   padding: var(--space-sm) var(--space-md);
   background-color: var(--background-primary);
-  color: var(--text-primary);
+  color: var (--text-primary);
   border: var(--standard-border);
 }
 
@@ -1327,7 +1327,7 @@ input[type='text'].search-input:focus {
 .cancel-btn {
   padding: 4px 12px;
   font-size: 13px;
-  background-color: var (--error-color);
+  background-color: #e74c3c; /* Changed from var(--error-color) to solid red */
   color: white;
   border: none;
   border-radius: 4px;
