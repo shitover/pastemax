@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Dual-mode ignore pattern system:
+
+  - Global ignore mode: Static, user-customizable ignore patterns
+    - Faster processing with predefined ignore rules
+    - User interface for adding custom global ignore patterns
+    - Perfect for standard project structures with predictable file types
+  - Automatic mode: Dynamic .gitignore discovery and application
+    - Intelligent scanning of repository structure for .gitignore files
+    - Hierarchical application of ignore rules respecting .gitignore scope
+    - Optimized for monorepos and complex nested repository structures
+    - Maintains context-aware rule application with parent/child relationships
+
 - View Applied Ignore Patterns feature:
 
   - Added modal interface to view all active ignore patterns
@@ -25,6 +37,9 @@ All notable changes to this project will be documented in this file.
     - Better handling of deep repositories with multiple .gitignore files
     - Ensured all .gitignore patterns are loaded before file filtering begins
     - Better support for complex repository structures with nested git repositories
+  - Implemented parallel folder loading for significantly faster processing
+  - Added graceful crash recovery for extremely large repositories
+  - Intelligent memory management to prevent out-of-memory errors
 
 - Enhanced cache clearing functionality:
 
@@ -38,12 +53,15 @@ All notable changes to this project will be documented in this file.
   - New file metadata cache for faster reprocessing
   - Unified .gitignore pattern cache with deep repository support
   - Session-persistent caching for improved performance
+  - Advanced memoization for tree operations with intelligent invalidation
+  - Optimized tree traversal with cached intermediate results
 
 - Enhanced file processing architecture:
 
   - Smart validation checks before file I/O
   - Early binary file detection without content reads
   - Efficient path validation system
+  - Asynchronous worker-based file processing for improved responsiveness
 
 - Enhanced binary file handling:
 
@@ -56,6 +74,8 @@ All notable changes to this project will be documented in this file.
   - Added styled badges for binary files and containing folders
   - Enhanced badge visibility with distinct styling for light/dark themes
   - Added italicized indicators for folders with binary content
+  - Virtualized tree rendering for exceptional performance with large repositories
+  - Progressive loading indicators for better perceived performance
 
 ### Improved
 
@@ -67,15 +87,20 @@ All notable changes to this project will be documented in this file.
   - Improved modal layout and spacing
   - Added search input with theme-consistent styling
   - Fixed search state management for better UX
+  - Toggle between Global and Automatic ignore modes
 
 - Optimized large repository handling:
   - Reordered file processing checks for better performance
   - Reduced unnecessary file I/O operations
   - Improved handling of deep directory structures
+  - Parallel directory scanning with configurable concurrency
+  - Adaptive threading based on system capabilities
+  - Cancelable operations with clean resource cleanup
 - Enhanced directory tree metadata:
   - Added `hasBinaries` flag to track binary file presence
   - Optimized binary state propagation through directory structure
   - Improved UI feedback for binary content location
+  - Efficient tree node memoization with selective invalidation
 - Better theme compatibility:
   - Added semi-transparent backgrounds for binary indicators
   - Enhanced contrast for badge text in both themes
