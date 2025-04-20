@@ -1,23 +1,22 @@
-import React from "react";
-import { FileCardProps } from "../types/FileTypes";
-import { Plus, X, FileText } from "lucide-react";
+// src/components/FileCard.tsx
+import React, {useState} from "react";
+import { FileData } from "../types/FileTypes";  // Corrected import
+import { Plus, X, FileText, Eye } from "lucide-react";
 import CopyButton from "./CopyButton";
 
 interface FileCardComponentProps {
-  file: {
-    name: string;
-    path: string;
-    tokenCount: number;
-    content: string;
-  };
+  file: FileData;
   isSelected: boolean;
   toggleSelection: (path: string) => void;
+  onPreview: (filePath: string) => void; // Add onPreview prop
+
 }
 
 const FileCard = ({
   file,
   isSelected,
   toggleSelection,
+  onPreview
 }: FileCardComponentProps) => {
   const { name, path: filePath, tokenCount } = file;
 
@@ -44,8 +43,15 @@ const FileCard = ({
         >
           {isSelected ? <X size={16} /> : <Plus size={16} />}
         </button>
+        <button
+          className="file-card-action"
+          onClick={() => onPreview(filePath)} // Call onPreview
+          title="Preview File"
+        >
+          <Eye size={16} />
+        </button>
         <CopyButton text={file.content} className="file-card-action">
-          {""}
+            {""}
         </CopyButton>
       </div>
     </div>

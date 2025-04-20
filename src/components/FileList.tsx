@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { FileListProps, FileData } from "../types/FileTypes";
 import FileCard from "./FileCard";
+import FilePreviewModal from "./FilePreviewModal";
 import { arePathsEqual } from "../utils/pathUtils";
 
 const FileList = ({
@@ -11,10 +12,32 @@ const FileList = ({
   // Only show files that are in the selectedFiles array and not binary/skipped
   const displayableFiles = files.filter(
     (file: FileData) =>
-      selectedFiles.some(selectedPath => arePathsEqual(selectedPath, file.path)) && 
-      !file.isBinary && 
-      !file.isSkipped,
+      selectedFiles.some((selectedPath) =>
+        arePathsEqual(selectedPath, file.path)
+      ) &&
+      !file.isBinary &&
+      !file.isSkipped
   );
+
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFiles, setPreviewFiles] = useState([] as FileData[]);
+    const [activePreviewFile, setActivePreviewFile] = useState("" as string); // Track active file
+
+
+  const handlePreview = (filePath: string) => {
+     const fileToPreview = files.find((f) => f.path === filePath);
+        if (fileToPreview) {
+            setPreviewFiles([fileToPreview]); // Set to a single file
+            setActivePreviewFile(filePath);
+            setPreviewModalOpen(true);
+        }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewModalOpen(false);
+     setPreviewFiles([]);
+     setActivePreviewFile("");
+  };
 
   return (
     <div className="file-list-container">
@@ -26,6 +49,7 @@ const FileList = ({
               file={file}
               isSelected={true} // All displayed files are selected
               toggleSelection={toggleFileSelection}
+              onPreview={handlePreview} // Pass the preview handler
             />
           ))}
         </div>
@@ -36,6 +60,12 @@ const FileList = ({
             : "Select a folder to view files"}
         </div>
       )}
+        <FilePreviewModal
+            isOpen={previewModalOpen}
+            onClose={handleClosePreview}
+            files={previewFiles}
+            initialActiveFile={activePreviewFile}
+        />
     </div>
   );
 };
