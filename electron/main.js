@@ -54,6 +54,9 @@ const DEFAULT_PATTERNS = [
 // ======================
 // GLOBAL STATE
 // ======================
+/** runtime ignore-mode */
+/** @type {'automatic' | 'global'} */
+let currentIgnoreMode = 'automatic';
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
 let currentWatcher = null; // Added for file watching
@@ -219,14 +222,15 @@ function shouldExcludeByDefault(filePath, rootDir) {
     defaultExcludeFilter = ignore().add(excludedFiles);
     console.log(`[Default Exclude] Initialized filter with ${excludedFiles.length} excluded files`);
   }
-  
+
   const isExcluded = defaultExcludeFilter.ignores(relativePath);
-  
+
   // Only log exclusions periodically to reduce spam
-  if (isExcluded && Math.random() < 0.05) { // Log ~5% of exclusions as samples
+  if (isExcluded && Math.random() < 0.05) {
+    // Log ~5% of exclusions as samples
     console.log(`[Default Exclude] Excluded file: ${relativePath}`);
   }
-  
+
   return isExcluded;
 }
 
@@ -292,10 +296,10 @@ function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMod
     console.warn('Ignoring empty path in shouldIgnorePath');
     return true; // Treat empty paths as "should ignore"
   }
-  
+
   const relativeToRoot = safeRelativePath(rootDir, filePath);
   const relativeToCurrent = safeRelativePath(currentDir, filePath);
-  
+
   // Validate that the relative paths are not empty
   if (!relativeToRoot || relativeToRoot.trim() === '') {
     console.warn(`Skipping empty relativeToRoot path for: ${filePath}`);
@@ -320,13 +324,13 @@ function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMod
 
   // Then check against current directory context (automatic mode only)
   const currentIgnoreFilter = createContextualIgnoreFilter(rootDir, currentDir, ignoreFilter);
-  
+
   // Ensure relativeToCurrent is not empty before calling ignores
   if (!relativeToCurrent || relativeToCurrent.trim() === '') {
     console.warn(`Skipping empty relativeToCurrent path for: ${filePath}`);
     return false; // Don't ignore if we can't determine the relative path
   }
-  
+
   return currentIgnoreFilter.ignores(relativeToCurrent);
 }
 
@@ -370,19 +374,19 @@ function createContextualIgnoreFilter(
   // 2. Only add patterns from .gitignore if in automatic mode
   if (ignoreMode === 'automatic') {
     const gitignorePath = safePathJoin(currentDir, '.gitignore');
-    
+
     // Create a cache key for this .gitignore file
     const cacheKey = normalizePath(gitignorePath);
-    
+
     let patterns = [];
     let needToProcessFile = true;
-    
+
     // Check if we've already processed this .gitignore file
     if (gitIgnoreFound.has(cacheKey)) {
       patterns = gitIgnoreFound.get(cacheKey);
       needToProcessFile = false;
     }
-    
+
     if (needToProcessFile) {
       try {
         const content = fs.readFileSync(gitignorePath, 'utf8');
@@ -390,11 +394,11 @@ function createContextualIgnoreFilter(
           .split(/\r?\n/)
           .map((line) => line.trim())
           .filter((line) => line && !line.startsWith('#'));
-        
+
         // Cache the patterns for future use
         if (patterns.length > 0) {
           gitIgnoreFound.set(cacheKey, patterns);
-          
+
           // Get a more concise path for display
           const relativePath = safeRelativePath(rootDir, currentDir);
           console.log(
@@ -407,7 +411,7 @@ function createContextualIgnoreFilter(
         }
       }
     }
-    
+
     if (patterns.length > 0) {
       // Adjust patterns to be relative to current directory
       const adjustedPatterns = patterns.map((pattern) => {
@@ -523,9 +527,9 @@ async function loadGitignore(rootDir, window) {
           },
           persistent: true,
         };
-        
+
         currentWatcher = chokidar.watch(rootDir, watcherConfig);
-        
+
         // Handle any setup errors
         currentWatcher.on('error', (error) => {
           console.error('File watcher encountered an error:', error);
@@ -542,7 +546,7 @@ async function loadGitignore(rootDir, window) {
             console.error(`Error processing added file ${filePath}:`, error);
           }
         });
-        
+
         currentWatcher.on('change', async (filePath) => {
           try {
             const fileData = await processSingleFile(filePath, rootDir, ig);
@@ -553,7 +557,7 @@ async function loadGitignore(rootDir, window) {
             console.error(`Error processing changed file ${filePath}:`, error);
           }
         });
-        
+
         currentWatcher.on('unlink', (filePath) => {
           try {
             if (window && !window.isDestroyed()) {
@@ -566,13 +570,12 @@ async function loadGitignore(rootDir, window) {
             console.error(`Error handling deleted file ${filePath}:`, error);
           }
         });
-        
       } catch (watcherError) {
         console.error('Error setting up file watcher:', watcherError);
         // Continue without watcher rather than failing the whole operation
       }
     }
-    
+
     return ig;
   } catch (err) {
     console.error(`Error in loadGitignore for ${rootDir}:`, err);
@@ -682,7 +685,7 @@ async function processDirectory({
   progress,
   currentDir = dir,
   ignoreMode = 'automatic',
-  fileQueue = null
+  fileQueue = null,
 }) {
   const fullPath = safePathJoin(dir, dirent.name);
   const relativePath = safeRelativePath(rootDir, fullPath);
@@ -756,7 +759,7 @@ async function readFilesRecursively(
     const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
     queueToUse = new PQueue({ concurrency: fileQueueConcurrency });
     shouldCleanupQueue = true;
-    
+
     // Only log the initialization message for the root directory to reduce spam
     if (dir === rootDir) {
       console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
@@ -788,7 +791,7 @@ async function readFilesRecursively(
           progress,
           currentDir,
           ignoreMode,
-          fileQueue
+          fileQueue,
         })
       );
 
@@ -1089,8 +1092,8 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
         console.log('get-ignore-patterns called without folderPath - returning default patterns');
         return {
           patterns: {
-            global: [...DEFAULT_PATTERNS, ...excludedFiles, ...(customIgnores || [])]
-          }
+            global: [...DEFAULT_PATTERNS, ...excludedFiles, ...(customIgnores || [])],
+          },
         };
       }
 
@@ -1128,8 +1131,46 @@ ipcMain.on('debug-file-selection', (event, data) => {
   console.log('DEBUG - File Selection:', data);
 });
 
+if (!ipcMain.eventNames().includes('set-ignore-mode')) {
+  /**
+   * Handles ignore mode changes. Validates the mode, clears caches,
+   * resets the watcher, and notifies renderer windows of the change.
+   * @param {string} mode - The new ignore mode ('automatic' or 'global')
+   */
+  ipcMain.on('set-ignore-mode', async (_event, mode) => {
+    if (mode !== 'automatic' && mode !== 'global') {
+      console.warn(`[IgnoreMode] Received invalid mode: ${mode}`);
+      return;
+    }
+
+    currentIgnoreMode = mode;
+    console.log(`[IgnoreMode] switched -> ${mode}`);
+    console.log('[IgnoreMode] DEBUG - Current mode set to:', currentIgnoreMode);
+
+    ignoreCache.clear();
+    fileCache.clear();
+    fileTypeCache.clear();
+
+    if (currentWatcher) {
+      try {
+        await currentWatcher.close();
+        currentWatcher = null;
+      } catch (error) {
+        console.error('[IgnoreMode] Error closing file watcher:', error);
+      }
+    }
+
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (win && win.webContents) {
+        win.webContents.send('ignore-mode-updated', mode);
+      }
+    });
+  });
+}
+
 ipcMain.on('request-file-list', async (event, folderPath) => {
   console.log('Received request-file-list payload:', folderPath); // Log the entire payload
+
   if (isLoadingDirectory) {
     console.log('Already processing a directory, ignoring new request for:', folderPath);
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -1186,7 +1227,7 @@ ipcMain.on('request-file-list', async (event, folderPath) => {
       BrowserWindow.fromWebContents(event.sender),
       currentProgress,
       folderPath.folderPath,
-      folderPath.ignoreMode
+      folderPath?.ignoreMode ?? currentIgnoreMode
     );
 
     if (!isLoadingDirectory) {

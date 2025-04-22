@@ -52,8 +52,10 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
 
   const setIgnoreMode = (mode: IgnoreMode) => {
     if (typeof window !== 'undefined') {
+      if (isElectron) {
+        window.electron.ipcRenderer.send('clear-ignore-cache');
+      }
       localStorage.setItem('pastemax-ignore-mode', mode);
-      if (isElectron) window.electron.ipcRenderer.send('clear-ignore-cache');
       localStorage.setItem('pastemax-ignore-settings-modified', 'true');
     }
     _setIgnoreMode(mode);
@@ -96,12 +98,12 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     }
   }, [customIgnores]);
 
+
   // Wrapper function to update state and potentially trigger side effects if needed later
   const setCustomIgnores = (newIgnores: string[] | ((prevIgnores: string[]) => string[])) => {
     _setCustomIgnores(newIgnores);
-    if (typeof window !== 'undefined') {
-      if (isElectron) window.electron.ipcRenderer.send('clear-ignore-cache');
-      localStorage.setItem('pastemax-ignore-settings-modified', 'true');
+    if (typeof window !== 'undefined' && isElectron) {
+      window.electron.ipcRenderer.send('clear-ignore-cache');
     }
     _setIgnoreSettingsModified(true);
   };
@@ -162,13 +164,10 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     _setIgnoreSettingsModified(false);
   };
 
-  // Updated closeIgnoreViewer function that accepts modeChanged parameter
-  const closeIgnoreViewer = useCallback((modeChanged?: boolean) => {
+  // Close the ignore patterns viewer
+  const closeIgnoreViewer = useCallback(() => {
     setIsIgnoreViewerOpen(false);
-    
-    if (modeChanged) {
-      console.log('Ignore mode changed');
-    }
+    // State refresh is handled by backend event listener in App.tsx if mode changed
   }, []);
 
   return {
