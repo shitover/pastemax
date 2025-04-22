@@ -162,6 +162,61 @@ function isValidPath(pathToCheck) {
   }
 }
 
+// Cache for default exclude ignore filter
+let defaultExcludeFilter = null;
+
+function shouldExcludeByDefault(filePath, rootDir) {
+  filePath = ensureAbsolutePath(filePath);
+  rootDir = ensureAbsolutePath(rootDir);
+
+  const relativePath = safeRelativePath(rootDir, filePath);
+
+  if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
+    return true;
+  }
+
+  if (process.platform === 'win32') {
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
+      return true;
+    }
+
+    if (
+      filePath.toLowerCase().includes('\\windows\\') ||
+      filePath.toLowerCase().includes('\\system32\\')
+    ) {
+      return true;
+    }
+  }
+
+  if (process.platform === 'darwin') {
+    if (
+      filePath.includes('/.Spotlight-') ||
+      filePath.includes('/.Trashes') ||
+      filePath.includes('/.fseventsd')
+    ) {
+      return true;
+    }
+  }
+
+  if (process.platform === 'linux') {
+    if (
+      filePath.startsWith('/proc/') ||
+      filePath.startsWith('/sys/') ||
+      filePath.startsWith('/dev/')
+    ) {
+      return true;
+    }
+  }
+
+  // Create the filter only once and reuse it
+  if (!defaultExcludeFilter) {
+    defaultExcludeFilter = ignore().add(excludedFiles);
+    console.log(`[Default Exclude] Initialized filter with ${excludedFiles.length} excluded files`);
+  }
+  
+  return defaultExcludeFilter.ignores(relativePath);
+}
+
 // ======================
 // IGNORE CACHE LOGIC
 // ======================
@@ -433,54 +488,6 @@ async function loadGitignore(rootDir, window) {
   }
 }
 
-function shouldExcludeByDefault(filePath, rootDir) {
-  filePath = ensureAbsolutePath(filePath);
-  rootDir = ensureAbsolutePath(rootDir);
-
-  const relativePath = safeRelativePath(rootDir, filePath);
-
-  if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
-    return true;
-  }
-
-  if (process.platform === 'win32') {
-    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
-      return true;
-    }
-
-    if (
-      filePath.toLowerCase().includes('\\windows\\') ||
-      filePath.toLowerCase().includes('\\system32\\')
-    ) {
-      return true;
-    }
-  }
-
-  if (process.platform === 'darwin') {
-    if (
-      filePath.includes('/.Spotlight-') ||
-      filePath.includes('/.Trashes') ||
-      filePath.includes('/.fseventsd')
-    ) {
-      return true;
-    }
-  }
-
-  if (process.platform === 'linux') {
-    if (
-      filePath.startsWith('/proc/') ||
-      filePath.startsWith('/sys/') ||
-      filePath.startsWith('/dev/')
-    ) {
-      return true;
-    }
-  }
-
-  const ig = ignore().add(excludedFiles);
-  console.log(`[Default Exclude] Checking against ${excludedFiles.length} excluded files only`);
-  return ig.ignores(relativePath);
-}
-
 // ======================
 // FILE PROCESSING
 // ======================
@@ -583,6 +590,7 @@ async function processDirectory({
   progress,
   currentDir = dir,
   ignoreMode = 'automatic',
+  fileQueue = null
 }) {
   const fullPath = safePathJoin(dir, dirent.name);
   const relativePath = safeRelativePath(rootDir, fullPath);
@@ -622,7 +630,8 @@ async function processDirectory({
       window,
       progress,
       fullPath,
-      ignoreMode
+      ignoreMode,
+      fileQueue
     );
   }
   return { results: [], progress };
@@ -635,7 +644,8 @@ async function readFilesRecursively(
   window,
   progress = { directories: 0, files: 0 },
   currentDir = dir,
-  ignoreMode = 'automatic'
+  ignoreMode = 'automatic',
+  fileQueue = null
 ) {
   if (!ignoreFilter) {
     throw new Error('readFilesRecursively requires an ignoreFilter parameter');
@@ -645,11 +655,16 @@ async function readFilesRecursively(
   dir = ensureAbsolutePath(dir);
   rootDir = ensureAbsolutePath(rootDir || dir);
 
-  // Determine concurrency based on CPU cores, with a reasonable minimum and maximum
-  const cpuCount = os.cpus().length;
-  const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
-  const fileQueue = new PQueue({ concurrency: fileQueueConcurrency });
-  console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+  // Initialize queue only once at the top level call
+  let shouldCleanupQueue = false;
+  if (!fileQueue) {
+    // Determine concurrency based on CPU cores, with a reasonable minimum and maximum
+    const cpuCount = os.cpus().length;
+    const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
+    fileQueue = new PQueue({ concurrency: fileQueueConcurrency });
+    shouldCleanupQueue = true;
+    console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+  }
 
   let results = [];
   let fileProcessingErrors = []; // To collect errors without stopping
@@ -676,6 +691,7 @@ async function readFilesRecursively(
           progress,
           currentDir,
           ignoreMode,
+          fileQueue
         })
       );
 
@@ -869,6 +885,12 @@ async function readFilesRecursively(
       console.log(`Skipping inaccessible directory: ${dir}`);
       return { results: [], progress };
     }
+  }
+
+  // Cleanup queue if it was initialized in this call
+  if (shouldCleanupQueue) {
+    await fileQueue.onIdle();
+    fileQueue.clear();
   }
 
   return { results, progress };
