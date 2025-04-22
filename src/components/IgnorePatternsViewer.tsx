@@ -155,15 +155,10 @@ export const IgnorePatternsViewer = ({
           {/* Mode Toggle Section */}
           <div className="ignore-patterns-mode-section">
             <div className="ignore-patterns-mode-toggle">
-              <div className="mode-label">
-              </div>
               <ToggleSwitch
                 isOn={ignoreMode === 'global'}
                 onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
               />
-              <div className="mode-label">
-              </div>
-            </div>
           </div>
 
           {/* Mode explanation */}
