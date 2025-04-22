@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useIgnorePatterns } from '../hooks/useIgnorePatterns';
 import ToggleSwitch from './ToggleSwitch';
 
 interface IgnorePatternsViewerProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (modeChanged?: boolean) => void;
   patterns?: {
     default?: string[];
     excludedFiles?: string[];
@@ -100,6 +100,14 @@ export const IgnorePatternsViewer = ({
     isElectron
   );
   const [customIgnoreInput, setCustomIgnoreInput] = useState('');
+  const initialIgnoreModeRef = useRef(ignoreMode);
+
+  // Store the initial ignore mode when the component opens
+  useEffect(() => {
+    if (isOpen) {
+      initialIgnoreModeRef.current = ignoreMode;
+    }
+  }, [isOpen, ignoreMode]);
 
   // Log the received patterns prop for debugging
   useEffect(() => {
@@ -122,7 +130,11 @@ export const IgnorePatternsViewer = ({
     }
   }, [isOpen]);
 
-  const handleClose = onClose;
+  const handleClose = () => {
+    // Check if ignore mode changed and pass this information to parent component
+    const modeChanged = initialIgnoreModeRef.current !== ignoreMode;
+    onClose(modeChanged);
+  };
 
   if (!isOpen) return null;
 
@@ -140,12 +152,18 @@ export const IgnorePatternsViewer = ({
           </button>
         </div>
         <div className="ignore-patterns-content">
-          {/* Mode Toggle Switch - Always visible */}
-          <div className="ignore-patterns-mode-toggle">
-            <ToggleSwitch
-              isOn={ignoreMode === 'global'}
-              onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
-            />
+          {/* Mode Toggle Section */}
+          <div className="ignore-patterns-mode-section">
+            <div className="ignore-patterns-mode-toggle">
+              <div className="mode-label">
+              </div>
+              <ToggleSwitch
+                isOn={ignoreMode === 'global'}
+                onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
+              />
+              <div className="mode-label">
+              </div>
+            </div>
           </div>
 
           {/* Mode explanation */}
@@ -165,12 +183,13 @@ export const IgnorePatternsViewer = ({
               </p>
             </div>
           </div>
-          {/* Conditional content based on folder selection */}
-          {!selectedFolder ? (
+          {/* Display mode info even without selected folder */}
+          {!selectedFolder && (
             <div className="ignore-patterns-empty-state">
               <p>Select a folder to view ignore patterns.</p>
             </div>
-          ) : error ? (
+          )}
+          {error ? (
             <div className="ignore-patterns-error">{error}</div>
           ) : patterns ? (
             <React.Fragment>

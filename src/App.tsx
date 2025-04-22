@@ -1,5 +1,5 @@
 /* ============================== IMPORTS ============================== */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback} from 'react';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';

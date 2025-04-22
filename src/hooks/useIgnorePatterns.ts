@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { IgnoreMode } from '../types/FileTypes';
 
 interface IgnorePatternsState {
@@ -162,12 +162,21 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     _setIgnoreSettingsModified(false);
   };
 
+  // Updated closeIgnoreViewer function that accepts modeChanged parameter
+  const closeIgnoreViewer = useCallback((modeChanged?: boolean) => {
+    setIsIgnoreViewerOpen(false);
+    
+    if (modeChanged) {
+      console.log('Ignore mode changed');
+    }
+  }, []);
+
   return {
     isIgnoreViewerOpen,
     ignorePatterns,
     ignorePatternsError,
     handleViewIgnorePatterns,
-    closeIgnoreViewer: () => setIsIgnoreViewerOpen(false),
+    closeIgnoreViewer,
     ignoreMode,
     setIgnoreMode,
     customIgnores,

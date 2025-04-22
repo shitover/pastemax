@@ -1086,8 +1086,12 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
     'get-ignore-patterns',
     async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
       if (!folderPath) {
-        console.error('get-ignore-patterns called without folderPath');
-        return { error: 'folderPath is required' };
+        console.log('get-ignore-patterns called without folderPath - returning default patterns');
+        return {
+          patterns: {
+            global: [...DEFAULT_PATTERNS, ...excludedFiles, ...(customIgnores || [])]
+          }
+        };
       }
 
       try {
