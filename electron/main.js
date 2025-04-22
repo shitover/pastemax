@@ -72,6 +72,7 @@ const STATUS_UPDATE_INTERVAL = 200; // ms
 const ignoreCache = new Map(); // Cache for ignore filters keyed by normalized root directory
 const fileCache = new Map(); // Cache for file metadata keyed by normalized file path
 const fileTypeCache = new Map(); // Cache for binary file type detection results
+const gitIgnoreFound = new Map(); // Cache for already found/processed gitignore files
 
 // ======================
 // MODULE INITIALIZATION
@@ -349,36 +350,59 @@ function createContextualIgnoreFilter(
   // 2. Only add patterns from .gitignore if in automatic mode
   if (ignoreMode === 'automatic') {
     const gitignorePath = safePathJoin(currentDir, '.gitignore');
-    try {
-      const content = fs.readFileSync(gitignorePath, 'utf8');
-      const patterns = content
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#'));
-
-      if (patterns.length > 0) {
-        // Adjust patterns to be relative to current directory
-        const adjustedPatterns = patterns.map((pattern) => {
-          if (pattern.startsWith('/')) {
-            return pattern.substring(1); // Make root-relative
-          }
-          if (!pattern.includes('**')) {
-            // Make relative to current directory
-            const relPath = safeRelativePath(rootDir, currentDir);
-            return safePathJoin(relPath, pattern);
-          }
-          return pattern;
-        });
-
-        ig.add(adjustedPatterns);
-        console.log(
-          `[Contextual Filter] Added ${adjustedPatterns.length} patterns from ${gitignorePath}`
-        );
+    
+    // Create a cache key for this .gitignore file
+    const cacheKey = normalizePath(gitignorePath);
+    
+    let patterns = [];
+    let needToProcessFile = true;
+    
+    // Check if we've already processed this .gitignore file
+    if (gitIgnoreFound.has(cacheKey)) {
+      patterns = gitIgnoreFound.get(cacheKey);
+      needToProcessFile = false;
+    }
+    
+    if (needToProcessFile) {
+      try {
+        const content = fs.readFileSync(gitignorePath, 'utf8');
+        patterns = content
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith('#'));
+        
+        // Cache the patterns for future use
+        if (patterns.length > 0) {
+          gitIgnoreFound.set(cacheKey, patterns);
+          
+          // Get a more concise path for display
+          const relativePath = safeRelativePath(rootDir, currentDir);
+          console.log(
+            `[Contextual Filter] Added ${patterns.length} patterns from ${relativePath === '.' ? 'root' : relativePath} .gitignore`
+          );
+        }
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.error(`Error reading ${gitignorePath}:`, err);
+        }
       }
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.error(`Error reading ${gitignorePath}:`, err);
-      }
+    }
+    
+    if (patterns.length > 0) {
+      // Adjust patterns to be relative to current directory
+      const adjustedPatterns = patterns.map((pattern) => {
+        if (pattern.startsWith('/')) {
+          return pattern.substring(1); // Make root-relative
+        }
+        if (!pattern.includes('**')) {
+          // Make relative to current directory
+          const relPath = safeRelativePath(rootDir, currentDir);
+          return safePathJoin(relPath, pattern);
+        }
+        return pattern;
+      });
+
+      ig.add(adjustedPatterns);
     }
   }
 
