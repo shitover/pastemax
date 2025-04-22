@@ -1,5 +1,4 @@
-// src/components/FileCard.tsx
-// Removed unused import
+import { useCallback, memo } from 'react';
 import { FileData } from '../types/FileTypes'; // Corrected import
 import { Plus, X, FileText, Eye } from 'lucide-react';
 import CopyButton from './CopyButton';
@@ -17,6 +16,15 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
   // Format token count for display
   const formattedTokens = tokenCount.toLocaleString();
 
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleToggleSelection = useCallback(() => {
+    toggleSelection(filePath);
+  }, [toggleSelection, filePath]);
+
+  const handlePreview = useCallback(() => {
+    onPreview(filePath);
+  }, [onPreview, filePath]);
+
   return (
     <div className={`file-card ${isSelected ? 'selected' : ''}`}>
       <div className="file-card-header">
@@ -32,16 +40,12 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
       <div className="file-card-actions">
         <button
           className="file-card-action"
-          onClick={() => toggleSelection(filePath)}
+          onClick={handleToggleSelection}
           title={isSelected ? 'Remove from selection' : 'Add to selection'}
         >
           {isSelected ? <X size={16} /> : <Plus size={16} />}
         </button>
-        <button
-          className="file-card-action"
-          onClick={() => onPreview(filePath)} // Call onPreview
-          title="Preview File"
-        >
+        <button className="file-card-action" onClick={handlePreview} title="Preview File">
           <Eye size={16} />
         </button>
         <CopyButton text={file.content} className="file-card-action">
@@ -52,4 +56,5 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
   );
 };
 
-export default FileCard;
+// Wrap component with React.memo to prevent unnecessary re-renders
+export default memo(FileCard);

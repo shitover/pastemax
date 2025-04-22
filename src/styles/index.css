@@ -1920,7 +1920,6 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var (--space-md);
   background-color: var(--background-primary);
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
