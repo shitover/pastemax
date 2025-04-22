@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SidebarProps, TreeNode } from '../types/FileTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
@@ -39,11 +39,11 @@ const Sidebar = ({
   const MIN_SIDEBAR_WIDTH = 200;
   const MAX_SIDEBAR_WIDTH = 500;
 
-  // Handle mouse down for resizing
-  const handleResizeStart = (e: any) => {
+  // Handle mouse down for resizing - memoize the handler
+  const handleResizeStart = useCallback((e: any) => {
     e.preventDefault();
     setIsResizing(true);
-  };
+  }, []);
 
   // Handle resize effect - optimized with requestAnimationFrame and passive listeners
   useEffect(() => {
@@ -247,8 +247,8 @@ const Sidebar = ({
     setFileTree((prevTree: TreeNode[]) => applyExpandedState(prevTree));
   }, [expandedNodes, fileTree.length]);
 
-  // Flatten the tree for rendering with proper indentation
-  const flattenTree = (nodes: TreeNode[]): TreeNode[] => {
+  // Memoize the flattenTree function to avoid unnecessary recalculations
+  const flattenTree = useCallback((nodes: TreeNode[]): TreeNode[] => {
     let result: TreeNode[] = [];
 
     nodes.forEach((node) => {
@@ -262,10 +262,10 @@ const Sidebar = ({
     });
 
     return result;
-  };
+  }, []);
 
-  // Filter the tree based on search term
-  const filterTree = (nodes: TreeNode[], term: string): TreeNode[] => {
+  // Memoize the filterTree function to avoid unnecessary recalculations
+  const filterTree = useCallback((nodes: TreeNode[], term: string): TreeNode[] => {
     if (!term) return nodes;
 
     const lowerTerm = term.toLowerCase();
@@ -298,10 +298,34 @@ const Sidebar = ({
       }
       return node;
     });
-  };
+  }, []);
 
-  // The final tree to render, filtered and flattened
-  const visibleTree = flattenTree(filterTree(fileTree, searchTerm));
+  // Memoize the filtered tree to avoid unnecessary recalculations
+  const filteredTree = useMemo(
+    () => filterTree(fileTree, searchTerm),
+    [fileTree, searchTerm, filterTree]
+  );
+
+  // Memoize the flattened tree to avoid unnecessary recalculations
+  const visibleTree = useMemo(() => flattenTree(filteredTree), [filteredTree, flattenTree]);
+
+  // Memoize the rendered tree items to avoid unnecessary re-renders
+  const renderedTreeItems = useMemo(() => {
+    if (visibleTree.length === 0) {
+      return <div className="tree-empty">No files match your search.</div>;
+    }
+
+    return visibleTree.map((node: TreeNode) => (
+      <TreeItem
+        key={node.id}
+        node={node}
+        selectedFiles={selectedFiles}
+        toggleFileSelection={toggleFileSelection}
+        toggleFolderSelection={toggleFolderSelection}
+        toggleExpanded={toggleExpanded}
+      />
+    ));
+  }, [visibleTree, selectedFiles, toggleFileSelection, toggleFolderSelection, toggleExpanded]);
 
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
@@ -329,22 +353,7 @@ const Sidebar = ({
 
       {allFiles.length > 0 ? (
         isTreeBuildingComplete ? (
-          <div className="file-tree">
-            {visibleTree.length > 0 ? (
-              visibleTree.map((node) => (
-                <TreeItem
-                  key={node.id}
-                  node={node}
-                  selectedFiles={selectedFiles}
-                  toggleFileSelection={toggleFileSelection}
-                  toggleFolderSelection={toggleFolderSelection}
-                  toggleExpanded={toggleExpanded}
-                />
-              ))
-            ) : (
-              <div className="tree-empty">No files match your search.</div>
-            )}
-          </div>
+          <div className="file-tree">{renderedTreeItems}</div>
         ) : (
           <div className="tree-loading">
             <div className="spinner"></div>

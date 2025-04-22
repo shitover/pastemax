@@ -1,6 +1,6 @@
 // src/components/FilePreviewModal.tsx
-import React from "react";
-import { FileData } from "../types/FileTypes";
+import React from 'react';
+import { FileData } from '../types/FileTypes';
 
 interface FilePreviewModalProps {
   files: FileData[];
@@ -9,15 +9,10 @@ interface FilePreviewModalProps {
   initialActiveFile?: string; // Add this prop
 }
 
-const FilePreviewModal = ({
-  files,
-  isOpen,
-  onClose,
-  initialActiveFile,
-}: FilePreviewModalProps) => {
+const FilePreviewModal = ({ files, isOpen, onClose, initialActiveFile }: FilePreviewModalProps) => {
   const [activeFile, setActiveFile] = React.useState(() => initialActiveFile as string | undefined);
 
-    // Set the initial active file when the modal opens or files change
+  // Set the initial active file when the modal opens or files change
   React.useEffect(() => {
     if (isOpen && files.length > 0) {
       setActiveFile(initialActiveFile || files[0].path);
@@ -32,18 +27,13 @@ const FilePreviewModal = ({
 
   return (
     <div className="file-preview-modal-overlay" onClick={onClose}>
-      <div
-        className="file-preview-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="file-preview-modal" onClick={(e) => e.stopPropagation()}>
         <div className="file-preview-modal-header">
           <div className="file-preview-tabs">
             {files.map((file) => (
               <button
                 key={file.path}
-                className={`file-preview-tab ${
-                  activeFile === file.path ? "active" : ""
-                }`}
+                className={`file-preview-tab ${activeFile === file.path ? 'active' : ''}`}
                 onClick={() => setActiveFile(file.path)}
               >
                 {file.name}
@@ -56,7 +46,10 @@ const FilePreviewModal = ({
         </div>
         <div className="file-preview-modal-content">
           {activeFileData ? (
-            <pre className="monospace">{activeFileData.content}</pre>
+            <div className="file-preview-code-container">
+              <pre className="file-preview-code monospace">{activeFileData.content}</pre>
+              <div className="file-preview-code-spacer"></div>
+            </div>
           ) : (
             <div>No file selected.</div>
           )}

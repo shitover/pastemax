@@ -11,7 +11,7 @@ const chokidar = require('chokidar'); // Added for file watching
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
-const CONCURRENT_DIRS = 4; // Number of directories to process in parallel
+const CONCURRENT_DIRS = os.cpus().length * 2; // Increase based on CPU count for better parallelism
 // const CHUNK_SIZE = 30; // Number of files to process in one chunk (no longer used, might bring back)
 
 // Default ignore patterns that should always be applied
@@ -48,6 +48,7 @@ const DEFAULT_PATTERNS = [
   '.DS_Store',
   'Thumbs.db',
   'desktop.ini',
+  '*.asar', // Added to ignore Electron asar archive files
 ];
 
 // ======================
@@ -72,6 +73,7 @@ const STATUS_UPDATE_INTERVAL = 200; // ms
 const ignoreCache = new Map(); // Cache for ignore filters keyed by normalized root directory
 const fileCache = new Map(); // Cache for file metadata keyed by normalized file path
 const fileTypeCache = new Map(); // Cache for binary file type detection results
+const gitIgnoreFound = new Map(); // Cache for already found/processed gitignore files
 
 // ======================
 // MODULE INITIALIZATION
@@ -162,6 +164,72 @@ function isValidPath(pathToCheck) {
   }
 }
 
+// Cache for default exclude ignore filter
+let defaultExcludeFilter = null;
+
+function shouldExcludeByDefault(filePath, rootDir) {
+  filePath = ensureAbsolutePath(filePath);
+  rootDir = ensureAbsolutePath(rootDir);
+
+  const relativePath = safeRelativePath(rootDir, filePath);
+
+  if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
+    return true;
+  }
+
+  if (process.platform === 'win32') {
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
+      console.log(`Excluding reserved Windows name: ${path.basename(filePath)}`);
+      return true;
+    }
+
+    if (
+      filePath.toLowerCase().includes('\\windows\\') ||
+      filePath.toLowerCase().includes('\\system32\\')
+    ) {
+      console.log(`Excluding system path: ${filePath}`);
+      return true;
+    }
+  }
+
+  if (process.platform === 'darwin') {
+    if (
+      filePath.includes('/.Spotlight-') ||
+      filePath.includes('/.Trashes') ||
+      filePath.includes('/.fseventsd')
+    ) {
+      console.log(`Excluding macOS system path: ${filePath}`);
+      return true;
+    }
+  }
+
+  if (process.platform === 'linux') {
+    if (
+      filePath.startsWith('/proc/') ||
+      filePath.startsWith('/sys/') ||
+      filePath.startsWith('/dev/')
+    ) {
+      console.log(`Excluding Linux system path: ${filePath}`);
+      return true;
+    }
+  }
+
+  // Create the filter only once and reuse it
+  if (!defaultExcludeFilter) {
+    defaultExcludeFilter = ignore().add(excludedFiles);
+    console.log(`[Default Exclude] Initialized filter with ${excludedFiles.length} excluded files`);
+  }
+  
+  const isExcluded = defaultExcludeFilter.ignores(relativePath);
+  
+  // Only log exclusions periodically to reduce spam
+  if (isExcluded && Math.random() < 0.05) { // Log ~5% of exclusions as samples
+    console.log(`[Default Exclude] Excluded file: ${relativePath}`);
+  }
+  
+  return isExcluded;
+}
+
 // ======================
 // IGNORE CACHE LOGIC
 // ======================
@@ -219,8 +287,20 @@ async function collectGitignoreMapRecursive(startDir, rootDir, currentMap = new 
 const defaultIgnoreFilter = ignore().add(DEFAULT_PATTERNS);
 
 function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMode = 'automatic') {
+  // Validate paths to prevent empty path errors
+  if (!filePath || filePath.trim() === '') {
+    console.warn('Ignoring empty path in shouldIgnorePath');
+    return true; // Treat empty paths as "should ignore"
+  }
+  
   const relativeToRoot = safeRelativePath(rootDir, filePath);
   const relativeToCurrent = safeRelativePath(currentDir, filePath);
+  
+  // Validate that the relative paths are not empty
+  if (!relativeToRoot || relativeToRoot.trim() === '') {
+    console.warn(`Skipping empty relativeToRoot path for: ${filePath}`);
+    return true;
+  }
 
   // First check against default patterns (fast path)
   if (defaultIgnoreFilter.ignores(relativeToRoot)) {
@@ -240,6 +320,13 @@ function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMod
 
   // Then check against current directory context (automatic mode only)
   const currentIgnoreFilter = createContextualIgnoreFilter(rootDir, currentDir, ignoreFilter);
+  
+  // Ensure relativeToCurrent is not empty before calling ignores
+  if (!relativeToCurrent || relativeToCurrent.trim() === '') {
+    console.warn(`Skipping empty relativeToCurrent path for: ${filePath}`);
+    return false; // Don't ignore if we can't determine the relative path
+  }
+  
   return currentIgnoreFilter.ignores(relativeToCurrent);
 }
 
@@ -283,36 +370,59 @@ function createContextualIgnoreFilter(
   // 2. Only add patterns from .gitignore if in automatic mode
   if (ignoreMode === 'automatic') {
     const gitignorePath = safePathJoin(currentDir, '.gitignore');
-    try {
-      const content = fs.readFileSync(gitignorePath, 'utf8');
-      const patterns = content
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#'));
-
-      if (patterns.length > 0) {
-        // Adjust patterns to be relative to current directory
-        const adjustedPatterns = patterns.map((pattern) => {
-          if (pattern.startsWith('/')) {
-            return pattern.substring(1); // Make root-relative
-          }
-          if (!pattern.includes('**')) {
-            // Make relative to current directory
-            const relPath = safeRelativePath(rootDir, currentDir);
-            return safePathJoin(relPath, pattern);
-          }
-          return pattern;
-        });
-
-        ig.add(adjustedPatterns);
-        console.log(
-          `[Contextual Filter] Added ${adjustedPatterns.length} patterns from ${gitignorePath}`
-        );
+    
+    // Create a cache key for this .gitignore file
+    const cacheKey = normalizePath(gitignorePath);
+    
+    let patterns = [];
+    let needToProcessFile = true;
+    
+    // Check if we've already processed this .gitignore file
+    if (gitIgnoreFound.has(cacheKey)) {
+      patterns = gitIgnoreFound.get(cacheKey);
+      needToProcessFile = false;
+    }
+    
+    if (needToProcessFile) {
+      try {
+        const content = fs.readFileSync(gitignorePath, 'utf8');
+        patterns = content
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith('#'));
+        
+        // Cache the patterns for future use
+        if (patterns.length > 0) {
+          gitIgnoreFound.set(cacheKey, patterns);
+          
+          // Get a more concise path for display
+          const relativePath = safeRelativePath(rootDir, currentDir);
+          console.log(
+            `[Contextual Filter] Added ${patterns.length} patterns from ${relativePath === '.' ? 'root' : relativePath} .gitignore`
+          );
+        }
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.error(`Error reading ${gitignorePath}:`, err);
+        }
       }
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.error(`Error reading ${gitignorePath}:`, err);
-      }
+    }
+    
+    if (patterns.length > 0) {
+      // Adjust patterns to be relative to current directory
+      const adjustedPatterns = patterns.map((pattern) => {
+        if (pattern.startsWith('/')) {
+          return pattern.substring(1); // Make root-relative
+        }
+        if (!pattern.includes('**')) {
+          // Make relative to current directory
+          const relPath = safeRelativePath(rootDir, currentDir);
+          return safePathJoin(relPath, pattern);
+        }
+        return pattern;
+      });
+
+      ig.add(adjustedPatterns);
     }
   }
 
@@ -391,94 +501,83 @@ async function loadGitignore(rootDir, window) {
 
     // Start file watcher after initial scan completes
     if (chokidar) {
-      currentWatcher = chokidar
-        .watch(rootDir, {
-          ignored: (path) => shouldIgnorePath(path, rootDir, rootDir, ig),
+      try {
+        const watcherConfig = {
+          ignored: (filePath) => {
+            try {
+              // Safely handle empty paths
+              if (!filePath || filePath.trim() === '') {
+                console.warn('Empty path passed to watcher ignored function');
+                return true;
+              }
+              return shouldIgnorePath(filePath, rootDir, rootDir, ig);
+            } catch (error) {
+              console.error('Error in watcher ignore function:', error);
+              return true; // Ignore files that cause errors
+            }
+          },
           ignoreInitial: true,
           awaitWriteFinish: {
             stabilityThreshold: 2000,
             pollInterval: 100,
           },
-        })
-        .on('error', (error) => {
+          persistent: true,
+        };
+        
+        currentWatcher = chokidar.watch(rootDir, watcherConfig);
+        
+        // Handle any setup errors
+        currentWatcher.on('error', (error) => {
           console.error('File watcher encountered an error:', error);
         });
 
-      currentWatcher
-        .on('add', (path) => {
-          processSingleFile(path, rootDir, ig).then((fileData) => {
+        // Setup event handlers with proper error handling
+        currentWatcher.on('add', async (filePath) => {
+          try {
+            const fileData = await processSingleFile(filePath, rootDir, ig);
             if (fileData && window && !window.isDestroyed()) {
               window.webContents.send('file-added', fileData);
             }
-          });
-        })
-        .on('change', (path) => {
-          processSingleFile(path, rootDir, ig).then((fileData) => {
-            if (fileData) {
+          } catch (error) {
+            console.error(`Error processing added file ${filePath}:`, error);
+          }
+        });
+        
+        currentWatcher.on('change', async (filePath) => {
+          try {
+            const fileData = await processSingleFile(filePath, rootDir, ig);
+            if (fileData && window && !window.isDestroyed()) {
               window.webContents.send('file-updated', fileData);
             }
-          });
-        })
-        .on('unlink', (path) => {
-          window.webContents.send('file-removed', {
-            path: normalizePath(path),
-            relativePath: safeRelativePath(rootDir, path),
-          });
+          } catch (error) {
+            console.error(`Error processing changed file ${filePath}:`, error);
+          }
         });
+        
+        currentWatcher.on('unlink', (filePath) => {
+          try {
+            if (window && !window.isDestroyed()) {
+              window.webContents.send('file-removed', {
+                path: normalizePath(filePath),
+                relativePath: safeRelativePath(rootDir, filePath),
+              });
+            }
+          } catch (error) {
+            console.error(`Error handling deleted file ${filePath}:`, error);
+          }
+        });
+        
+      } catch (watcherError) {
+        console.error('Error setting up file watcher:', watcherError);
+        // Continue without watcher rather than failing the whole operation
+      }
     }
+    
     return ig;
   } catch (err) {
     console.error(`Error in loadGitignore for ${rootDir}:`, err);
     return ig;
   }
-}
-
-function shouldExcludeByDefault(filePath, rootDir) {
-  filePath = ensureAbsolutePath(filePath);
-  rootDir = ensureAbsolutePath(rootDir);
-
-  const relativePath = safeRelativePath(rootDir, filePath);
-
-  if (!isValidPath(relativePath) || relativePath.startsWith('..')) {
-    return true;
-  }
-
-  if (process.platform === 'win32') {
-    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
-      return true;
-    }
-
-    if (
-      filePath.toLowerCase().includes('\\windows\\') ||
-      filePath.toLowerCase().includes('\\system32\\')
-    ) {
-      return true;
-    }
-  }
-
-  if (process.platform === 'darwin') {
-    if (
-      filePath.includes('/.Spotlight-') ||
-      filePath.includes('/.Trashes') ||
-      filePath.includes('/.fseventsd')
-    ) {
-      return true;
-    }
-  }
-
-  if (process.platform === 'linux') {
-    if (
-      filePath.startsWith('/proc/') ||
-      filePath.startsWith('/sys/') ||
-      filePath.startsWith('/dev/')
-    ) {
-      return true;
-    }
-  }
-
-  const ig = ignore().add(excludedFiles);
-  console.log(`[Default Exclude] Checking against ${excludedFiles.length} excluded files only`);
-  return ig.ignores(relativePath);
 }
 
 // ======================
@@ -583,6 +682,7 @@ async function processDirectory({
   progress,
   currentDir = dir,
   ignoreMode = 'automatic',
+  fileQueue = null
 }) {
   const fullPath = safePathJoin(dir, dirent.name);
   const relativePath = safeRelativePath(rootDir, fullPath);
@@ -622,7 +722,8 @@ async function processDirectory({
       window,
       progress,
       fullPath,
-      ignoreMode
+      ignoreMode,
+      fileQueue
     );
   }
   return { results: [], progress };
@@ -635,7 +736,8 @@ async function readFilesRecursively(
   window,
   progress = { directories: 0, files: 0 },
   currentDir = dir,
-  ignoreMode = 'automatic'
+  ignoreMode = 'automatic',
+  fileQueue = null
 ) {
   if (!ignoreFilter) {
     throw new Error('readFilesRecursively requires an ignoreFilter parameter');
@@ -645,11 +747,21 @@ async function readFilesRecursively(
   dir = ensureAbsolutePath(dir);
   rootDir = ensureAbsolutePath(rootDir || dir);
 
-  // Determine concurrency based on CPU cores, with a reasonable minimum and maximum
-  const cpuCount = os.cpus().length;
-  const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
-  const fileQueue = new PQueue({ concurrency: fileQueueConcurrency });
-  console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+  // Initialize queue only once at the top level call
+  let shouldCleanupQueue = false;
+  let queueToUse = fileQueue;
+  if (!queueToUse) {
+    // Determine concurrency based on CPU cores, with a reasonable minimum and maximum
+    const cpuCount = os.cpus().length;
+    const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
+    queueToUse = new PQueue({ concurrency: fileQueueConcurrency });
+    shouldCleanupQueue = true;
+    
+    // Only log the initialization message for the root directory to reduce spam
+    if (dir === rootDir) {
+      console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+    }
+  }
 
   let results = [];
   let fileProcessingErrors = []; // To collect errors without stopping
@@ -676,6 +788,7 @@ async function readFilesRecursively(
           progress,
           currentDir,
           ignoreMode,
+          fileQueue
         })
       );
 
@@ -697,7 +810,7 @@ async function readFilesRecursively(
     for (const dirent of files) {
       if (!isLoadingDirectory) break; // Check cancellation before adding to queue
 
-      fileQueue.add(async () => {
+      queueToUse.add(async () => {
         if (!isLoadingDirectory) return; // Check cancellation again inside the task
 
         const fullPath = safePathJoin(dir, dirent.name);
@@ -848,7 +961,7 @@ async function readFilesRecursively(
           if (progress.files % 500 === 0) {
             // Log less frequently
             console.log(
-              `Progress update - Dirs: ${progress.directories}, Files: ${progress.files}, Queue Size: ${fileQueue.size}, Pending: ${fileQueue.pending}`
+              `Progress update - Dirs: ${progress.directories}, Files: ${progress.files}, Queue Size: ${queueToUse.size}, Pending: ${queueToUse.pending}`
             );
           }
         }
@@ -856,7 +969,7 @@ async function readFilesRecursively(
     }
 
     // Wait for all queued file processing tasks to complete
-    await fileQueue.onIdle();
+    await queueToUse.onIdle();
 
     if (fileProcessingErrors.length > 0) {
       console.warn(`Encountered ${fileProcessingErrors.length} errors during file processing.`);
@@ -869,6 +982,12 @@ async function readFilesRecursively(
       console.log(`Skipping inaccessible directory: ${dir}`);
       return { results: [], progress };
     }
+  }
+
+  // Cleanup queue if it was initialized in this call
+  if (shouldCleanupQueue) {
+    await queueToUse.onIdle();
+    queueToUse.clear();
   }
 
   return { results, progress };
@@ -967,8 +1086,12 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
     'get-ignore-patterns',
     async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
       if (!folderPath) {
-        console.error('get-ignore-patterns called without folderPath');
-        return { error: 'folderPath is required' };
+        console.log('get-ignore-patterns called without folderPath - returning default patterns');
+        return {
+          patterns: {
+            global: [...DEFAULT_PATTERNS, ...excludedFiles, ...(customIgnores || [])]
+          }
+        };
       }
 
       try {
@@ -1165,14 +1288,17 @@ function createWindow() {
     },
   });
 
-  // Verify file exists before loading
-  const prodPath = path.join(__dirname, 'dist', 'index.html');
-  console.log('Production path:', prodPath);
-  try {
-    fs.accessSync(prodPath, fs.constants.R_OK);
-    console.log('File exists and is readable');
-  } catch (err) {
-    console.error('File access error:', err);
+  // Only verify file existence in production mode
+  if (process.env.NODE_ENV !== 'development') {
+    // Verify file exists before loading
+    const prodPath = path.join(__dirname, 'dist', 'index.html');
+    console.log('Production path:', prodPath);
+    try {
+      fs.accessSync(prodPath, fs.constants.R_OK);
+      console.log('File exists and is readable');
+    } catch (err) {
+      console.error('File access error:', err);
+    }
   }
 
   // Register the escape key to cancel directory loading
