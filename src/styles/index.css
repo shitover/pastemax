@@ -2661,3 +2661,100 @@ button:hover svg.lucide {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-primary);
 }
+
+/* ==========================================================================
+   File Preview Modal Styles
+   ========================================================================== */
+.file-preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* High z-index to be on top */
+}
+
+.file-preview-modal {
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  width: 80%; /* Adjust as needed */
+  max-width: 1000px; /* Max width */
+  max-height: 80vh; /* Max height, viewport relative */
+  display: flex;
+  flex-direction: column;
+}
+
+.file-preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-preview-tabs {
+  display: flex;
+  overflow-x: auto; /* Allow horizontal scrolling for tabs */
+}
+
+.file-preview-tab {
+  padding: 8px 12px;
+  margin-right: 4px; /* Add some space */
+  border: 1px solid var(--border-color);
+  border-radius: 4px 4px 0 0;
+  background-color: var(--background-secondary);
+  cursor: pointer;
+  white-space: nowrap; /* Prevent tab text from wrapping */
+  font-size: 13px; /* Use consistent font size */
+}
+
+.file-preview-tab.active {
+  background-color: var(--background-primary);
+  border-bottom-color: var(--background-primary); /* Hide bottom border */
+  font-weight: bold; /* Make active tab stand out */
+}
+.file-preview-tab:hover {
+  background-color: var(--hover-color);
+}
+
+.file-preview-close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.file-preview-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.file-preview-modal-content {
+  padding: 16px;
+  overflow-y: auto; /* Add scrollbar if content overflows */
+  flex: 1; /* Grow to fill available space */
+}
+
+.file-preview-modal-content pre {
+  white-space: pre-wrap; /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+  white-space: -pre-wrap; /* Opera 4-6 */
+  white-space: -o-pre-wrap; /* Opera 7 */
+  word-wrap: break-word; /* Internet Explorer 5.5+ */
+  font-family: var(--font-family-code); /* Ensure monospace */
+  font-size: 13px; /* Consistent font size */
+  line-height: 1.5; /* Consistent line height */
+}
+
+/* Ensure monospace utility class is defined if not already */
+.monospace {
+  font-family: var(--font-family-code);
+  font-size: 13px;
+  line-height: 1.5;
+}
