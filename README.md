@@ -34,6 +34,7 @@ PasteMax is a simple desktop app built for developers using AI coding assistants
 - **Search Capabilities**: Quickly find files by name or content
 - **Selection Management**: Select multiple files and copy their contents together
 - **Sorting Options**: Sort files by name, size, or token count
+- **File Previewer**: View file contents in a dedicated preview pane
 - **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment
 - **Binary File Detection**: Automatic detection and exclusion of binary files
 - **Smart File Exclusion**: Automatically excludes common files like package-lock.json, binary files, and more by default

@@ -1,6 +1,6 @@
 {
   "name": "pastemax",
-  "version": "1.2.3",
+  "version": "v1.0.0-stable",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -42,6 +42,11 @@
     "email": "kleneway@notreal.com"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kleneway/pastemax"
+  },
+  "homepage": "https://kleneway.github.io/pastemax",
   "description": "A modern file viewer application for developers to easily navigate, search, and copy code from repositories.",
   "build": {
     "appId": "com.kleneway.pastemax",
@@ -73,8 +78,7 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb",
-        "rpm"
+        "deb"
       ],
       "category": "Development",
       "icon": "public/favicon.png"
