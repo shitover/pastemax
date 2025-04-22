@@ -1,6 +1,6 @@
 {
   "name": "pastemax",
-  "version": "1.2.3",
+  "version": "v1.0.0-stable",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
