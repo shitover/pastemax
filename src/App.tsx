@@ -451,8 +451,8 @@ const App = (): JSX.Element => {
         
         if (changesMade) {
           // Use setTimeout to allow UI to update with "Applying ignore mode..." status before reload
-          // Increased timeout from 50ms to 300ms to ensure UI updates are visible
-          setTimeout(() => window.location.reload(), 1000);
+          // Increased timeout to 800ms to ensure UI updates are visible
+          setTimeout(() => window.location.reload(), 800);
         }
       }
     },

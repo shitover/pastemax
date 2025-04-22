@@ -841,6 +841,7 @@ input[type='checkbox'][disabled] {
   padding: 4px;
   cursor: pointer;
   border-radius: 8px;
+  font-size: 12px;
   height: auto;
   border: none;
   -webkit-border-radius: 8px;
@@ -1668,6 +1669,8 @@ label {
 }
 
 .ignore-patterns-header {
+  margin-top: 10px;
+  margin-bottom: 10px;
   padding: var(--standard-padding);
   border-bottom: var(--standard-border);
   display: flex;
@@ -1678,27 +1681,34 @@ label {
 .ignore-patterns-header h2 {
   margin: 0;
   margin-top: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   margin-left: 25px;
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  padding: 4px 8px;
+.save-button-ignore-patterns {
+  margin-right: 20px;
+  margin-bottom: 10px;
+  color: var(--text-on-primary);
+  background: var(--color-primary);
+  border: 1px var(--border-color) solid;
+  font-size: 15px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--border-radius-md);
+  -webkit-border-radius: var(--border-radius-md);
+  -moz-border-radius: var(--border-radius-md);
+  -ms-border-radius: var(--border-radius-md);
+  -o-border-radius: var(--border-radius-md);
 }
 
-.close-button:hover {
-  background-color: var(--hover-color);
+.save-button-ignore-patterns:hover {
   color: var(--text-primary);
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
 }
+
 
 .ignore-patterns-search {
   padding: 0 20px 12px;
@@ -1887,10 +1897,10 @@ label {
 
 .add-pattern-button {
   background-color: var(--color-primary);
-  color: white;
-  border: none;
+  color: var(--text-on-primary);
+  border: 1px solid var(--color-primary-dark); /* Added distinct border */
   border-radius: var(--border-radius-md);
-  padding: var (--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -1898,7 +1908,9 @@ label {
 }
 
 .add-pattern-button:hover {
-  background-color: var(--color-primary-light);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
@@ -2094,30 +2106,6 @@ label {
   border-color: var(--border-color-focus);
   box-shadow: var(--focus-ring);
   background-color: var(--background-primary);
-}
-
-.add-pattern-button {
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 15px;
-  width: auto;
-  flex-shrink: 0;
-  transition: background-color 0.2s ease;
-  margin-bottom: 0;
-  margin-right: 20px; /* Add right margin to move button to the left */
-  -webkit-transition: background-color 0.2s ease;
-  -moz-transition: background-color 0.2s ease;
-  -ms-transition: background-color 0.2s ease;
-  -o-transition: background-color 0.2s ease;
-  transition: background-color 0.2s ease;
-  margin-right: 20px; /* Add right margin to move button to the left */
-}
-.add-pattern-button:hover {
-  background-color: #505050; /* Gray hover color */
-  transform: translateY(-2px); /* Slight lift effect */
 }
 
 /* Empty State */
@@ -2740,7 +2728,6 @@ button:hover svg.lucide {
   border: 1px var(--border-color) solid;
   font-size: 14px;
   cursor: pointer;
-  color: var(--text-secondary);
   border-radius: var(--border-radius-sm);
   transition: all var(--transition-fast);
   display: flex;

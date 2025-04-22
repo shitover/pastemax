@@ -80,7 +80,7 @@ const PatternSection = ({
         <pre className="pattern-list">{filteredPatterns.join('\n')}</pre>
       ) : (
         <p className="no-patterns">
-          No patterns found, Please reload (Ctrl + r / ⌘ + r) to use this mode
+          No patterns found, Please 'Save' changes to use this mode
         </p>
       )}
     </section>
@@ -159,8 +159,8 @@ export const IgnorePatternsViewer = ({
       <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
-          <button onClick={handleClose} className="close-button" aria-label="Close">
-            ×
+          <button onClick={handleClose} className="save-button-ignore-patterns" aria-label="Save and close">
+            Save
           </button>
         </div>
         <div className="ignore-patterns-content">
@@ -287,7 +287,7 @@ export const IgnorePatternsViewer = ({
                                   );
                                 }}
                               >
-                                ×
+                                X
                               </button>
                             </li>
                           ))}
