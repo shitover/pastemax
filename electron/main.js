@@ -748,11 +748,12 @@ async function readFilesRecursively(
 
   // Initialize queue only once at the top level call
   let shouldCleanupQueue = false;
-  if (!fileQueue) {
+  let queueToUse = fileQueue;
+  if (!queueToUse) {
     // Determine concurrency based on CPU cores, with a reasonable minimum and maximum
     const cpuCount = os.cpus().length;
     const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
-    fileQueue = new PQueue({ concurrency: fileQueueConcurrency });
+    queueToUse = new PQueue({ concurrency: fileQueueConcurrency });
     shouldCleanupQueue = true;
     
     // Provide more context in the debug message
@@ -808,7 +809,7 @@ async function readFilesRecursively(
     for (const dirent of files) {
       if (!isLoadingDirectory) break; // Check cancellation before adding to queue
 
-      fileQueue.add(async () => {
+      queueToUse.add(async () => {
         if (!isLoadingDirectory) return; // Check cancellation again inside the task
 
         const fullPath = safePathJoin(dir, dirent.name);
@@ -959,7 +960,7 @@ async function readFilesRecursively(
           if (progress.files % 500 === 0) {
             // Log less frequently
             console.log(
-              `Progress update - Dirs: ${progress.directories}, Files: ${progress.files}, Queue Size: ${fileQueue.size}, Pending: ${fileQueue.pending}`
+              `Progress update - Dirs: ${progress.directories}, Files: ${progress.files}, Queue Size: ${queueToUse.size}, Pending: ${queueToUse.pending}`
             );
           }
         }
@@ -967,7 +968,7 @@ async function readFilesRecursively(
     }
 
     // Wait for all queued file processing tasks to complete
-    await fileQueue.onIdle();
+    await queueToUse.onIdle();
 
     if (fileProcessingErrors.length > 0) {
       console.warn(`Encountered ${fileProcessingErrors.length} errors during file processing.`);
@@ -984,8 +985,8 @@ async function readFilesRecursively(
 
   // Cleanup queue if it was initialized in this call
   if (shouldCleanupQueue) {
-    await fileQueue.onIdle();
-    fileQueue.clear();
+    await queueToUse.onIdle();
+    queueToUse.clear();
   }
 
   return { results, progress };
