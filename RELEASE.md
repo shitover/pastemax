@@ -7,7 +7,7 @@ This document explains how to build and release PasteMax for distribution.
 To build the application for local testing:
 
 ```bash
-npm run build-electron
+npm run build:electron
 ```
 
 This will:
