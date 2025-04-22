@@ -1202,14 +1202,17 @@ function createWindow() {
     },
   });
 
-  // Verify file exists before loading
-  const prodPath = path.join(__dirname, 'dist', 'index.html');
-  console.log('Production path:', prodPath);
-  try {
-    fs.accessSync(prodPath, fs.constants.R_OK);
-    console.log('File exists and is readable');
-  } catch (err) {
-    console.error('File access error:', err);
+  // Only verify file existence in production mode
+  if (process.env.NODE_ENV !== 'development') {
+    // Verify file exists before loading
+    const prodPath = path.join(__dirname, 'dist', 'index.html');
+    console.log('Production path:', prodPath);
+    try {
+      fs.accessSync(prodPath, fs.constants.R_OK);
+      console.log('File exists and is readable');
+    } catch (err) {
+      console.error('File access error:', err);
+    }
   }
 
   // Register the escape key to cancel directory loading
