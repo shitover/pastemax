@@ -79,9 +79,7 @@ const PatternSection = ({
       {filteredPatterns.length > 0 ? (
         <pre className="pattern-list">{filteredPatterns.join('\n')}</pre>
       ) : (
-        <p className="no-patterns">
-          No patterns found, Please 'Save' changes to use this mode
-        </p>
+        <p className="no-patterns">No patterns found, Please 'Save' changes to use this mode</p>
       )}
     </section>
   );
@@ -159,7 +157,11 @@ export const IgnorePatternsViewer = ({
       <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
-          <button onClick={handleClose} className="save-button-ignore-patterns" aria-label="Save and close">
+          <button
+            onClick={handleClose}
+            className="save-button-ignore-patterns"
+            aria-label="Save and close"
+          >
             Save
           </button>
         </div>

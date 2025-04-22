@@ -98,7 +98,6 @@ export function useIgnorePatterns(selectedFolder: string | null, isElectron: boo
     }
   }, [customIgnores]);
 
-
   // Wrapper function to update state and potentially trigger side effects if needed later
   const setCustomIgnores = (newIgnores: string[] | ((prevIgnores: string[]) => string[])) => {
     _setCustomIgnores(newIgnores);

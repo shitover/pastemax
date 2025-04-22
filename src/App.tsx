@@ -448,7 +448,7 @@ const App = (): JSX.Element => {
         console.info('Applying ignore mode:');
         window.electron.ipcRenderer.send('set-ignore-mode', ignoreMode);
         window.electron.ipcRenderer.send('clear-ignore-cache');
-        
+
         if (changesMade) {
           // Use setTimeout to allow UI to update with "Applying ignore mode..." status before reload
           // Increased timeout to 800ms to ensure UI updates are visible
