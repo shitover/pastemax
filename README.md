@@ -128,13 +128,24 @@ Platform-specific build commands:
 
 - `src/` - React application source code
   - `components/` - React components
+  - `context/` - React context providers
+  - `hooks/` - Custom React hooks
   - `types/` - TypeScript type definitions
+  - `utils/` - Utility functions
   - `styles/` - CSS styles
-- `main.js` - Electron main process
-- `build.js` - Build script for production
-- `excluded-files.js` - Configuration for files to exclude by default
+  - `assets/` - Static assets like images
+- `electron/` - Electron-related files
+  - `main.js` - Electron main process
+  - `preload.js` - Preload script for secure IPC
+  - `renderer.js` - Renderer process utilities
+  - `build.js` - Build script for production
+  - `excluded-files.js` - Configuration for files to exclude by default
+- `public/` - Public assets (favicon, etc.)
+- `scripts/` - Utility scripts for building and testing
 - `docs/` - Documentation
   - `excluded-files.md` - Documentation for the file exclusion feature
+  - `plans/` - Future development plans and features
+  - `repoPromptInstructions/` - Instructions for prompt-related features
 
 ## Libraries Used
 
