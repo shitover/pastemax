@@ -286,8 +286,20 @@ async function collectGitignoreMapRecursive(startDir, rootDir, currentMap = new 
 const defaultIgnoreFilter = ignore().add(DEFAULT_PATTERNS);
 
 function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMode = 'automatic') {
+  // Validate paths to prevent empty path errors
+  if (!filePath || filePath.trim() === '') {
+    console.warn('Ignoring empty path in shouldIgnorePath');
+    return true; // Treat empty paths as "should ignore"
+  }
+  
   const relativeToRoot = safeRelativePath(rootDir, filePath);
   const relativeToCurrent = safeRelativePath(currentDir, filePath);
+  
+  // Validate that the relative paths are not empty
+  if (!relativeToRoot || relativeToRoot.trim() === '') {
+    console.warn(`Skipping empty relativeToRoot path for: ${filePath}`);
+    return true;
+  }
 
   // First check against default patterns (fast path)
   if (defaultIgnoreFilter.ignores(relativeToRoot)) {
@@ -307,6 +319,13 @@ function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMod
 
   // Then check against current directory context (automatic mode only)
   const currentIgnoreFilter = createContextualIgnoreFilter(rootDir, currentDir, ignoreFilter);
+  
+  // Ensure relativeToCurrent is not empty before calling ignores
+  if (!relativeToCurrent || relativeToCurrent.trim() === '') {
+    console.warn(`Skipping empty relativeToCurrent path for: ${filePath}`);
+    return false; // Don't ignore if we can't determine the relative path
+  }
+  
   return currentIgnoreFilter.ignores(relativeToCurrent);
 }
 
@@ -481,41 +500,78 @@ async function loadGitignore(rootDir, window) {
 
     // Start file watcher after initial scan completes
     if (chokidar) {
-      currentWatcher = chokidar
-        .watch(rootDir, {
-          ignored: (path) => shouldIgnorePath(path, rootDir, rootDir, ig),
+      try {
+        const watcherConfig = {
+          ignored: (filePath) => {
+            try {
+              // Safely handle empty paths
+              if (!filePath || filePath.trim() === '') {
+                console.warn('Empty path passed to watcher ignored function');
+                return true;
+              }
+              return shouldIgnorePath(filePath, rootDir, rootDir, ig);
+            } catch (error) {
+              console.error('Error in watcher ignore function:', error);
+              return true; // Ignore files that cause errors
+            }
+          },
           ignoreInitial: true,
           awaitWriteFinish: {
             stabilityThreshold: 2000,
             pollInterval: 100,
           },
-        })
-        .on('error', (error) => {
+          persistent: true,
+        };
+        
+        currentWatcher = chokidar.watch(rootDir, watcherConfig);
+        
+        // Handle any setup errors
+        currentWatcher.on('error', (error) => {
           console.error('File watcher encountered an error:', error);
         });
 
-      currentWatcher
-        .on('add', (path) => {
-          processSingleFile(path, rootDir, ig).then((fileData) => {
+        // Setup event handlers with proper error handling
+        currentWatcher.on('add', async (filePath) => {
+          try {
+            const fileData = await processSingleFile(filePath, rootDir, ig);
             if (fileData && window && !window.isDestroyed()) {
               window.webContents.send('file-added', fileData);
             }
-          });
-        })
-        .on('change', (path) => {
-          processSingleFile(path, rootDir, ig).then((fileData) => {
-            if (fileData) {
+          } catch (error) {
+            console.error(`Error processing added file ${filePath}:`, error);
+          }
+        });
+        
+        currentWatcher.on('change', async (filePath) => {
+          try {
+            const fileData = await processSingleFile(filePath, rootDir, ig);
+            if (fileData && window && !window.isDestroyed()) {
               window.webContents.send('file-updated', fileData);
             }
-          });
-        })
-        .on('unlink', (path) => {
-          window.webContents.send('file-removed', {
-            path: normalizePath(path),
-            relativePath: safeRelativePath(rootDir, path),
-          });
+          } catch (error) {
+            console.error(`Error processing changed file ${filePath}:`, error);
+          }
         });
+        
+        currentWatcher.on('unlink', (filePath) => {
+          try {
+            if (window && !window.isDestroyed()) {
+              window.webContents.send('file-removed', {
+                path: normalizePath(filePath),
+                relativePath: safeRelativePath(rootDir, filePath),
+              });
+            }
+          } catch (error) {
+            console.error(`Error handling deleted file ${filePath}:`, error);
+          }
+        });
+        
+      } catch (watcherError) {
+        console.error('Error setting up file watcher:', watcherError);
+        // Continue without watcher rather than failing the whole operation
+      }
     }
+    
     return ig;
   } catch (err) {
     console.error(`Error in loadGitignore for ${rootDir}:`, err);
