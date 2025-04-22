@@ -1167,9 +1167,7 @@ input[type='text'].search-input:focus {
 /* -------------------- User Instructions (in Content Area) -------------------- */
 .user-instructions-container {
   padding: var(--space-md) var(--space-lg);
-  margin-left: var(--space-lg);
   background-color: var(--background-primary);
-  border-top: var(--standard-border); /* Separator line */
   flex-shrink: 0; /* Prevent shrinking */
 }
 
@@ -1724,7 +1722,7 @@ label {
   border-color: var(--color-primary-light);
   background-color: var(--background-primary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var (--shadow-md);
 }
 
 .ignore-patterns-search .search-input:focus {
@@ -1892,7 +1890,7 @@ label {
   color: white;
   border: none;
   border-radius: var(--border-radius-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: var (--space-sm) var(--space-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -1922,7 +1920,7 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var (--space-md);
   background-color: var(--background-primary);
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
@@ -2701,6 +2699,7 @@ button:hover svg.lucide {
 .file-preview-tabs {
   display: flex;
   overflow-x: auto; /* Allow horizontal scrolling for tabs */
+  padding-bottom: 4px; /* Add some space for the scrollbar */
 }
 
 .file-preview-tab {
@@ -2715,46 +2714,87 @@ button:hover svg.lucide {
 }
 
 .file-preview-tab.active {
-  background-color: var(--background-primary);
-  border-bottom-color: var(--background-primary); /* Hide bottom border */
-  font-weight: bold; /* Make active tab stand out */
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--color-primary); /* Highlight active tab */
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px 4px 0 0;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
-.file-preview-tab:hover {
+
+.file-preview-tab.active:hover {
+  color: var(--text-primary);
   background-color: var(--hover-color);
+  transform: none;
+  box-shadow: none;
 }
 
 .file-preview-close-btn {
   background: none;
-  border: none;
-  font-size: 16px;
+  border: 1px var(--border-color) solid;
+  font-size: 14px;
   cursor: pointer;
   color: var(--text-secondary);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .file-preview-close-btn:hover {
   color: var(--text-primary);
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
 }
 
 .file-preview-modal-content {
   padding: 16px;
-  overflow-y: auto; /* Add scrollbar if content overflows */
+  overflow: hidden; /* Hide overflow, let child handle scrolling */
   flex: 1; /* Grow to fill available space */
 }
 
-.file-preview-modal-content pre {
-  white-space: pre-wrap; /* Since CSS 2.1 */
-  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
-  white-space: -pre-wrap; /* Opera 4-6 */
-  white-space: -o-pre-wrap; /* Opera 7 */
-  word-wrap: break-word; /* Internet Explorer 5.5+ */
-  font-family: var(--font-family-code); /* Ensure monospace */
-  font-size: 13px; /* Consistent font size */
-  line-height: 1.5; /* Consistent line height */
+.file-preview-code-container {
+  overflow: auto; /* Enable both horizontal and vertical scrolling */
+  max-height: calc(80vh - 120px); /* Reduced height to ensure space at bottom */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  position: relative; /* For padding pseudo-element */
 }
 
-/* Ensure monospace utility class is defined if not already */
+.file-preview-code-spacer {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.file-preview-code {
+  margin: 0;
+  padding: 20px; /* Increased padding on all sides */
+  white-space: pre; /* Preserve spacing and line breaks */
+  font-family: var(--font-family-code); /* Use monospace font */
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 4; /* Set tab size to 4 spaces */
+  -moz-tab-size: 4; /* Firefox support */
+  display: inline-block; /* Change to inline-block to contain content */
+  min-width: 100%; /* Ensure it takes full width */
+  box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+/* Ensure monospace utility class is defined */
 .monospace {
   font-family: var(--font-family-code);
   font-size: 13px;
   line-height: 1.5;
+  tab-size: 4; /* Set tab size to 4 spaces */
+  -moz-tab-size: 4; /* Firefox support */
+  overflow: hidden;
 }

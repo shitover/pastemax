@@ -45,7 +45,7 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
           <Eye size={16} />
         </button>
         <CopyButton text={file.content} className="file-card-action">
-          {""}
+          {''}
         </CopyButton>
       </div>
     </div>

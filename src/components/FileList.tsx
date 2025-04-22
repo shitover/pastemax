@@ -21,7 +21,7 @@ const FileList = ({ files, selectedFiles, toggleFileSelection }: FileListProps) 
 
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState([] as FileData[]);
-  const [activePreviewFile, setActivePreviewFile] = useState("" as string); // Track active file
+  const [activePreviewFile, setActivePreviewFile] = useState('' as string); // Track active file
 
   const handlePreview = (filePath: string) => {
     const fileToPreview = files.find((f) => f.path === filePath);
@@ -35,7 +35,7 @@ const FileList = ({ files, selectedFiles, toggleFileSelection }: FileListProps) 
   const handleClosePreview = () => {
     setPreviewModalOpen(false);
     setPreviewFiles([]);
-    setActivePreviewFile("");
+    setActivePreviewFile('');
   };
 
   return (
