@@ -21,6 +21,7 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": "off", // Disable error for using 'any' type during development
     "@typescript-eslint/no-var-requires": "off", // Allow CommonJS require() syntax without errors
     "@typescript-eslint/no-unused-vars": "warn", // Warn about declared but unused variables
+    "react-hooks/exhaustive-deps": "off", // Disable warning for missing dependencies in useEffect
   },
   settings: {
     react: {

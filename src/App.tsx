@@ -1,9 +1,9 @@
 /* ============================== IMPORTS ============================== */
-import { useState, useEffect, useCallback} from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';
-import { FileData } from './types/FileTypes';
+import { FileData, IgnoreMode } from './types/FileTypes';
 import { ThemeProvider } from './context/ThemeContext';
 import IgnorePatternsViewer from './components/IgnorePatternsViewer';
 import ThemeToggle from './components/ThemeToggle';
@@ -407,22 +407,58 @@ const App = (): JSX.Element => {
       stableHandleProcessingStatus(status);
     };
 
+    const handleBackendModeUpdate = (newMode: IgnoreMode) => {
+      console.info('[App] Backend signaled ignore mode update:', newMode);
+    };
+
     console.log('[useEffect] Setting up IPC listeners');
     window.electron.ipcRenderer.on('folder-selected', handleFolderSelected);
     window.electron.ipcRenderer.on('file-list-data', handleFileListData);
     window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatus);
+    window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdate);
 
     return () => {
       console.log('[useEffect] Cleaning up IPC listeners');
       window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelected);
       window.electron.ipcRenderer.removeListener('file-list-data', handleFileListData);
       window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
+      window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdate);
     };
   }, [isElectron]); // Only depend on isElectron (Leave it as is)
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 
-  // Add a function to cancel directory loading
+  /**
+   * Handles closing the ignore patterns viewer and conditionally reloading the app
+   * @param changesMade - Whether ignore patterns were modified, requiring a reload
+   * @remarks The setTimeout wrapping window.location.reload() allows the UI to update
+   * with the "Applying ignore mode..." status message before the reload occurs
+   */
+  const handleIgnoreViewerClose = useCallback(
+    (changesMade?: boolean) => {
+      closeIgnoreViewer();
+      if (!changesMade) return;
+
+      setProcessingStatus({
+        status: 'processing',
+        message: 'Applying ignore mode…',
+      });
+
+      if (isElectron) {
+        console.info('Applying ignore mode:');
+        window.electron.ipcRenderer.send('set-ignore-mode', ignoreMode);
+        window.electron.ipcRenderer.send('clear-ignore-cache');
+
+        if (changesMade) {
+          // Use setTimeout to allow UI to update with "Applying ignore mode..." status before reload
+          // Increased timeout to 800ms to ensure UI updates are visible
+          setTimeout(() => window.location.reload(), 800);
+        }
+      }
+    },
+    [isElectron, closeIgnoreViewer, ignoreMode]
+  );
+
   const cancelDirectoryLoading = useCallback(() => {
     if (isElectron) {
       window.electron.ipcRenderer.send('cancel-directory-loading');
@@ -908,11 +944,12 @@ const App = (): JSX.Element => {
           {/* Ignore Patterns Viewer Modal */}
           <IgnorePatternsViewer
             isOpen={isIgnoreViewerOpen}
-            onClose={closeIgnoreViewer}
+            onClose={handleIgnoreViewerClose}
             patterns={ignorePatterns}
             error={ignorePatternsError}
             selectedFolder={selectedFolder}
             isElectron={isElectron}
+            ignoreSettingsModified={ignoreSettingsModified}
           />
         </div>
       }

@@ -15,6 +15,7 @@ interface IgnorePatternsViewerProps {
   error?: string;
   selectedFolder: string | null;
   isElectron: boolean;
+  ignoreSettingsModified: boolean;
 }
 
 interface PatternSectionProps {
@@ -78,9 +79,7 @@ const PatternSection = ({
       {filteredPatterns.length > 0 ? (
         <pre className="pattern-list">{filteredPatterns.join('\n')}</pre>
       ) : (
-        <p className="no-patterns">
-          No patterns found, Please reload (Ctrl + r / ⌘ + r) to use this mode
-        </p>
+        <p className="no-patterns">No patterns found, Please 'Save' changes to use this mode</p>
       )}
     </section>
   );
@@ -93,6 +92,7 @@ export const IgnorePatternsViewer = ({
   error,
   selectedFolder,
   isElectron,
+  ignoreSettingsModified,
 }: IgnorePatternsViewerProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
   const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
@@ -101,13 +101,17 @@ export const IgnorePatternsViewer = ({
   );
   const [customIgnoreInput, setCustomIgnoreInput] = useState('');
   const initialIgnoreModeRef = useRef(ignoreMode);
+  const initialIgnoreSettingsModifiedRef = useRef(ignoreSettingsModified);
+  const initialCustomIgnoresRef = useRef(customIgnores);
 
-  // Store the initial ignore mode when the component opens
+  // snapshot once on open
   useEffect(() => {
     if (isOpen) {
       initialIgnoreModeRef.current = ignoreMode;
+      initialIgnoreSettingsModifiedRef.current = ignoreSettingsModified;
+      initialCustomIgnoresRef.current = customIgnores;
     }
-  }, [isOpen, ignoreMode]);
+  }, [isOpen]); // leave as is
 
   // Log the received patterns prop for debugging
   useEffect(() => {
@@ -131,9 +135,15 @@ export const IgnorePatternsViewer = ({
   }, [isOpen]);
 
   const handleClose = () => {
-    // Check if ignore mode changed and pass this information to parent component
     const modeChanged = initialIgnoreModeRef.current !== ignoreMode;
-    onClose(modeChanged);
+    const customIgnoresChanged =
+      ignoreMode === 'global' &&
+      JSON.stringify(initialCustomIgnoresRef.current) !== JSON.stringify(customIgnores);
+    const changesMade =
+      modeChanged ||
+      customIgnoresChanged ||
+      initialIgnoreSettingsModifiedRef.current !== ignoreSettingsModified;
+    onClose(changesMade);
   };
 
   if (!isOpen) return null;
@@ -147,8 +157,12 @@ export const IgnorePatternsViewer = ({
       <div className="ignore-patterns-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ignore-patterns-header">
           <h2>Applied Ignore Patterns</h2>
-          <button onClick={handleClose} className="close-button" aria-label="Close">
-            ×
+          <button
+            onClick={handleClose}
+            className="save-button-ignore-patterns"
+            aria-label="Save and close"
+          >
+            Save
           </button>
         </div>
         <div className="ignore-patterns-content">
@@ -159,27 +173,27 @@ export const IgnorePatternsViewer = ({
                 isOn={ignoreMode === 'global'}
                 onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
               />
-          </div>
-
-          {/* Mode explanation */}
-          <div className="ignore-mode-explanation">
-            <div className={`mode-description ${ignoreMode === 'automatic' ? 'active' : ''}`}>
-              <h4>Automatic Mode</h4>
-              <p>
-                Uses project's existing <code>.gitignore</code> files to determine what to ignore.
-                More accurate for large repositories and monorepos, but may be slower to process.
-              </p>
             </div>
-            <div className={`mode-description ${ignoreMode === 'global' ? 'active' : ''}`}>
-              <h4>Global Mode</h4>
-              <p>
-                Uses a static global ignore pattern system. Allows for additional Custom Ignore
-                Patterns. Faster processing with less precision.
+
+            {/* Mode explanation */}
+            <div className="ignore-mode-explanation">
+              <div className={`mode-description ${ignoreMode === 'automatic' ? 'active' : ''}`}>
+                <h4>Automatic Mode</h4>
+                <p>
+                  Uses project's existing <code>.gitignore</code> files to determine what to ignore.
+                  More accurate for large repositories and monorepos, but may be slower to process.
+                </p>
+              </div>
+              <div className={`mode-description ${ignoreMode === 'global' ? 'active' : ''}`}>
+                <h4>Global Mode</h4>
+                <p>
+                  Uses a static global ignore pattern system. Allows for additional Custom Ignore
+                  Patterns. Faster processing with less precision.
                 </p>
               </div>
             </div>
           </div>
-            {/* Display mode info even without selected folder */}
+          {/* Display mode info even without selected folder */}
           {!selectedFolder && (
             <div className="ignore-patterns-empty-state">
               <p>Select a folder to view ignore patterns.</p>
@@ -275,7 +289,7 @@ export const IgnorePatternsViewer = ({
                                   );
                                 }}
                               >
-                                ×
+                                X
                               </button>
                             </li>
                           ))}

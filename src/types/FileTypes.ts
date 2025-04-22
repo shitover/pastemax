@@ -1,4 +1,5 @@
 export type IgnoreMode = 'automatic' | 'global';
+// Hot reload occurs when mode changes.
 
 export interface FileData {
   name: string;
