@@ -1,11 +1,27 @@
 # PasteMax
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub issues](https://img.shields.io/github/issues/kleneway/pastemax)](https://github.com/kleneway/pastemax/issues)
+<p align="center">
+   <img src="https://github.com/user-attachments/assets/fe5ed9f2-fcb1-41d7-bc38-fb130fadf116" width="150" alt="PasteMaxIcon">
+</p>
 
-A modern file viewer application for developers to easily navigate, search, and copy code from repositories. Ideal for pasting into ChatGPT or your LLM of choice. Built with Electron, React, and TypeScript.
+<p align="center">
+   A modern file viewer application for developers to easily navigate, search, and copy code from repositories.<br/>
+   Ideal for pasting into ChatGPT or your LLM of choice. Built with Electron, React, and TypeScript.
+</p>
+
+<p align="center">
+   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+   <a href="https://github.com/kleneway/pastemax/issues"><img src="https://img.shields.io/github/issues/kleneway/pastemax" alt="GitHub issues"></a>
+   <a href="https://github.com/kleneway/pastemax/releases"><img src="https://img.shields.io/github/v/release/kleneway/pastemax" alt="GitHub releases"></a>
+</p>
+
+## Overview
+
+PasteMax is a simple desktop app built for developers using AI coding assistants. It makes sharing your code with LLMs easy, thanks to a smart file explorer with token counting, file filtering, quick copy, and a previewer. Select the files you need, skip binaries and junk, and get clean, formatted snippets ready for your LLM.
 
 ![PasteMax](https://github.com/user-attachments/assets/7160e35a-a0d5-4519-bc84-8035e3aa3f92)
+![IgnoresViewer](https://github.com/user-attachments/assets/44d560a8-c2b5-4f41-9d93-0478f8fa437a)
+![FilePreview](https://github.com/user-attachments/assets/bc78f4e6-edfe-4ed8-892c-3eaae61be986)
 
 ## Video
 
