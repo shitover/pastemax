@@ -1,3 +1,5 @@
+// src/components/FileCard.tsx
+// Removed unused import
 import { FileData } from '../types/FileTypes'; // Corrected import
 import { Plus, X, FileText, Eye } from 'lucide-react';
 import CopyButton from './CopyButton';
@@ -43,7 +45,7 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
           <Eye size={16} />
         </button>
         <CopyButton text={file.content} className="file-card-action">
-          {''}
+          {""}
         </CopyButton>
       </div>
     </div>
