@@ -175,10 +175,11 @@ export const IgnorePatternsViewer = ({
               <p>
                 Uses a static global ignore pattern system. Allows for additional Custom Ignore
                 Patterns. Faster processing with less precision.
-              </p>
+                </p>
+              </div>
             </div>
           </div>
-          {/* Display mode info even without selected folder */}
+            {/* Display mode info even without selected folder */}
           {!selectedFolder && (
             <div className="ignore-patterns-empty-state">
               <p>Select a folder to view ignore patterns.</p>
@@ -312,9 +313,7 @@ export const IgnorePatternsViewer = ({
                   ))}
               </div>
             </React.Fragment>
-          ) : (
-            <div className="ignore-patterns-loading">Loading patterns...</div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

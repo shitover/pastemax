@@ -22,6 +22,7 @@ build
 # Electron-builder output
 out/
 release/
+release-builds
 
 # Editor directories and files
 .vscode/*
