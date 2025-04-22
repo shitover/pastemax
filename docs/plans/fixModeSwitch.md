@@ -80,9 +80,9 @@
 
 > Only send IPC + reload when `changesMade === true`.
 
-- [ ] Open `src/App.tsx`.
-- [ ] Find `handleIgnoreViewerClose` implementation.
-- [ ] Wrap the logic in:
+- [x] Open `src/App.tsx`.
+- [x] Find `handleIgnoreViewerClose` implementation.
+- [x] Wrap the logic in:
   ```ts
   const handleIgnoreViewerClose = (changesMade?: boolean) => {
     if (!changesMade) return; // ← skip everything
@@ -96,8 +96,8 @@
     setTimeout(() => window.location.reload(), 1000);
   };
   ```
-- [ ] Confirm IPC channels match those in `electron/main.js`.
-- [ ] Save and run to verify that open+close no‑op no longer reloads.
+- [x] Confirm IPC channels match those in `electron/main.js`.
+- [x] Save and run to verify that open+close no‑op no longer reloads.
 
 ---
 
