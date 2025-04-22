@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';
-import { FileData } from './types/FileTypes';
+import { FileData, IgnoreMode } from './types/FileTypes';
 import { ThemeProvider } from './context/ThemeContext';
 import IgnorePatternsViewer from './components/IgnorePatternsViewer';
 import ThemeToggle from './components/ThemeToggle';
@@ -407,7 +407,7 @@ const App = (): JSX.Element => {
       stableHandleProcessingStatus(status);
     };
 
-    const handleBackendModeUpdate = (newMode: string) => {
+    const handleBackendModeUpdate = (newMode: IgnoreMode) => {
       console.info('[App] Backend signaled ignore mode update:', newMode);
     };
 
