@@ -177,6 +177,7 @@ function shouldExcludeByDefault(filePath, rootDir) {
 
   if (process.platform === 'win32') {
     if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path.basename(filePath))) {
+      console.log(`Excluding reserved Windows name: ${path.basename(filePath)}`);
       return true;
     }
 
@@ -184,6 +185,7 @@ function shouldExcludeByDefault(filePath, rootDir) {
       filePath.toLowerCase().includes('\\windows\\') ||
       filePath.toLowerCase().includes('\\system32\\')
     ) {
+      console.log(`Excluding system path: ${filePath}`);
       return true;
     }
   }
@@ -194,6 +196,7 @@ function shouldExcludeByDefault(filePath, rootDir) {
       filePath.includes('/.Trashes') ||
       filePath.includes('/.fseventsd')
     ) {
+      console.log(`Excluding macOS system path: ${filePath}`);
       return true;
     }
   }
@@ -204,6 +207,7 @@ function shouldExcludeByDefault(filePath, rootDir) {
       filePath.startsWith('/sys/') ||
       filePath.startsWith('/dev/')
     ) {
+      console.log(`Excluding Linux system path: ${filePath}`);
       return true;
     }
   }
@@ -214,7 +218,14 @@ function shouldExcludeByDefault(filePath, rootDir) {
     console.log(`[Default Exclude] Initialized filter with ${excludedFiles.length} excluded files`);
   }
   
-  return defaultExcludeFilter.ignores(relativePath);
+  const isExcluded = defaultExcludeFilter.ignores(relativePath);
+  
+  // Only log exclusions periodically to reduce spam
+  if (isExcluded && Math.random() < 0.05) { // Log ~5% of exclusions as samples
+    console.log(`[Default Exclude] Excluded file: ${relativePath}`);
+  }
+  
+  return isExcluded;
 }
 
 // ======================
@@ -663,7 +674,11 @@ async function readFilesRecursively(
     const fileQueueConcurrency = Math.max(2, Math.min(cpuCount, 8)); // e.g., Use between 2 and 8 concurrent file operations
     fileQueue = new PQueue({ concurrency: fileQueueConcurrency });
     shouldCleanupQueue = true;
-    console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+    
+    // Provide more context in the debug message
+    const relativePath = safeRelativePath(rootDir, dir);
+    const pathToDisplay = relativePath === '.' ? path.basename(rootDir) : relativePath;
+    console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency} for: ${pathToDisplay}`);
   }
 
   let results = [];
