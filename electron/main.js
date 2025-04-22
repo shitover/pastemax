@@ -11,7 +11,7 @@ const chokidar = require('chokidar'); // Added for file watching
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
-const CONCURRENT_DIRS = 4; // Number of directories to process in parallel
+const CONCURRENT_DIRS = os.cpus().length * 2; // Increase based on CPU count for better parallelism
 // const CHUNK_SIZE = 30; // Number of files to process in one chunk (no longer used, might bring back)
 
 // Default ignore patterns that should always be applied
@@ -48,6 +48,7 @@ const DEFAULT_PATTERNS = [
   '.DS_Store',
   'Thumbs.db',
   'desktop.ini',
+  '*.asar', // Added to ignore Electron asar archive files
 ];
 
 // ======================
@@ -756,10 +757,10 @@ async function readFilesRecursively(
     queueToUse = new PQueue({ concurrency: fileQueueConcurrency });
     shouldCleanupQueue = true;
     
-    // Provide more context in the debug message
-    const relativePath = safeRelativePath(rootDir, dir);
-    const pathToDisplay = relativePath === '.' ? path.basename(rootDir) : relativePath;
-    console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency} for: ${pathToDisplay}`);
+    // Only log the initialization message for the root directory to reduce spam
+    if (dir === rootDir) {
+      console.log(`Initializing file processing queue with concurrency: ${fileQueueConcurrency}`);
+    }
   }
 
   let results = [];
