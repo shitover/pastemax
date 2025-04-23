@@ -109,9 +109,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*.dmg release-builds/PasteMax-*-mac.zip' || '' }}
-            ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax *.exe release-builds/PasteMax Setup *.exe' || '' }}
-            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/pastemax_*_amd64.deb release-builds/*.AppImage' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*.dmg' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-mac.zip' || '' }}
+            ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax *.exe' || '' }}
+            ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax Setup *.exe' || '' }}
+            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/pastemax_*_amd64.deb' || '' }}
+            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/*.AppImage' || '' }}
           draft: true
           generate_release_notes: true
         env:
