@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build and Release with Code Signing
 
 on:
   push:
@@ -42,6 +42,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-electron-cache-
 
+      # Code signing setup for macOS
+      - name: Set up macOS code signing
+        if: matrix.os == 'macos-latest' && secrets.MACOS_CERTIFICATE
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          keychain: build.keychain
+          keychain-password: ${{ secrets.KEYCHAIN_PWD }}
+
+      # Code signing setup for Windows
+      - name: Set up Windows code signing
+        if: matrix.os == 'windows-latest' && secrets.WINDOWS_CERTIFICATE
+        uses: crazy-max/ghaction-import-pfx@v1
+        with:
+          pfx-base64: ${{ secrets.WINDOWS_CERTIFICATE }}
+          pfx-password: ${{ secrets.WINDOWS_CERTIFICATE_PWD }}
+
       - name: Build Vite app
         run: npm run build
 
@@ -51,6 +69,12 @@ jobs:
         run: npm run package:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZE: ${{ secrets.NOTARIZE || 'false' }}
 
       # Windows build
       - name: Build Windows app
@@ -58,6 +82,8 @@ jobs:
         run: npm run package:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PWD }}
 
       # Linux build
       - name: Build Linux app

@@ -6,6 +6,12 @@ on:
     tags:
       - 'debug-v*' # Special tag prefix for debugging
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
 jobs:
   debug_build:
     name: Debug ${{ matrix.os }} Build
