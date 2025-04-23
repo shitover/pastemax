@@ -51,9 +51,28 @@ jobs:
       - name: Debug - Project structure before build
         run: |
           echo "Project structure:"
-          find . -type f -name "package.json" | xargs ls -la
-          cat package.json | grep -A 50 "\"build\":"
-          ls -la
+          if "%RUNNER_OS%"=="Windows" (
+            dir package.json
+            type package.json | findstr /C:"\"build\":"
+            dir
+          ) else (
+            find . -type f -name "package.json" | xargs ls -la
+            cat package.json | grep -A 50 "\"build\":"
+            ls -la
+          )
+      
+      - name: Debug - Cross-platform project structure
+        run: |
+          echo "Project structure for both Windows and non-Windows environments:"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            dir package.json
+            type package.json | findstr /C:"\"build\":"
+            dir
+          else
+            find . -type f -name "package.json" | xargs ls -la
+            cat package.json | grep -A 50 "\"build\":"
+            ls -la
+          fi
 
       - name: Build Vite app
         run: npm run build

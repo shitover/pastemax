@@ -15,19 +15,41 @@ jobs:
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
+          
+      - name: Debug - Environment info
+        run: |
+          echo "OS: ${{ runner.os }}"
+          echo "Node: $(node -v)"
+          echo "NPM: $(npm -v)"
+          echo "Working directory: $(pwd)"
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug - Project structure before build
+        run: |
+          echo "Project structure:"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            dir package.json
+            type package.json | findstr /C:"\"build\":"
+            dir
+          else
+            find . -type f -name "package.json" | xargs ls -la
+            cat package.json | grep -A 50 "\"build\":"
+            ls -la
+          fi
+
       - name: Cache electron-builder cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/electron
@@ -57,9 +79,23 @@ jobs:
       - name: Build Vite app
         run: npm run build
 
+      - name: Debug - Check dist directory after Vite build
+        run: |
+          echo "Dist directory contents:"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            dir dist || echo "No dist directory found"
+          else
+            ls -la dist || echo "No dist directory found"
+          fi
+
       - name: Build and package Electron app (macOS)
         if: matrix.os == 'macos-latest'
-        run: npm run package
+        run: |
+          echo "Running macOS packaging..."
+          npm run package
+          echo "Package result:"
+          ls -la release-builds || echo "No release-builds directory found"
+          find release-builds -type f -name "*.dmg" -o -name "*.zip" || echo "No macOS packages found"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
@@ -71,7 +107,12 @@ jobs:
 
       - name: Build and package Electron app (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run package
+        run: |
+          echo "Running Windows packaging..."
+          npm run package
+          echo "Package result:"
+          dir release-builds || echo "No release-builds directory found"
+          dir /s /b release-builds\*.exe release-builds\*.msi release-builds\*.appx || echo "No Windows packages found"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -79,33 +120,61 @@ jobs:
 
       - name: Build and package Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npm run package
+        run: |
+          echo "Running Linux packaging..."
+          npm run package
+          echo "Package result:"
+          ls -la release-builds || echo "No release-builds directory found"
+          find release-builds -type f -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" || echo "No Linux packages found"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug - List all output files
+        run: |
+          echo "All potential release files:"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            dir /s /b release-builds || echo "No files found in release-builds"
+          else
+            find . -type f -path "*/release-builds/*" || echo "No files found in release-builds"
+          fi
+
       - name: Upload macOS artifacts
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
           path: release-builds/*.{dmg,zip}
+          if-no-files-found: warn
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
           path: release-builds/*.{exe,msi,appx}
+          if-no-files-found: warn
 
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
           path: release-builds/*.{AppImage,deb,rpm}
+          if-no-files-found: warn
+
+      - name: Debug - Before release
+        run: |
+          echo "Current directory before release:"
+          pwd
+          echo "Files that will be included in release:"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            dir release-builds || echo "No release-builds directory found"
+          else
+            ls -la release-builds || echo "No release-builds directory found"
+          fi
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-builds/**

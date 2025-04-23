@@ -13,8 +13,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest] # Start with just macOS for debugging
-        # os: [macos-latest, ubuntu-latest, windows-latest] # Uncomment for all platforms
+        # os: [macos-latest] # Start with just macOS for debugging
+        os: [macos-latest, ubuntu-latest, windows-latest] # Uncomment for all platforms
 
     steps:
       - name: Check out Git repository
@@ -28,10 +28,17 @@ jobs:
           echo "OS: ${{ runner.os }}"
           echo "Github ref: ${{ github.ref }}"
           echo "Github SHA: ${{ github.sha }}"
-          echo "Architecture: $(uname -m)"
-          echo "Python: $(python3 --version || echo 'not installed')"
-          echo "Disk space:"
-          df -h
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            echo "Architecture: $env:PROCESSOR_ARCHITECTURE"
+            echo "Python: $(python --version 2>&1 || echo 'not installed')"
+            echo "Disk space:"
+            Get-PSDrive -PSProvider FileSystem
+          else
+            echo "Architecture: $(uname -m)"
+            echo "Python: $(python3 --version || echo 'not installed')"
+            echo "Disk space:"
+            df -h
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -44,10 +51,17 @@ jobs:
           echo "==== NODE INFO ===="
           node --version
           npm --version
-          npm config list || echo "Cannot list npm config"
-          echo "NODE_PATH: $NODE_PATH"
-          echo "Path:"
-          echo $PATH
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            npm config list || echo "Cannot list npm config"
+            echo "NODE_PATH: $env:NODE_PATH"
+            echo "Path:"
+            echo $env:PATH
+          else
+            npm config list || echo "Cannot list npm config"
+            echo "NODE_PATH: $NODE_PATH"
+            echo "Path:"
+            echo $PATH
+          fi
 
       - name: Install dependencies
         run: |
@@ -57,52 +71,83 @@ jobs:
       - name: Debug project structure
         run: |
           echo "==== PROJECT STRUCTURE ===="
-          find . -type f -not -path "*/node_modules/*" -not -path "*/\.*" | sort
-
-          echo "==== PACKAGE.JSON CONTENT ===="
-          cat package.json
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            Get-ChildItem -Recurse -File | Where-Object { $_.FullName -notmatch "node_modules" -and $_.FullName -notmatch "^\." } | ForEach-Object { $_.FullName } | Sort-Object
+            
+            echo "==== PACKAGE.JSON CONTENT ===="
+            Get-Content package.json
+          else
+            find . -type f -not -path "*/node_modules/*" -not -path "*/\.*" | sort
+            
+            echo "==== PACKAGE.JSON CONTENT ===="
+            cat package.json
+          fi
 
       - name: Build step
         run: |
           echo "==== BUILDING APPLICATION ===="
           npm run build
-
+          
           echo "==== BUILD OUTPUT ===="
-          ls -la dist || echo "dist directory not found!"
-          find dist -type f | wc -l || echo "No files in dist"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            dir dist || echo "dist directory not found!"
+            if (Test-Path dist) { (Get-ChildItem -Recurse -File dist | Measure-Object).Count } else { echo "No files in dist" }
+          else
+            ls -la dist || echo "dist directory not found!"
+            find dist -type f | wc -l || echo "No files in dist"
+          fi
 
       - name: Debug main.js
         run: |
           echo "==== MAIN.JS CONTENT ===="
-          cat main.js || echo "main.js not found!"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            Get-Content main.js || echo "main.js not found!"
+          else
+            cat main.js || echo "main.js not found!"
+          fi
 
       - name: Create directories
         run: |
           echo "==== ENSURING DIRECTORIES ===="
-          mkdir -p release-builds
-          ls -la release-builds
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            if (-not (Test-Path release-builds)) { New-Item -Path release-builds -ItemType Directory }
+            dir release-builds
+          else
+            mkdir -p release-builds
+            ls -la release-builds
+          fi
 
       - name: Run electron-builder directly
         run: |
           echo "==== RUNNING ELECTRON-BUILDER DIRECTLY ===="
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            npx electron-builder --mac --publish=never --debug
-          elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            npx electron-builder --linux --publish=never --debug
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          if [ "${{ runner.os }}" == "Windows" ]; then
             npx electron-builder --win --publish=never --debug
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            npx electron-builder --linux --publish=never --debug
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            npx electron-builder --mac --publish=never --debug
           fi
 
       - name: Check output
         run: |
           echo "==== CHECKING OUTPUT ===="
-          find . -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.zip"
-
-          echo "==== RELEASE BUILDS DIRECTORY ===="
-          ls -la release-builds || echo "release-builds directory not found after packaging!"
-
-          echo "==== DEEP LIST OF OUTPUT ===="
-          find release-builds -type f || echo "No files in release-builds"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            Get-ChildItem -Recurse -Path . -Include *.dmg,*.exe,*.AppImage,*.zip
+            
+            echo "==== RELEASE BUILDS DIRECTORY ===="
+            dir release-builds || echo "release-builds directory not found after packaging!"
+            
+            echo "==== DEEP LIST OF OUTPUT ===="
+            Get-ChildItem -Recurse -Path release-builds -File | ForEach-Object { $_.FullName } || echo "No files in release-builds"
+          else
+            find . -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.zip"
+            
+            echo "==== RELEASE BUILDS DIRECTORY ===="
+            ls -la release-builds || echo "release-builds directory not found after packaging!"
+            
+            echo "==== DEEP LIST OF OUTPUT ===="
+            find release-builds -type f || echo "No files in release-builds"
+          fi
 
       - name: Upload debug artifacts
         uses: actions/upload-artifact@v4
