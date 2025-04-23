@@ -78,7 +78,8 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Development",
       "icon": "public/favicon.png"
