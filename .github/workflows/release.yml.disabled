@@ -1,3 +1,5 @@
+# Renamed this file to "release.yml.disabled" to disable it
+# When ready to use it again, rename it back to "release.yml"
 name: Build and Release with Code Signing
 
 on:
