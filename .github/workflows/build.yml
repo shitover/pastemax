@@ -77,8 +77,8 @@ jobs:
         with:
           name: windows-artifacts
           path: |
-            release-builds/PasteMax-Setup-*.exe
-            release-builds/PasteMax-*.exe
+            release-builds/PasteMax Setup*.exe
+            release-builds/PasteMax*.exe
           if-no-files-found: error
 
       - name: Upload Linux artifacts
@@ -100,9 +100,8 @@ jobs:
           files: |
             release-builds/*.dmg
             release-builds/*.zip
-            release-builds/PasteMax-Setup.exe
-            release-builds/PasteMax-Setup-*.exe
-            release-builds/PasteMax-*.exe
+            release-builds/PasteMax Setup*.exe
+            release-builds/PasteMax*.exe
             release-builds/*.AppImage
             release-builds/*.deb
             release-builds/*.rpm
