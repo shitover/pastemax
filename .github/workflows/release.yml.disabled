@@ -1,11 +1,15 @@
-# Renamed this file to "release.yml.disabled" to disable it
-# When ready to use it again, rename it back to "release.yml"
 name: Build and Release with Code Signing
 
 on:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
 
 jobs:
   release:
@@ -95,8 +99,9 @@ jobs:
         with:
           name: macos-artifacts
           path: |
-            release-builds/*.dmg
-            release-builds/*.zip
+            release-builds/PasteMax-*.dmg
+            release-builds/PasteMax-*-arm64-mac.zip
+            release-builds/PasteMax-*-arm64.dmg
           if-no-files-found: error
 
       - name: Upload Windows artifacts
@@ -105,8 +110,10 @@ jobs:
         with:
           name: windows-artifacts
           path: |
-            release-builds/PasteMax Setup*.exe
-            release-builds/PasteMax*.exe
+            release-builds/PasteMax *.exe
+            release-builds/PasteMax.*.exe
+            release-builds/PasteMaxSetup.*.exe
+            release-builds/PasteMax Setup *.exe
           if-no-files-found: error
 
       - name: Upload Linux artifacts
@@ -115,9 +122,11 @@ jobs:
         with:
           name: linux-artifacts
           path: |
+            release-builds/pastemax_*_amd64.deb
             release-builds/*.AppImage
-            release-builds/*.deb
-            release-builds/*.rpm
+            release-builds/pastemax *.AppImage
+            release-builds/pastemax_*.AppImage
+            release-builds/pastemax-*.AppImage
           if-no-files-found: error
 
       # Create GitHub release
@@ -126,13 +135,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            release-builds/*.dmg
-            release-builds/*.zip
-            release-builds/PasteMax Setup*.exe
-            release-builds/PasteMax*.exe
+            release-builds/PasteMax-*.dmg
+            release-builds/PasteMax-*-arm64-mac.zip
+            release-builds/PasteMax-*-arm64.dmg
+            release-builds/PasteMax.*.exe
+            release-builds/PasteMaxSetup.*.exe
+            release-builds/PasteMax Setup *.exe
+            release-builds/pastemax_*_amd64.deb
             release-builds/*.AppImage
-            release-builds/*.deb
-            release-builds/*.rpm
           draft: true
           generate_release_notes: true
         env:
