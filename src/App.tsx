@@ -384,7 +384,7 @@ const App = (): JSX.Element => {
       } else {
         console.log('[handleFileListData] No existing selections, selecting all eligible files');
         const selectablePaths = files
-          .filter((file: FileData) => !file.isBinary && !file.isSkipped && !file.excludedByDefault)
+          .filter((file: FileData) => !file.isSkipped && !file.excludedByDefault)
           .map((file: FileData) => file.path);
 
         setSelectedFiles(selectablePaths);
@@ -746,7 +746,7 @@ const App = (): JSX.Element => {
     console.time('selectAllFiles');
     try {
       const selectablePaths = displayedFiles
-        .filter((file: FileData) => !file.isBinary && !file.isSkipped)
+        .filter((file: FileData) => !file.isSkipped)
         .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
       setSelectedFiles((prev: string[]) => {

@@ -30,7 +30,7 @@ const TreeItem = ({
 
   /**
    * Checks if all selectable files in a directory are selected.
-   * A file is considered "selectable" if it's not binary, skipped, or excluded.
+   * A file is considered "selectable" if it's not skipped, or excluded.
    * Empty directories or those with only unselectable files count as "fully selected".
    */
   const areAllFilesInDirectorySelected = useCallback(
@@ -39,7 +39,7 @@ const TreeItem = ({
         // Unselectable files don't affect the directory's selection state
         if (
           node.fileData &&
-          (node.fileData.isBinary || node.fileData.isSkipped || node.fileData.excludedByDefault)
+          (node.fileData.isSkipped || node.fileData.excludedByDefault)
         ) {
           return true; // Consider these as "selected" for the "all files selected" check
         }
@@ -53,8 +53,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isBinary ||
-                child.fileData.isSkipped ||
+              (child.fileData.isSkipped ||
                 child.fileData.excludedByDefault)
             )
         );
@@ -80,10 +79,10 @@ const TreeItem = ({
   const isAnyFileInDirectorySelected = useCallback(
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
-        // Skip binary, skipped or excluded files
+        // Skip skipped or excluded files
         if (
           node.fileData &&
-          (node.fileData.isBinary || node.fileData.isSkipped || node.fileData.excludedByDefault)
+          (node.fileData.isSkipped || node.fileData.excludedByDefault)
         ) {
           return false; // These files don't count for the "any files selected" check
         }
@@ -96,8 +95,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isBinary ||
-                child.fileData.isSkipped ||
+              (child.fileData.isSkipped ||
                 child.fileData.excludedByDefault)
             )
         );
@@ -141,10 +139,10 @@ const TreeItem = ({
     }
   }, [isDirectoryPartiallySelected]);
 
-  // Check if file is binary, skipped, or excluded by default (unselectable) - memoize this
-  const isDisabled = useMemo(
+  // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
+  const isCheckboxDisabled = useMemo(
     () =>
-      fileData ? fileData.isBinary || fileData.isSkipped || fileData.excludedByDefault : false,
+      fileData ? fileData.isSkipped || fileData.excludedByDefault : false,
     [fileData]
   );
 
@@ -160,14 +158,21 @@ const TreeItem = ({
   const handleItemClick = useCallback(() => {
     if (type === 'directory') {
       toggleExpanded(id);
-    } else if (type === 'file' && !isDisabled) {
+    } else if (type === 'file' && !isCheckboxDisabled) {
       toggleFileSelection(path);
     }
-  }, [type, id, path, toggleExpanded, toggleFileSelection, isDisabled]);
+  }, [type, id, path, toggleExpanded, toggleFileSelection, isCheckboxDisabled]);
 
   const handleCheckboxChange = useCallback(
     (e: any) => {
       e.stopPropagation();
+      
+      if (isCheckboxDisabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       const isChecked = e.target.checked;
 
       console.log('Checkbox clicked:', {
@@ -185,12 +190,12 @@ const TreeItem = ({
         toggleFolderSelection(path, isChecked);
       }
     },
-    [type, path, toggleFileSelection, toggleFolderSelection]
+    [type, path, toggleFileSelection, toggleFolderSelection, isCheckboxDisabled]
   );
 
   return (
     <div
-      className={`tree-item ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled-item' : ''}`}
+      className={`tree-item ${isSelected ? 'selected' : ''} ${isCheckboxDisabled ? 'disabled-item' : ''}`}
       style={{ marginLeft: `${level * 16}px` }}
       onClick={handleItemClick}
     >
@@ -215,7 +220,7 @@ const TreeItem = ({
         checked={type === 'file' ? isSelected : isDirectorySelected}
         ref={checkboxRef}
         onChange={handleCheckboxChange}
-        disabled={isDisabled}
+        disabled={isCheckboxDisabled}
         onClick={(e) => e.stopPropagation()}
       />
 
@@ -233,7 +238,7 @@ const TreeItem = ({
         )}
 
         {/* Show badges for files and folders */}
-        {type === 'file' && fileData && isDisabled && (
+        {type === 'file' && fileData && isCheckboxDisabled && (
           <span
             className={`tree-item-badge ${fileData.isBinary ? 'tree-item-badge-binary-file' : ''}`}
           >
