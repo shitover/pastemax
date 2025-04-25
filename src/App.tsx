@@ -58,6 +58,7 @@ const STORAGE_KEYS = {
   EXPANDED_NODES: 'pastemax-expanded-nodes',
   IGNORE_MODE: 'pastemax-ignore-mode',
   IGNORE_SETTINGS_MODIFIED: 'pastemax-ignore-settings-modified',
+  INCLUDE_BINARY_PATHS: 'pastemax-include-binary-paths',
 };
 
 /* ============================== MAIN APP COMPONENT ============================== */
@@ -109,6 +110,9 @@ const App = (): JSX.Element => {
     message: string;
   });
   const [includeFileTree, setIncludeFileTree] = useState(false);
+  const [includeBinaryPaths, setIncludeBinaryPaths] = useState(
+    localStorage.getItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS) === 'true'
+  );
 
   /* ============================== STATE: UI Controls ============================== */
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
@@ -207,6 +211,11 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
   }, [ignoreMode]);
+
+  // Persist includeBinaryPaths when it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS, String(includeBinaryPaths));
+  }, [includeBinaryPaths]);
 
   // Add this new useEffect for safe mode detection
   useEffect(() => {
@@ -728,6 +737,7 @@ const App = (): JSX.Element => {
       includeFileTree,
       selectedFolder,
       userInstructions,
+      includeBinaryPaths,
     });
   };
 
@@ -920,6 +930,14 @@ const App = (): JSX.Element => {
                         onChange={() => setIncludeFileTree(!includeFileTree)}
                       />
                       <span>Include File Tree</span>
+                    </label>
+                    <label className="file-tree-option binary-option">
+                      <input
+                        type="checkbox"
+                        checked={includeBinaryPaths}
+                        onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
+                      />
+                      <span>Include Binary Paths</span>
                     </label>
                     {/*
                      * Copy Button

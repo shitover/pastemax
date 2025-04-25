@@ -5,16 +5,16 @@ This checklist details the tasks required to add the ability to include binary f
 ## 1. Binary File Inclusion Feature
 
 *   ### Story: Add toggle and state for including binary paths in output.
-    *   [ ] **Define New Storage Key:** In `src/App.tsx`, add `STORAGE_KEYS.INCLUDE_BINARY_PATHS = 'pastemax-include-binary-paths';` to the `STORAGE_KEYS` object.
-    *   [ ] **Add New State:** In `src/App.tsx`, add the state `const [includeBinaryPaths, setIncludeBinaryPaths] = useState(...)`.
-    *   [ ] **Load State from localStorage:** Initialize `includeBinaryPaths` state by reading from `localStorage` using the new key: `useState(localStorage.getItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS) === 'true')`. Handle the case where it's not in storage (defaults to `false`).
-    *   [ ] **Persist State to localStorage:** In `src/App.tsx`, add a `useEffect` to save the `includeBinaryPaths` state to localStorage whenever it changes: `useEffect(() => { localStorage.setItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS, String(includeBinaryPaths)); }, [includeBinaryPaths]);`.
-    *   [ ] **Add Toggle UI:** In `src/App.tsx`, within the `.copy-button-wrapper` div, add a new `<label className="file-tree-option binary-option">` containing an `<input type="checkbox">`.
-    *   [ ] **Bind Toggle to State:** Set the checkbox `checked` property to `includeBinaryPaths`.
-    *   [ ] **Add Toggle Handler:** Attach an `onChange` handler to the checkbox that calls `setIncludeBinaryPaths(e.target.checked)`.
-    *   [ ] **Pass State to Formatting:** In `src/App.tsx`, modify the `getSelectedFilesContent` function (which uses `formatContentForCopying`) to pass the `includeBinaryPaths` state as a parameter to `formatContentForCopying`.
-    *   [ ] **Add Parameter to Formatting Function:** In `src/utils/contentFormatUtils.ts`, update the `FormatContentParams` interface to include `includeBinaryPaths: boolean;`.
-    *   [ ] **Accept Parameter in Formatting Function:** Update the `formatContentForCopying` function signature to accept the `includeBinaryPaths` parameter via destructuring.
+    *   [x] **Define New Storage Key:** In `src/App.tsx`, add `STORAGE_KEYS.INCLUDE_BINARY_PATHS = 'pastemax-include-binary-paths';` to the `STORAGE_KEYS` object.
+    *   [x] **Add New State:** In `src/App.tsx`, add the state `const [includeBinaryPaths, setIncludeBinaryPaths] = useState(...)`.
+    *   [x] **Load State from localStorage:** Initialize `includeBinaryPaths` state by reading from `localStorage` using the new key: `useState(localStorage.getItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS) === 'true')`. Handle the case where it's not in storage (defaults to `false`).
+    *   [x] **Persist State to localStorage:** In `src/App.tsx`, add a `useEffect` to save the `includeBinaryPaths` state to localStorage whenever it changes: `useEffect(() => { localStorage.setItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS, String(includeBinaryPaths)); }, [includeBinaryPaths]);`.
+    *   [x] **Add Toggle UI:** In `src/App.tsx`, within the `.copy-button-wrapper` div, add a new `<label className="file-tree-option binary-option">` containing an `<input type="checkbox">`.
+    *   [x] **Bind Toggle to State:** Set the checkbox `checked` property to `includeBinaryPaths`.
+    *   [x] **Add Toggle Handler:** Attach an `onChange` handler to the checkbox that calls `setIncludeBinaryPaths(e.target.checked)`.
+    *   [x] **Pass State to Formatting:** In `src/App.tsx`, modify the `getSelectedFilesContent` function (which uses `formatContentForCopying`) to pass the `includeBinaryPaths` state as a parameter to `formatContentForCopying`.
+    *   [x] **Add Parameter to Formatting Function:** In `src/utils/contentFormatUtils.ts`, update the `FormatContentParams` interface to include `includeBinaryPaths: boolean;`.
+    *   [x] **Accept Parameter in Formatting Function:** Update the `formatContentForCopying` function signature to accept the `includeBinaryPaths` parameter via destructuring.
 
 *   ### Story: Modify formatting logic to separate and format binary paths.
     *   [ ] **Separate File Types:** In `src/utils/contentFormatUtils.ts`, inside `formatContentForCopying`, after sorting `selectedAndDisplayableFiles`, create two new arrays: `const textFiles = sortedSelected.filter(file => !file.isBinary);` and `const binaryFiles = sortedSelected.filter(file => file.isBinary);`.

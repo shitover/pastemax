@@ -14,6 +14,7 @@ interface FormatContentParams {
   selectedFiles: string[]; // Paths of selected files
   sortOrder: string; // Current sort order (e.g., "tokens-desc")
   includeFileTree: boolean; // Whether to include file tree in output
+  includeBinaryPaths: boolean; // Whether to include binary file paths in output
   selectedFolder: string | null; // Current selected folder path
   userInstructions: string; // User instructions to append to content
 }
@@ -36,6 +37,7 @@ export const formatContentForCopying = ({
   selectedFiles,
   sortOrder,
   includeFileTree,
+  includeBinaryPaths,
   selectedFolder,
   userInstructions,
 }: FormatContentParams): string => {
