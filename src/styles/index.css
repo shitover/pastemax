@@ -479,6 +479,190 @@ input[type='checkbox'][disabled] {
   height: calc(100% - 73px); /* Adjust based on actual header height */
 }
 
+/* ==========================================================================
+   Binary File Styles
+   ========================================================================== */
+
+/* Binary file toggle option */
+.file-tree-option.binary-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin: var(--space-xs) 0;
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.file-tree-option.binary-option:hover {
+  background-color: var(--hover-color);
+}
+
+/* ==========================================================================
+   Binary File Styles - Additional
+   ========================================================================== */
+
+/* Copy button wrapper styles */
+.copy-button-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.copy-button-wrapper label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.copy-button-wrapper input[type="checkbox"] {
+  margin-right: var(--space-xs);
+}
+
+.copy-button-main {
+  flex: 1;
+}
+
+/* Tree item styles for binary files */
+.tree-item.binary-file {
+  color: var(--text-secondary);
+}
+
+.tree-item.binary-file .tree-item-icon svg {
+  background-color: var(--error-color);
+}
+
+.tree-item .tree-item-badge.tree-item-badge-binary-file {
+  background-color: var(--error-color);
+  color: var(--text-on-primary);
+}
+
+.tree-item .tree-item-size {
+  font-size: var(--font-size-xs);
+  color: var(--text-disabled);
+  margin-left: var(--space-xs);
+}
+
+/* Disabled/skipped/excluded items */
+.tree-item.disabled-item {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+/* File card styles */
+.file-card.binary-card {
+  background-color: var(--background-tertiary);
+  border-left: 3px solid var(--warning-color);
+}
+
+.file-card.binary-card .file-card-icon svg {
+  color: var(--warning-color);
+}
+
+.file-card.disabled-item {
+  opacity: 0.6;
+}
+
+.file-card .file-card-type,
+.file-card .file-card-size {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.file-card-actions .file-card-action.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Copy button wrapper adjustments for checkbox */
+.copy-button-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.copy-button-wrapper label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.copy-button-wrapper input[type="checkbox"] {
+  margin: 0;
+}
+
+.copy-button-main {
+  flex: 1;
+}
+
+/* Tree item styles for binary files */
+.tree-item.binary-file {
+  color: var(--text-secondary);
+}
+
+.tree-item.binary-file .tree-item-icon {
+  color: var(--color-primary);
+}
+
+.tree-item .tree-item-badge.tree-item-badge-binary-file {
+  background-color: var(--color-primary-light);
+  color: var(--text-on-primary);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-pill);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-sm);
+}
+
+.tree-item .tree-item-size {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-sm);
+}
+
+/* Disabled/skipped/excluded items */
+.tree-item.disabled-item {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.tree-item .tree-item-badge.tree-item-badge-skipped {
+  background-color: var(--warning-color);
+  color: var(--text-on-primary);
+}
+
+.tree-item .tree-item-badge.tree-item-badge-excluded {
+  background-color: var(--error-color);
+  color: var(--text-on-primary);
+}
+
+/* File card styles for binary files */
+.file-card.binary-card {
+  background-color: var(--background-tertiary);
+  border-left: 3px solid var(--color-primary);
+}
+
+.file-card.binary-card .file-card-icon svg {
+  color: var(--color-primary);
+}
+
+.file-card.disabled-item {
+  opacity: 0.5;
+}
+
+.file-card .file-card-type,
+.file-card .file-card-size {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.file-card-actions .file-card-action.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* -------------------- Sidebar -------------------- */
 .sidebar {
   width: 300px;

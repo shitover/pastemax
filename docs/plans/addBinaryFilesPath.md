@@ -42,7 +42,7 @@ This checklist details the tasks required to add the ability to include binary f
     *   [x] **Individual Copy Button for Binary:** In `FileCard.tsx`, modify the `textToCopy` memo. If the file is binary *and* not skipped/excluded, the text should be formatted as `File: ${normalizePath(filePathNormalized)}\nThis is a file of the type: ${fileType || 'BINARY'}\n`. Otherwise, use `file.content`. Pass this `textToCopy` to the individual `CopyButton`.
 
 *   ### Story: Add CSS styles for binary files and the new toggle.
-    *   [ ] **Add CSS:** In your main CSS file (e.g., `src/App.css` or `src/index.css`), add styles for the new classes:
+    *   [x] **Add CSS:** In your main CSS file (e.g., `src/App.css` or `src/index.css`), add styles for the new classes:
         *   `.file-tree-option.binary-option` (layout for the new checkbox label).
         *   `.copy-button-wrapper label` (general label alignment).
         *   `.copy-button-wrapper input[type="checkbox"]` (checkbox spacing).
