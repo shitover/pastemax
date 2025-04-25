@@ -17,13 +17,13 @@ This checklist details the tasks required to add the ability to include binary f
     *   [x] **Accept Parameter in Formatting Function:** Update the `formatContentForCopying` function signature to accept the `includeBinaryPaths` parameter via destructuring.
 
 *   ### Story: Modify formatting logic to separate and format binary paths.
-    *   [ ] **Separate File Types:** In `src/utils/contentFormatUtils.ts`, inside `formatContentForCopying`, after sorting `selectedAndDisplayableFiles`, create two new arrays: `const textFiles = sortedSelected.filter(file => !file.isBinary);` and `const binaryFiles = sortedSelected.filter(file => file.isBinary);`.
-    *   [ ] **Adjust Sorting Logic:** Modify the sorting logic within `formatContentForCopying` to handle the separation: sort text files by the chosen criteria, sort binary files separately (e.g., by name), and concatenate the sorted binary files after the sorted text files.
-    *   [ ] **Format Text Files:** Keep the existing loop that iterates through `textFiles` and adds their content formatted with code fences.
-    *   [ ] **Conditionally Add Binary Section:** After the text file loop, add an `if (includeBinaryPaths && binaryFiles.length > 0)` block.
-    *   [ ] **Add Binary Section Header:** Inside the conditional block, if `textFiles.length > 0`, add a separator line like `# Binary Files\n\n`. If `textFiles.length === 0`, just add the header `# Binary Files\n`.
-    *   [ ] **Format Binary File Entries:** Iterate through the `binaryFiles` array inside the conditional block. For each binary file, add its information formatted as `File: ${normalizePath(file.path)}\nThis is a file of the type: ${file.fileType || 'BINARY'}\n\n`. Use `normalizePath` for consistency.
-    *   [ ] **Ensure Correct Tags:** Verify that all file entries (both text and binary) are included *within* the `<file_contents>...</file_contents>` tags.
+    *   [x] **Separate File Types:** In `src/utils/contentFormatUtils.ts`, inside `formatContentForCopying`, after sorting `selectedAndDisplayableFiles`, create two new arrays: `const textFiles = sortedSelected.filter(file => !file.isBinary);` and `const binaryFiles = sortedSelected.filter(file => file.isBinary);`.
+    *   [x] **Adjust Sorting Logic:** Modify the sorting logic within `formatContentForCopying` to handle the separation: sort text files by the chosen criteria, sort binary files separately (e.g., by name), and concatenate the sorted binary files after the sorted text files.
+    *   [x] **Format Text Files:** Keep the existing loop that iterates through `textFiles` and adds their content formatted with code fences.
+    *   [x] **Conditionally Add Binary Section:** After the text file loop, add an `if (includeBinaryPaths && binaryFiles.length > 0)` block.
+    *   [x] **Add Binary Section Header:** Inside the conditional block, if `textFiles.length > 0`, add a separator line like `# Binary Files\n\n`. If `textFiles.length === 0`, just add the header `# Binary Files\n`.
+    *   [x] **Format Binary File Entries:** Iterate through the `binaryFiles` array inside the conditional block. For each binary file, add its information formatted as `File: ${normalizePath(file.path)}\nThis is a file of the type: ${file.fileType || 'BINARY'}\n\n`. Use `normalizePath` for consistency.
+    *   [x] **Ensure Correct Tags:** Verify that all file entries (both text and binary) are included *within* the `<file_contents>...</file_contents>` tags.
 
 *   ### Story: Allow selection of non-excluded binary files in the UI.
     *   [ ] **Refine Checkbox Disabled Logic:** In `src/components/TreeItem.tsx`, modify the `isCheckboxDisabled` computed property (using `useMemo`). It should return `true` *only if* `fileData.isSkipped` or `fileData.excludedByDefault` is true. It should return `false` for binary files that are *not* skipped or excluded.

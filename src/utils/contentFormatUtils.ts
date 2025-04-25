@@ -63,6 +63,10 @@ export const formatContentForCopying = ({
     return 'No files selected.';
   }
 
+  // Separate files into text and binary
+  const normalFiles = sortedSelected.filter(file => !file.isBinary);
+  const binaryFiles = sortedSelected.filter(file => file.isBinary);
+
   let concatenatedString = '';
 
   // Add ASCII file tree if enabled within <file_map> tags
@@ -75,8 +79,8 @@ export const formatContentForCopying = ({
   // Add file contents section
   concatenatedString += `<file_contents>\n`;
 
-  // Add each file with its path and language-specific syntax highlighting
-  sortedSelected.forEach((file: FileData) => {
+  // Add each text file with its path and language-specific syntax highlighting
+  normalFiles.forEach((file: FileData) => {
     // Use the enhanced getLanguageFromFilename utility for optimal language detection
     const language = getLanguageFromFilename(file.name);
     // Normalize the file path for cross-platform compatibility
@@ -85,6 +89,23 @@ export const formatContentForCopying = ({
     // Add file path and content with language-specific code fencing
     concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
   });
+
+  // Add binary files section if enabled and files exist
+  if (includeBinaryPaths && binaryFiles.length > 0) {
+    // Add binary files section with proper tags
+    concatenatedString += '\n<binary_files>\n';
+    
+    // Add each binary file entry
+    binaryFiles.forEach((file: FileData) => {
+      const normalizedPath = normalizePath(file.path);
+      // Get better file type description using language detection
+      const fileType = getLanguageFromFilename(file.name);
+      concatenatedString += `File: ${normalizedPath}\nThis is a file of the type: ${fileType.charAt(0).toUpperCase() + fileType.slice(1)}\n\n`;
+    });
+    
+    // Close binary files section
+    concatenatedString += '</binary_files>\n';
+  }
 
   concatenatedString += `</file_contents>\n\n`;
 
