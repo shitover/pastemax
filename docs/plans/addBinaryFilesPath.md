@@ -34,12 +34,12 @@ This checklist details the tasks required to add the ability to include binary f
     *   [x] **Update Select/Deselect All:** In `src/App.tsx`, modify the `selectAllFiles` and `deselectAllFiles` callbacks. The filtering of `displayedFiles` to get paths (`selectablePaths` in `selectAllFiles`, `displayedPathsToDeselect` in `deselectAllFiles`) should include binary files *unless* they are `isSkipped` or `excludedByDefault`: `!file.isSkipped && !file.excludedByDefault`.
 
 *   ### Story: Display selected binary files in the file list view.
-    *   [ ] **Include Binary Files in Display List:** In `src/components/FileList.tsx`, modify the `displayableFiles` filter (using `useMemo`). The filter should include files that are in `selectedFiles` AND are *not* `isSkipped` AND are *not* `excludedByDefault`. This will now include selected binary files.
-    *   [ ] **Handle Binary File Card Display:** In `src/components/FileCard.tsx`, update the component to render binary files differently.
-    *   [ ] **Binary Icon:** Use `useMemo` to determine the icon (`FileText` vs `FileWarning`) based on `file.isBinary`. Render this icon.
-    *   [ ] **Binary Info:** Modify the `.file-card-info` section. If `file.isBinary`, display `file.fileType` (or 'BINARY') and `file.size` (formatted, e.g., KB) instead of `tokenCount`. Use conditional rendering based on `file.isBinary`.
-    *   [ ] **Binary Card Styling:** Add a class (e.g., `binary-card`) to the root `.file-card` div based on `file.isBinary` for CSS styling.
-    *   [ ] **Individual Copy Button for Binary:** In `FileCard.tsx`, modify the `textToCopy` memo. If the file is binary *and* not skipped/excluded, the text should be formatted as `File: ${normalizePath(filePathNormalized)}\nThis is a file of the type: ${fileType || 'BINARY'}\n`. Otherwise, use `file.content`. Pass this `textToCopy` to the individual `CopyButton`.
+    *   [x] **Include Binary Files in Display List:** In `src/components/FileList.tsx`, modify the `displayableFiles` filter (using `useMemo`). The filter should include files that are in `selectedFiles` AND are *not* `isSkipped` AND are *not* `excludedByDefault`. This will now include selected binary files.
+    *   [x] **Handle Binary File Card Display:** In `src/components/FileCard.tsx`, update the component to render binary files differently.
+    *   [x] **Binary Icon:** Use `useMemo` to determine the icon (`FileText` vs `FileWarning`) based on `file.isBinary`. Render this icon.
+    *   [x] **Binary Info:** Modify the `.file-card-info` section. If `file.isBinary`, display `file.fileType` (or 'BINARY') and `file.size` (formatted, e.g., KB) instead of `tokenCount`. Use conditional rendering based on `file.isBinary`.
+    *   [x] **Binary Card Styling:** Add a class (e.g., `binary-card`) to the root `.file-card` div based on `file.isBinary` for CSS styling.
+    *   [x] **Individual Copy Button for Binary:** In `FileCard.tsx`, modify the `textToCopy` memo. If the file is binary *and* not skipped/excluded, the text should be formatted as `File: ${normalizePath(filePathNormalized)}\nThis is a file of the type: ${fileType || 'BINARY'}\n`. Otherwise, use `file.content`. Pass this `textToCopy` to the individual `CopyButton`.
 
 *   ### Story: Add CSS styles for binary files and the new toggle.
     *   [ ] **Add CSS:** In your main CSS file (e.g., `src/App.css` or `src/index.css`), add styles for the new classes:
