@@ -39,36 +39,48 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
         <div className="file-card-icon">
           {isBinary ? <FileWarning size={16} /> : <FileText size={16} />}
         </div>
-        <div className="file-card-name monospace">{name}</div>
+        <div className="file-card-name monospace">
+          {name}
+          {isBinary && <span className="file-card-binary-badge">Binary</span>}
+        </div>
       </div>
       <div className="file-card-info">
         {isBinary ? (
-          <div className="file-card-binary-info">
-            <div>{fileType || 'BINARY'}</div>
-            <div>{formattedSize}</div>
-          </div>
+          <div className="file-card-file-size">~{formattedSize}</div>
         ) : (
           <div className="file-card-tokens">~{formattedTokens} tokens</div>
         )}
       </div>
 
       <div className="file-card-actions">
-        <button
-          className="file-card-action"
-          onClick={handleToggleSelection}
-          title={isSelected ? 'Remove from selection' : 'Add to selection'}
-        >
-          {isSelected ? <X size={16} /> : <Plus size={16} />}
-        </button>
-        <button className="file-card-action" onClick={handlePreview} title="Preview File">
-          <Eye size={16} />
-        </button>
-        <CopyButton
-          text={isBinary ? `File: ${normalizePath(filePath)}\nType: ${fileType || 'BINARY'}\n` : file.content}
-          className="file-card-action"
-        >
-          {''}
-        </CopyButton>
+        {isBinary ? (
+          <button
+            className="file-card-action"
+            onClick={handleToggleSelection}
+            title="Remove from selection"
+          >
+            <X size={16} />
+          </button>
+        ) : (
+          <>
+            <button
+              className="file-card-action"
+              onClick={handleToggleSelection}
+              title={isSelected ? 'Remove from selection' : 'Add to selection'}
+            >
+              {isSelected ? <X size={16} /> : <Plus size={16} />}
+            </button>
+            <button className="file-card-action" onClick={handlePreview} title="Preview File">
+              <Eye size={16} />
+            </button>
+            <CopyButton
+              text={file.content}
+              className="file-card-action"
+            >
+              {''}
+            </CopyButton>
+          </>
+        )}
       </div>
     </div>
   );

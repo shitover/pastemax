@@ -238,11 +238,20 @@ const TreeItem = ({
         )}
 
         {/* Show badges for files and folders */}
-        {type === 'file' && fileData && isCheckboxDisabled && (
+        {type === 'file' && fileData && (
           <span
-            className={`tree-item-badge ${fileData.isBinary ? 'tree-item-badge-binary-file' : ''}`}
+            className={`tree-item-badge ${
+              fileData.isBinary && !isCheckboxDisabled
+                ? 'tree-item-badge-binary-file'
+                : ''
+            }`}
           >
-            {fileData.isBinary ? 'Binary' : fileData.isSkipped ? 'Skipped' : 'Excluded'}
+            {fileData.isBinary && !isCheckboxDisabled
+              ? 'Binary'
+              : isCheckboxDisabled
+                ? (fileData.isSkipped ? 'Skipped' : 'Excluded')
+                : ''
+            }
           </span>
         )}
         {type === 'directory' && node.hasBinaries && (
