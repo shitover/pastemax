@@ -37,10 +37,7 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Unselectable files don't affect the directory's selection state
-        if (
-          node.fileData &&
-          (node.fileData.isSkipped || node.fileData.excludedByDefault)
-        ) {
+        if (node.fileData && (node.fileData.isSkipped || node.fileData.excludedByDefault)) {
           return true; // Consider these as "selected" for the "all files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -53,8 +50,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped ||
-                child.fileData.excludedByDefault)
+              (child.fileData.isSkipped || child.fileData.excludedByDefault)
             )
         );
 
@@ -80,10 +76,7 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Skip skipped or excluded files
-        if (
-          node.fileData &&
-          (node.fileData.isSkipped || node.fileData.excludedByDefault)
-        ) {
+        if (node.fileData && (node.fileData.isSkipped || node.fileData.excludedByDefault)) {
           return false; // These files don't count for the "any files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -95,8 +88,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped ||
-                child.fileData.excludedByDefault)
+              (child.fileData.isSkipped || child.fileData.excludedByDefault)
             )
         );
 
@@ -141,8 +133,7 @@ const TreeItem = ({
 
   // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
   const isCheckboxDisabled = useMemo(
-    () =>
-      fileData ? fileData.isSkipped || fileData.excludedByDefault : false,
+    () => (fileData ? fileData.isSkipped || fileData.excludedByDefault : false),
     [fileData]
   );
 
@@ -166,7 +157,7 @@ const TreeItem = ({
   const handleCheckboxChange = useCallback(
     (e: any) => {
       e.stopPropagation();
-      
+
       if (isCheckboxDisabled) {
         e.preventDefault();
         e.stopPropagation();
@@ -241,17 +232,16 @@ const TreeItem = ({
         {type === 'file' && fileData && (
           <span
             className={`tree-item-badge ${
-              fileData.isBinary && !isCheckboxDisabled
-                ? 'tree-item-badge-binary-file'
-                : ''
+              fileData.isBinary && !isCheckboxDisabled ? 'tree-item-badge-binary-file' : ''
             }`}
           >
             {fileData.isBinary && !isCheckboxDisabled
               ? 'Binary'
               : isCheckboxDisabled
-                ? (fileData.isSkipped ? 'Skipped' : 'Excluded')
-                : ''
-            }
+                ? fileData.isSkipped
+                  ? 'Skipped'
+                  : 'Excluded'
+                : ''}
           </span>
         )}
         {type === 'directory' && node.hasBinaries && (

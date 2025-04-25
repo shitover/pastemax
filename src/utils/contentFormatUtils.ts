@@ -64,8 +64,8 @@ export const formatContentForCopying = ({
   }
 
   // Separate files into text and binary
-  const normalFiles = sortedSelected.filter(file => !file.isBinary);
-  const binaryFiles = sortedSelected.filter(file => file.isBinary);
+  const normalFiles = sortedSelected.filter((file) => !file.isBinary);
+  const binaryFiles = sortedSelected.filter((file) => file.isBinary);
 
   let concatenatedString = '';
 
@@ -73,11 +73,15 @@ export const formatContentForCopying = ({
   if (includeFileTree && selectedFolder) {
     const normalizedFolder = normalizePath(selectedFolder);
     const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
-    concatenatedString += `<file_map>\n${normalizedFolder}\n${asciiTree}\n</file_map>\n\n`;
+    concatenatedString += `<file_map>\n${normalizedFolder}\n${asciiTree}\n</file_map>`;
+    // Add consistent double newline after section
+    concatenatedString += '\n\n';
   }
 
-  // Add file contents section
-  concatenatedString += `<file_contents>\n`;
+  // Add file contents section with consistent spacing
+  concatenatedString += `<file_contents>`;
+  // Always add newline after opening tag
+  concatenatedString += '\n';
 
   // Add each text file with its path and language-specific syntax highlighting
   normalFiles.forEach((file: FileData) => {
@@ -92,27 +96,30 @@ export const formatContentForCopying = ({
 
   // Add binary files section if enabled and files exist
   if (includeBinaryPaths && binaryFiles.length > 0) {
-    // Add binary files section with proper tags
-    concatenatedString += '\n<binary_files>\n';
-    
+    // Remove extra newline before binary_files tag for consistency
+    concatenatedString += `<binary_files>\n`;
+
     // Add each binary file entry
     binaryFiles.forEach((file: FileData) => {
       const normalizedPath = normalizePath(file.path);
       // Get better file type description using language detection
       const fileType = getLanguageFromFilename(file.name);
       concatenatedString += `File: ${normalizedPath}\nThis is a file of the type: ${fileType.charAt(0).toUpperCase() + fileType.slice(1)}\n\n`;
-    });
-    
-    // Close binary files section
-    concatenatedString += '</binary_files>\n';
+        });
+
+        // Close binary files section with an extra newline for spacing
+        concatenatedString += `</binary_files>\n\n`;
   }
 
-  concatenatedString += `</file_contents>\n\n`;
+  // Consistent closing of file_contents section
+  concatenatedString += `</file_contents>`;
+  // Add consistent double newline after section
+  concatenatedString += '\n\n';
 
-  // Add user instructions at the end if present
+  // Add user instructions at the end if present with consistent spacing
   if (userInstructions.trim()) {
     concatenatedString += `<user_instructions>\n${userInstructions.trim()}\n</user_instructions>`;
   }
 
   return concatenatedString;
-};
+}

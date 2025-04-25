@@ -2704,7 +2704,9 @@ button:hover svg.lucide {
   animation: scaleIn 0.25s ease-out; /* Scale in animation */
   transform-origin: center; /* Scale from center */
   will-change: transform, opacity; /* Optimization for animations */
-  transition: transform 0.2s ease, opacity 0.2s ease; /* For closing animations */
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease; /* For closing animations */
 }
 
 .file-preview-modal-header {

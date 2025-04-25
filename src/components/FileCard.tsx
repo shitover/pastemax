@@ -73,10 +73,7 @@ const FileCard = ({ file, isSelected, toggleSelection, onPreview }: FileCardComp
             <button className="file-card-action" onClick={handlePreview} title="Preview File">
               <Eye size={16} />
             </button>
-            <CopyButton
-              text={file.content}
-              className="file-card-action"
-            >
+            <CopyButton text={file.content} className="file-card-action">
               {''}
             </CopyButton>
           </>

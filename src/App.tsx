@@ -355,7 +355,12 @@ const App = (): JSX.Element => {
     (files: FileData[]) => {
       setAllFiles((prevFiles: FileData[]) => {
         if (files.length !== prevFiles.length) {
-          console.debug('[handleFileListData] Updating files from', prevFiles.length, 'to', files.length);
+          console.debug(
+            '[handleFileListData] Updating files from',
+            prevFiles.length,
+            'to',
+            files.length
+          );
         }
         return files;
       });
@@ -915,7 +920,14 @@ const App = (): JSX.Element => {
 
                 <div className="copy-button-container">
                   <div className="copy-button-wrapper">
-                    <div className="toggle-options-container" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div
+                      className="toggle-options-container"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px',
+                      }}
+                    >
                       <label className="file-tree-option" style={{ marginRight: '20px' }}>
                         <input
                           type="checkbox"
