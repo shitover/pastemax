@@ -105,7 +105,7 @@ const App = (): JSX.Element => {
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm || '');
   const [expandedNodes, setExpandedNodes] = useState({} as Record<string, boolean>);
   const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
-  const [processingStatus, setProcessingStatus] = useState({ status: 'idle', message: '' } as {
+  const [Status, setProcessingStatus] = useState({ status: 'idle', message: '' } as {
     status: 'idle' | 'processing' | 'complete' | 'error';
     message: string;
   });
@@ -844,9 +844,11 @@ const App = (): JSX.Element => {
             <div className="processing-indicator">
               <div className="spinner"></div>
               <span>{processingStatus.message}</span>
-              <button className="cancel-btn" onClick={cancelDirectoryLoading}>
-                Cancel
-              </button>
+              {processingStatus.message !== 'Applying ignore mode…' && (
+                <button className="cancel-btn" onClick={cancelDirectoryLoading}>
+                  Cancel
+                </button>
+              )}
             </div>
           )}
 
