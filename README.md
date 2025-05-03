@@ -79,17 +79,21 @@ npm run package:linux
 After successful build, you'll find the executable files inside the `release-builds` directory:
 
 **Windows:**
+
 - `PasteMax Setup 1.0.0.exe` - Installer version
 - `PasteMax 1.0.0.exe` - Portable version
 
 **Mac:**
+
 - `PasteMax 1.0.0.dmg` - Installer version
 - `PasteMax 1.0.0.zip` - Portable version
 
 **Linx:**
+
 - `PasteMax 1.0.0.deb` - Installer version (Deb package)
 - `PasteMax 1.0.0.rpm` - Installer version (RPM package)
 - `PasteMax 1.0.0.AppImage` - Portable version
+
 ## Development
 
 ### Prerequisites
@@ -141,7 +145,6 @@ npm run package
 - `scripts/` - Utility scripts for building and testing
 - `docs/` - Documentation
 
-
 ## Libraries Used
 
 - Electron - Desktop application framework
@@ -151,7 +154,6 @@ npm run package
 - tiktoken - Token counting for LLM context estimation
 - ignore - .gitignore-style pattern matching for file exclusions
 - chokidar - File Watcher
-
 
 ## Troubleshooting
 

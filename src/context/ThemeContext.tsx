@@ -42,11 +42,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps): JSX.Element => 
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 };
 
 // Custom hook to use the theme context

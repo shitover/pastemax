@@ -416,7 +416,6 @@ input[type='checkbox'][disabled] {
   box-shadow: var(--focus-ring);
 }
 
-
 /* -------------------- Theme Toggle (in Header) -------------------- */
 
 /* Theme toggle button */
@@ -454,7 +453,6 @@ input[type='checkbox'][disabled] {
   box-shadow: var(--shadow-sm);
 }
 
-
 /* ==========================================================================
    Layout Structure (App Container, Header, Main Content, Sidebar, Content Area)
    ========================================================================== */
@@ -464,7 +462,9 @@ input[type='checkbox'][disabled] {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* -------------------- Header -------------------- */
@@ -476,7 +476,9 @@ input[type='checkbox'][disabled] {
   justify-content: space-between;
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent header from shrinking */
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .header h1 {
@@ -1973,7 +1975,6 @@ input[type='text'].search-input:focus {
 .cancel-btn:hover {
   opacity: 0.9;
 }
-
 
 /* ==========================================================================
    Utility Classes
