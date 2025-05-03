@@ -105,7 +105,7 @@ const App = (): JSX.Element => {
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm || '');
   const [expandedNodes, setExpandedNodes] = useState({} as Record<string, boolean>);
   const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
-  const [Status, setProcessingStatus] = useState({ status: 'idle', message: '' } as {
+  const [processingStatus, setProcessingStatus] = useState({ status: 'idle', message: '' } as {
     status: 'idle' | 'processing' | 'complete' | 'error';
     message: string;
   });
@@ -437,7 +437,7 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
       window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdate);
     };
-  }, [isElectron]); // Only depend on isElectron (Leave it as is)
+  }, [isElectron]); // Leave as is
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 
@@ -808,12 +808,11 @@ const App = (): JSX.Element => {
   // Main JSX rendering
 
   return (
-    <ThemeProvider
-      children={
-        <div className="app-container">
-          <header className="header">
-            <h1>PasteMax</h1>
-            <div className="header-actions">
+    <ThemeProvider>
+      <div className="app-container">
+        <header className="header">
+          <h1>PasteMax</h1>
+          <div className="header-actions">
               <ThemeToggle />
               <div className="folder-info">
                 {selectedFolder ? (
@@ -978,8 +977,7 @@ const App = (): JSX.Element => {
             ignoreSettingsModified={ignoreSettingsModified}
           />
         </div>
-      }
-    />
+      </ThemeProvider>
   );
 };
 
