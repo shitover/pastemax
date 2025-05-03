@@ -28,6 +28,7 @@ const Sidebar = ({
   deselectAllFiles,
   expandedNodes,
   toggleExpanded,
+  includeBinaryPaths,
 }: Omit<SidebarProps, 'openFolder'>) => {
   // State for managing the file tree and UI
   const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
@@ -323,6 +324,7 @@ const Sidebar = ({
         toggleFileSelection={toggleFileSelection}
         toggleFolderSelection={toggleFolderSelection}
         toggleExpanded={toggleExpanded}
+        includeBinaryPaths={includeBinaryPaths}
       />
     ));
   }, [visibleTree, selectedFiles, toggleFileSelection, toggleFolderSelection, toggleExpanded]);

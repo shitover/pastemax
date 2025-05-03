@@ -121,7 +121,7 @@ module.exports = {
     '.bmp',
     '.tiff',
     '.ico',
-    '.icns', // Added .icns
+    '.icns',
     '.webp',
     '.psd',
     '.heic',
@@ -138,7 +138,6 @@ module.exports = {
     '.wav',
     '.ogg',
     '.flac',
-    // Removed duplicate ".wav"
 
     // documents:
     '.pdf',
@@ -170,5 +169,6 @@ module.exports = {
     '.otf',
     '.woff',
     '.woff2',
+    '.cmap',
   ],
 };

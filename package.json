@@ -1,6 +1,6 @@
 {
   "name": "pastemax",
-  "version": "v1.0.0-stable",
+  "version": "v1.0.1-stable",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -117,7 +117,7 @@
     "prettier": "^3.5.3",
     "rimraf": "^5.0.10",
     "typescript": "^5.8.3",
-    "vite": "^6.3.2"
+    "vite": "^6.3.4"
   },
   "dependencies": {
     "chokidar": "^3.6.0",

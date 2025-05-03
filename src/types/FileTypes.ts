@@ -39,6 +39,7 @@ export interface SidebarProps {
   deselectAllFiles: () => void;
   expandedNodes: Record<string, boolean>;
   toggleExpanded: (nodeId: string) => void;
+  includeBinaryPaths: boolean;
 }
 
 export interface FileListProps {
@@ -59,6 +60,7 @@ export interface TreeItemProps {
   toggleFileSelection: (filePath: string) => void;
   toggleFolderSelection: (folderPath: string, isSelected: boolean) => void;
   toggleExpanded: (nodeId: string) => void;
+  includeBinaryPaths: boolean;
 }
 
 export interface SortOption {
