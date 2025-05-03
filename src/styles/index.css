@@ -387,7 +387,7 @@ input[type='checkbox']:checked::after {
   content: '';
   position: absolute;
   top: 2px;
-  left: 5.2px;
+  left: 5px;
   width: 4.5px;
   height: 8px;
   border: solid var(--text-on-primary);
