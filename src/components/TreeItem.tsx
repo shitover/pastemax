@@ -4,6 +4,20 @@ import { ChevronRight, File, Folder } from 'lucide-react';
 import { arePathsEqual } from '../utils/pathUtils';
 
 /**
+ * Helper function to determine if a file should be excluded from selection
+ * based on its properties and the includeBinaryPaths setting
+ */
+const isFileExcluded = (fileData: any, includeBinaryPaths: boolean): boolean => {
+  if (!fileData) return false;
+  
+  return (
+    fileData.isSkipped || 
+    fileData.excludedByDefault || 
+    (fileData.isBinary && !includeBinaryPaths)
+  );
+};
+
+/**
  * TreeItem represents a single item (file or folder) in the file tree.
  * It handles:
  * - File/folder selection with checkboxes
@@ -38,12 +52,7 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Unselectable files don't affect the directory's selection state
-        if (
-          node.fileData &&
-          (node.fileData.isSkipped ||
-            node.fileData.excludedByDefault ||
-            (node.fileData.isBinary && !includeBinaryPaths))
-        ) {
+        if (node.fileData && isFileExcluded(node.fileData, includeBinaryPaths)) {
           return true; // Consider these as "selected" for the "all files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -56,9 +65,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped ||
-                child.fileData.excludedByDefault ||
-                (child.fileData.isBinary && !includeBinaryPaths))
+              isFileExcluded(child.fileData, includeBinaryPaths)
             )
         );
 
@@ -73,7 +80,7 @@ const TreeItem = ({
 
       return false;
     },
-    [selectedFiles]
+    [selectedFiles, includeBinaryPaths]
   );
 
   /**
@@ -84,12 +91,7 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Skip skipped or excluded files
-        if (
-          node.fileData &&
-          (node.fileData.isSkipped ||
-            node.fileData.excludedByDefault ||
-            (node.fileData.isBinary && !includeBinaryPaths))
-        ) {
+        if (node.fileData && isFileExcluded(node.fileData, includeBinaryPaths)) {
           return false; // These files don't count for the "any files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -101,9 +103,7 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped ||
-                child.fileData.excludedByDefault ||
-                (child.fileData.isBinary && !includeBinaryPaths))
+              isFileExcluded(child.fileData, includeBinaryPaths)
             )
         );
 
@@ -118,7 +118,7 @@ const TreeItem = ({
 
       return false;
     },
-    [selectedFiles]
+    [selectedFiles, includeBinaryPaths]
   );
 
   // For directories, check if all children are selected - memoize these calculations
@@ -135,9 +135,7 @@ const TreeItem = ({
                 if (
                   child.type === 'file' &&
                   child.fileData &&
-                  (child.fileData.isSkipped ||
-                    child.fileData.excludedByDefault ||
-                    (child.fileData.isBinary && !includeBinaryPaths))
+                  isFileExcluded(child.fileData, includeBinaryPaths)
                 ) {
                   return true;
                 }
@@ -173,15 +171,7 @@ const TreeItem = ({
 
   // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
   const isCheckboxDisabled = useMemo(() => {
-    if (fileData) {
-      if (fileData.isSkipped || fileData.excludedByDefault) {
-        return true;
-      }
-      if (fileData.isBinary && !includeBinaryPaths) {
-        return true;
-      }
-    }
-    return false;
+    return fileData ? isFileExcluded(fileData, includeBinaryPaths) : false;
   }, [fileData, includeBinaryPaths]);
 
   // Event Handlers - memoize them to prevent recreating on each render
