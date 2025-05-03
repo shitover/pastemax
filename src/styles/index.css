@@ -264,6 +264,33 @@ button.icon-button:hover {
   box-shadow: none;
 }
 
+/* Theme toggle button */
+.theme-toggle-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--standard-border);
+  background-color: var(--background-primary);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s var(--animation-curve);
+  padding: 0; /* Ensure no default padding interferes */
+  cursor: pointer; /* Add pointer cursor */
+}
+
+.theme-toggle-button:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
 /* Button animation effects */
 button::after {
   content: '';

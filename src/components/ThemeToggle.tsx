@@ -1,37 +1,20 @@
 import React from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 const ThemeToggle = (): JSX.Element => {
   const { theme, setTheme } = useTheme();
+  
+  const toggle = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
   return (
-    <div className="theme-segmented-control">
-      <button
-        className={`theme-segment ${theme === 'light' ? 'active' : ''}`}
-        onClick={() => setTheme('light')}
-        title="Light Mode"
-      >
-        <Sun size={16} />
-        <span>Light</span>
-      </button>
-      <button
-        className={`theme-segment ${theme === 'dark' ? 'active' : ''}`}
-        onClick={() => setTheme('dark')}
-        title="Dark Mode"
-      >
-        <Moon size={16} />
-        <span>Dark</span>
-      </button>
-      <button
-        className={`theme-segment ${theme === 'system' ? 'active' : ''}`}
-        onClick={() => setTheme('system')}
-        title="Use System Settings"
-      >
-        <Monitor size={16} />
-        <span>Auto</span>
-      </button>
-    </div>
+    <button
+      className="theme-toggle-button"
+      onClick={toggle}
+      title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+    >
+      {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+    </button>
   );
 };
 
