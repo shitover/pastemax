@@ -19,9 +19,9 @@
 
 PasteMax is a simple desktop app built for developers using AI coding assistants. It makes sharing your code with LLMs easy, thanks to a smart file explorer with token counting, file filtering, quick copy, and a previewer. Select the files you need, skip binaries and junk, and get clean, formatted snippets ready for your LLM.
 
-![PasteMax](https://github.com/user-attachments/assets/7160e35a-a0d5-4519-bc84-8035e3aa3f92)
-![IgnoresViewer](https://github.com/user-attachments/assets/ffa382b5-a078-4b25-8eec-ef3c1ac9e979)
-![FilePreview](https://github.com/user-attachments/assets/047bc303-6992-4646-8a80-510f10befe1d)
+![PasteMax](https://github.com/user-attachments/assets/85ac9935-5ff9-45b2-b9fe-6b6cbdcdf6e7)
+![IgnoreList](https://github.com/user-attachments/assets/25c4a56f-1470-4a91-a0f1-fe8d439e435d)
+![FilePreviewer](https://github.com/user-attachments/assets/8f98fcca-3557-4225-92f4-38387cf6e843)
 
 ## Video
 
