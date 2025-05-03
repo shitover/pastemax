@@ -430,7 +430,9 @@ input[type='checkbox'][disabled] {
   border: var(--standard-border);
   background-color: var(--background-primary);
   box-shadow: var(--shadow-sm);
-  transition: all 0.2s var(--animation-curve);
+  transition:
+    all 0.2s var(--animation-curve),
+    background-color 0.3s ease;
   padding: 0;
   /* Ensure no default padding interferes */
   cursor: pointer;
@@ -462,6 +464,7 @@ input[type='checkbox'][disabled] {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* -------------------- Header -------------------- */
@@ -473,6 +476,7 @@ input[type='checkbox'][disabled] {
   justify-content: space-between;
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent header from shrinking */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .header h1 {
