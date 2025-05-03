@@ -17,6 +17,7 @@ const TreeItem = ({
   toggleFileSelection,
   toggleFolderSelection,
   toggleExpanded,
+  includeBinaryPaths,
 }: TreeItemProps) => {
   const { id, name, path, type, level, isExpanded, fileData } = node;
   const checkboxRef = useRef(null);
@@ -133,8 +134,8 @@ const TreeItem = ({
 
   // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
   const isCheckboxDisabled = useMemo(
-    () => (fileData ? fileData.isSkipped || fileData.excludedByDefault : false),
-    [fileData]
+    () => (fileData ? fileData.isSkipped || fileData.excludedByDefault || (fileData.isBinary && !includeBinaryPaths) : false),
+    [fileData, includeBinaryPaths]
   );
 
   // Event Handlers - memoize them to prevent recreating on each render

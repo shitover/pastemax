@@ -889,6 +889,7 @@ const App = (): JSX.Element => {
                 deselectAllFiles={deselectAllFiles}
                 expandedNodes={expandedNodes}
                 toggleExpanded={toggleExpanded}
+                includeBinaryPaths={includeBinaryPaths}
               />
               <div className="content-area">
                 <div className="content-header">
@@ -963,7 +964,7 @@ const App = (): JSX.Element => {
                           checked={includeBinaryPaths}
                           onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
                         />
-                        <span>Include Binary File Paths</span>
+                        <span>Include Binary As Paths</span>
                       </label>
                     </div>
                     {/*
