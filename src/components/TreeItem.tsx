@@ -38,7 +38,12 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Unselectable files don't affect the directory's selection state
-        if (node.fileData && (node.fileData.isSkipped || node.fileData.excludedByDefault)) {
+        if (
+          node.fileData &&
+          (node.fileData.isSkipped ||
+            node.fileData.excludedByDefault ||
+            (node.fileData.isBinary && !includeBinaryPaths))
+        ) {
           return true; // Consider these as "selected" for the "all files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -51,7 +56,9 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped || child.fileData.excludedByDefault)
+              (child.fileData.isSkipped ||
+                child.fileData.excludedByDefault ||
+                (child.fileData.isBinary && !includeBinaryPaths))
             )
         );
 
@@ -77,7 +84,12 @@ const TreeItem = ({
     (node: TreeNode): boolean => {
       if (node.type === 'file') {
         // Skip skipped or excluded files
-        if (node.fileData && (node.fileData.isSkipped || node.fileData.excludedByDefault)) {
+        if (
+          node.fileData &&
+          (node.fileData.isSkipped ||
+            node.fileData.excludedByDefault ||
+            (node.fileData.isBinary && !includeBinaryPaths))
+        ) {
           return false; // These files don't count for the "any files selected" check
         }
         return selectedFiles.some((selectedPath) => arePathsEqual(selectedPath, node.path));
@@ -89,7 +101,9 @@ const TreeItem = ({
             !(
               child.type === 'file' &&
               child.fileData &&
-              (child.fileData.isSkipped || child.fileData.excludedByDefault)
+              (child.fileData.isSkipped ||
+                child.fileData.excludedByDefault ||
+                (child.fileData.isBinary && !includeBinaryPaths))
             )
         );
 
@@ -111,9 +125,34 @@ const TreeItem = ({
   const isDirectorySelected = useMemo(
     () =>
       type === 'directory' && node.children && node.children.length > 0
-        ? areAllFilesInDirectorySelected(node)
+        ? (function() {
+            // Check if folder is disabled due to containing only unselectable files and includeBinaryPaths is OFF
+            const isFolderDisabledDueToUnselectableFiles =
+              node.type === 'directory' &&
+              node.children &&
+              node.children.length > 0 &&
+              node.children.every((child) => {
+                if (
+                  child.type === 'file' &&
+                  child.fileData &&
+                  (child.fileData.isSkipped ||
+                    child.fileData.excludedByDefault ||
+                    (child.fileData.isBinary && !includeBinaryPaths))
+                ) {
+                  return true;
+                }
+                return false;
+              }) &&
+              !includeBinaryPaths; // ensure includeBinaryPaths is OFF
+            // If folder is disabled due to unselectable files, force checked to false
+            if (isFolderDisabledDueToUnselectableFiles) {
+              return false;
+            }
+            // Otherwise, proceed with existing logic
+            return areAllFilesInDirectorySelected(node);
+          })()
         : false,
-    [type, node, areAllFilesInDirectorySelected]
+    [type, node, areAllFilesInDirectorySelected, includeBinaryPaths]
   );
 
   // Check if some but not all files in this directory are selected - memoize this calculation
@@ -133,15 +172,17 @@ const TreeItem = ({
   }, [isDirectoryPartiallySelected]);
 
   // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
-  const isCheckboxDisabled = useMemo(
-    () =>
-      fileData
-        ? fileData.isSkipped ||
-          fileData.excludedByDefault ||
-          (fileData.isBinary && !includeBinaryPaths)
-        : false,
-    [fileData, includeBinaryPaths]
-  );
+  const isCheckboxDisabled = useMemo(() => {
+    if (fileData) {
+      if (fileData.isSkipped || fileData.excludedByDefault) {
+        return true;
+      }
+      if (fileData.isBinary && !includeBinaryPaths) {
+        return true;
+      }
+    }
+    return false;
+  }, [fileData, includeBinaryPaths]);
 
   // Event Handlers - memoize them to prevent recreating on each render
   const handleToggle = useCallback(
