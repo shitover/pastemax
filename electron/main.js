@@ -1352,7 +1352,6 @@ function createWindow() {
     }
   }
 
-
   // Clean up watcher when window is closed
   mainWindow.on('closed', () => {
     if (currentWatcher) {

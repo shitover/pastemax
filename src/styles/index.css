@@ -85,7 +85,7 @@
   --scrollbar-thumb: #c1c1c1;
   --scrollbar-thumb-hover: #a1a1a1;
   --scrollbar-width: 8px;
-  --scrollbar-width-thin: 6px;
+  --scrollbar-width-thin: 7px;
 
   /* Z-index layers */
   --z-dropdown: 100;
@@ -316,7 +316,7 @@ textarea {
   outline: none;
   width: 100%;
   background-color: var(--background-primary);
-  color: var(--text-primary);
+  color: var (--text-primary);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
@@ -416,6 +416,43 @@ input[type='checkbox'][disabled] {
   box-shadow: var(--focus-ring);
 }
 
+/* -------------------- Theme Toggle (in Header) -------------------- */
+
+/* Theme toggle button */
+.theme-toggle-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--standard-border);
+  background-color: var(--background-primary);
+  box-shadow: var(--shadow-sm);
+  transition:
+    all 0.2s var(--animation-curve),
+    background-color 0.3s ease;
+  padding: 0;
+  /* Ensure no default padding interferes */
+  cursor: pointer;
+  /* Add pointer cursor */
+  -webkit-border-radius: 100%;
+  -moz-border-radius: 100%;
+  -ms-border-radius: 100%;
+  -o-border-radius: 100%;
+}
+
+.theme-toggle-button:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
 /* ==========================================================================
    Layout Structure (App Container, Header, Main Content, Sidebar, Content Area)
    ========================================================================== */
@@ -425,22 +462,28 @@ input[type='checkbox'][disabled] {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* -------------------- Header -------------------- */
 .header {
-  padding: calc(var(--space-md) + 4px) var(--space-lg);
+  padding: calc(var(--space-md) + 2px) var(--space-lg);
   border-bottom: var(--standard-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent header from shrinking */
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .header h1 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 660;
   margin: 0;
   color: var(--text-primary);
   padding: var(--space-xs) var(--space-sm);
@@ -460,16 +503,24 @@ input[type='checkbox'][disabled] {
 }
 
 .selected-folder {
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background-color: var(--hover-color);
   max-width: 500px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-secondary);
-  font-size: 14px;
-  margin: 0 var(--space-md);
+  font-size: 12px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center; /* Center content vertically */
+  justify-content: center; /* Center content horizontally */
+  text-align: center; /* Center text */
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
 }
 
 /* -------------------- Main Content Area -------------------- */
@@ -521,9 +572,6 @@ input[type='checkbox'][disabled] {
 }
 
 .sidebar-header {
-  /* padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-sm);
-  border-bottom: var(--standard-border); */
   background-color: var(--background-secondary);
   flex-shrink: 0; /* Prevent header from shrinking */
 }
@@ -531,10 +579,8 @@ input[type='checkbox'][disabled] {
 .sidebar-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: var(--space-md);
   color: var(--text-primary);
-  padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
 }
 
 .sidebar-folder-path {
@@ -544,7 +590,6 @@ input[type='checkbox'][disabled] {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: var(--space-sm) var(--space-lg);
-  margin-bottom: var(--space-md);
 }
 
 .sidebar-search {
@@ -556,7 +601,7 @@ input[type='checkbox'][disabled] {
 
 .sidebar-actions {
   display: flex;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-lg);
   gap: var(--space-sm);
   border-bottom: var(--standard-border);
   background-color: var(--background-secondary);
@@ -1017,7 +1062,7 @@ input[type='checkbox'][disabled] {
 .custom-global-ignores {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var (--space-sm);
   padding: var(--space-md);
   background-color: var(--background-secondary);
   border-radius: var(--border-radius-md);
@@ -1715,16 +1760,13 @@ input[type='text'].search-input:focus {
   display: flex;
   margin-right: var(--space-lg);
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 0px;
+  font-size: var(--font-size-md);
   color: var(--text-primary);
   background: none; /* Make it look less like a standard button */
   border: none;
   padding: 4px 8px; /* Adjust padding */
   border-radius: 4px;
-}
-.sort-dropdown-button:hover {
-  background-color: var(--hover-color);
 }
 
 .sort-options {
@@ -1775,7 +1817,7 @@ input[type='text'].search-input:focus {
 
 .user-instructions textarea {
   width: 100%;
-  min-height: 100px; /* Minimum height, can grow */
+  min-height: 126px; /* Minimum height, can grow */
   padding: 12px;
   border: var(--standard-border);
   border-radius: 4px;
@@ -1932,57 +1974,6 @@ input[type='text'].search-input:focus {
 
 .cancel-btn:hover {
   opacity: 0.9;
-}
-
-/* -------------------- Theme Toggle (in Header) -------------------- */
-.theme-segmented-control {
-  display: flex;
-  background-color: var(--background-secondary);
-  border-radius: 6px;
-  padding: 2.2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: fit-content;
-  position: relative;
-  height: 34px; /* Fixed height */
-  overflow: hidden; /* Clip the background */
-  border: 1px solid var(--border-color); /* Add subtle border */
-}
-
-.theme-segment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 12px;
-  height: 28.8px; /* Inner height */
-  border: none;
-  background: none;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  position: relative;
-  z-index: 1; /* Above the background */
-  transition: color 0.2s ease;
-  border-radius: 4px; /* Rounded corners for segments */
-  cursor: pointer;
-  white-space: nowrap;
-  min-width: 70px; /* Ensure minimum width */
-}
-
-.theme-segment:focus {
-  outline: none; /* Handled by active state or browser default */
-}
-
-.theme-segment span {
-  /* Icon size */
-  font-size: 13.5px;
-}
-
-.theme-segment.active {
-  /* Class added via JS */
-  color: var(--text-primary);
-  background-color: var(--background-primary); /* Active segment background */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* Add depth */
 }
 
 /* ==========================================================================

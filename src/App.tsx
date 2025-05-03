@@ -851,6 +851,7 @@ const App = (): JSX.Element => {
                 className="select-folder-btn"
                 onClick={openFolder}
                 disabled={processingStatus.status === 'processing'}
+                title="Select a Folder to import"
               >
                 Select Folder
               </button>
@@ -953,7 +954,11 @@ const App = (): JSX.Element => {
                       marginBottom: '10px',
                     }}
                   >
-                    <label className="file-tree-option" style={{ marginRight: '20px' }}>
+                    <label
+                      className="file-tree-option"
+                      style={{ marginRight: '20px' }}
+                      title="Include file tree in copied content"
+                    >
                       <input
                         type="checkbox"
                         checked={includeFileTree}
@@ -961,7 +966,10 @@ const App = (): JSX.Element => {
                       />
                       <span>Include File Tree</span>
                     </label>
-                    <label className="file-tree-option">
+                    <label
+                      className="file-tree-option"
+                      title="Include binary files as paths in copied content"
+                    >
                       <input
                         type="checkbox"
                         checked={includeBinaryPaths}
