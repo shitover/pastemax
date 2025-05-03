@@ -121,17 +121,6 @@ const App = (): JSX.Element => {
   /* ============================== STATE: User Instructions ============================== */
   const [userInstructions, setUserInstructions] = useState('');
 
-  // This useEffect was clearing saved data on every reload
-  // It was marked as "temporary, for testing" but was preventing
-  // selections from persisting after a page refresh (Ctrl+R)
-  /* 
-  useEffect(() => {
-    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
-    localStorage.removeItem("hasLoadedInitialData");
-    sessionStorage.removeItem("hasLoadedInitialData");
-  }, []);
-  */
-
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
     console.time('clearSavedState');
@@ -373,7 +362,7 @@ const App = (): JSX.Element => {
       if (selectedFiles.length > 0) {
         console.log('[handleFileListData] Preserving existing selections');
         const validSelectedFiles = selectedFiles.filter((selectedPath: string) =>
-          files.some((file) => arePathsEqual(file.path, selectedPath))
+          files.some((file) => arePathsEqual(file.path, selectedPath) && (includeBinaryPaths || !file.isBinary))
         );
 
         if (validSelectedFiles.length !== selectedFiles.length) {
@@ -388,7 +377,7 @@ const App = (): JSX.Element => {
       } else {
         console.log('[handleFileListData] No existing selections, selecting all eligible files');
         const selectablePaths = files
-          .filter((file: FileData) => !file.isSkipped && !file.excludedByDefault)
+          .filter((file: FileData) => !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary))
           .map((file: FileData) => file.path);
 
         setSelectedFiles(selectablePaths);
@@ -538,6 +527,9 @@ const App = (): JSX.Element => {
     if (!isElectron) return;
 
     const handleFileAdded = (newFile: FileData) => {
+      if (newFile.isBinary && !includeBinaryPaths) {
+        return; // skip auto-selecting binary
+      }
       if (process.env.NODE_ENV === 'development') {
         console.log('<<< IPC RECEIVED: file-added >>>', newFile);
       }
@@ -598,6 +590,11 @@ const App = (): JSX.Element => {
   const toggleFileSelection = (filePath: string) => {
     // Normalize the incoming file path
     const normalizedPath = normalizePath(filePath);
+    
+    const f = allFiles.find((f: FileData) => arePathsEqual(f.path, normalizedPath));
+    if (f?.isBinary && !includeBinaryPaths) {
+      return;
+    }
 
     setSelectedFiles((prev: string[]) => {
       // Check if the file is already selected using case-sensitive/insensitive comparison as appropriate
@@ -650,7 +647,7 @@ const App = (): JSX.Element => {
     // Filter all files to get only those in this folder (and subfolders) that are selectable
     const filesInFolder = allFiles.filter((file: FileData) => {
       const inFolder = isFileInFolder(file.path, normalizedFolderPath);
-      const selectable = !file.isSkipped && !file.excludedByDefault;
+      const selectable = !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary);
       return selectable && inFolder;
     });
 
@@ -743,7 +740,7 @@ const App = (): JSX.Element => {
     console.time('selectAllFiles');
     try {
       const selectablePaths = displayedFiles
-        .filter((file: FileData) => !file.isSkipped)
+        .filter((file: FileData) => !file.isSkipped && (includeBinaryPaths || !file.isBinary))
         .map((file: FileData) => normalizePath(file.path)); // Normalize paths here
 
       setSelectedFiles((prev: string[]) => {
