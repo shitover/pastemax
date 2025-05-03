@@ -212,10 +212,10 @@ const App = (): JSX.Element => {
       const binaryFilePaths = allFiles
         .filter((f: FileData) => f.isBinary)
         .map((f: FileData) => f.path);
-      
+
       setSelectedFiles((prev: string[]) => {
-        const pathsToAdd = binaryFilePaths.filter((binPath: string) =>
-          !prev.some((selPath: string) => arePathsEqual(selPath, binPath))
+        const pathsToAdd = binaryFilePaths.filter(
+          (binPath: string) => !prev.some((selPath: string) => arePathsEqual(selPath, binPath))
         );
         return [...prev, ...pathsToAdd];
       });
@@ -385,7 +385,10 @@ const App = (): JSX.Element => {
       if (selectedFiles.length > 0) {
         console.log('[handleFileListData] Preserving existing selections');
         const validSelectedFiles = selectedFiles.filter((selectedPath: string) =>
-          files.some((file) => arePathsEqual(file.path, selectedPath) && (includeBinaryPaths || !file.isBinary))
+          files.some(
+            (file) =>
+              arePathsEqual(file.path, selectedPath) && (includeBinaryPaths || !file.isBinary)
+          )
         );
 
         if (validSelectedFiles.length !== selectedFiles.length) {
@@ -400,7 +403,10 @@ const App = (): JSX.Element => {
       } else {
         console.log('[handleFileListData] No existing selections, selecting all eligible files');
         const selectablePaths = files
-          .filter((file: FileData) => !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary))
+          .filter(
+            (file: FileData) =>
+              !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary)
+          )
           .map((file: FileData) => file.path);
 
         setSelectedFiles(selectablePaths);
@@ -613,7 +619,7 @@ const App = (): JSX.Element => {
   const toggleFileSelection = (filePath: string) => {
     // Normalize the incoming file path
     const normalizedPath = normalizePath(filePath);
-    
+
     const f = allFiles.find((f: FileData) => arePathsEqual(f.path, normalizedPath));
     if (f?.isBinary && !includeBinaryPaths) {
       return;
@@ -670,7 +676,8 @@ const App = (): JSX.Element => {
     // Filter all files to get only those in this folder (and subfolders) that are selectable
     const filesInFolder = allFiles.filter((file: FileData) => {
       const inFolder = isFileInFolder(file.path, normalizedFolderPath);
-      const selectable = !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary);
+      const selectable =
+        !file.isSkipped && !file.excludedByDefault && (includeBinaryPaths || !file.isBinary);
       return selectable && inFolder;
     });
 
@@ -833,172 +840,168 @@ const App = (): JSX.Element => {
         <header className="header">
           <h1>PasteMax</h1>
           <div className="header-actions">
-              <ThemeToggle />
-              <div className="folder-info">
-                {selectedFolder ? (
-                  <div className="selected-folder">{selectedFolder}</div>
-                ) : (
-                  <span>No folder selected</span>
-                )}
-                <button
-                  className="select-folder-btn"
-                  onClick={openFolder}
-                  disabled={processingStatus.status === 'processing'}
-                >
-                  Select Folder
-                </button>
-                <button
-                  className="clear-data-btn"
-                  onClick={clearSavedState}
-                  title="Clear all saved data and start fresh"
-                >
-                  Clear All
-                </button>
-                <ViewIgnoresButton onClick={handleViewIgnorePatterns} />
-              </div>
-            </div>
-          </header>
-
-          {processingStatus.status === 'processing' && (
-            <div className="processing-indicator">
-              <div className="spinner"></div>
-              <span>{processingStatus.message}</span>
-              {processingStatus.message !== 'Applying ignore mode…' && (
-                <button className="cancel-btn" onClick={cancelDirectoryLoading}>
-                  Cancel
-                </button>
+            <ThemeToggle />
+            <div className="folder-info">
+              {selectedFolder ? (
+                <div className="selected-folder">{selectedFolder}</div>
+              ) : (
+                <span>No folder selected</span>
               )}
+              <button
+                className="select-folder-btn"
+                onClick={openFolder}
+                disabled={processingStatus.status === 'processing'}
+              >
+                Select Folder
+              </button>
+              <button
+                className="clear-data-btn"
+                onClick={clearSavedState}
+                title="Clear all saved data and start fresh"
+              >
+                Clear All
+              </button>
+              <ViewIgnoresButton onClick={handleViewIgnorePatterns} />
             </div>
-          )}
+          </div>
+        </header>
 
-          {processingStatus.status === 'error' && (
-            <div className="error-message">Error: {processingStatus.message}</div>
-          )}
+        {processingStatus.status === 'processing' && (
+          <div className="processing-indicator">
+            <div className="spinner"></div>
+            <span>{processingStatus.message}</span>
+            {processingStatus.message !== 'Applying ignore mode…' && (
+              <button className="cancel-btn" onClick={cancelDirectoryLoading}>
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
 
-          {selectedFolder && (
-            <div className="main-content">
-              <Sidebar
-                selectedFolder={selectedFolder}
-                allFiles={allFiles}
+        {processingStatus.status === 'error' && (
+          <div className="error-message">Error: {processingStatus.message}</div>
+        )}
+
+        {selectedFolder && (
+          <div className="main-content">
+            <Sidebar
+              selectedFolder={selectedFolder}
+              allFiles={allFiles}
+              selectedFiles={selectedFiles}
+              toggleFileSelection={toggleFileSelection}
+              toggleFolderSelection={toggleFolderSelection}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              selectAllFiles={selectAllFiles}
+              deselectAllFiles={deselectAllFiles}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
+              includeBinaryPaths={includeBinaryPaths}
+            />
+            <div className="content-area">
+              <div className="content-header">
+                <div className="content-title">Selected Files</div>
+                <div className="content-actions">
+                  <div className="file-stats">
+                    {selectedFiles.length} files | ~{calculateTotalTokens().toLocaleString()} tokens
+                  </div>
+                  <div className="sort-dropdown">
+                    <button className="sort-dropdown-button" onClick={toggleSortDropdown}>
+                      Sort: {sortOptions.find((opt) => opt.value === sortOrder)?.label || sortOrder}
+                    </button>
+                    {sortDropdownOpen && (
+                      <div className="sort-options">
+                        {sortOptions.map((option) => (
+                          <div
+                            key={option.value}
+                            className={`sort-option ${sortOrder === option.value ? 'active' : ''}`}
+                            onClick={() => handleSortChange(option.value)}
+                          >
+                            {option.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <FileList
+                files={displayedFiles}
                 selectedFiles={selectedFiles}
                 toggleFileSelection={toggleFileSelection}
-                toggleFolderSelection={toggleFolderSelection}
-                searchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                selectAllFiles={selectAllFiles}
-                deselectAllFiles={deselectAllFiles}
-                expandedNodes={expandedNodes}
-                toggleExpanded={toggleExpanded}
-                includeBinaryPaths={includeBinaryPaths}
               />
-              <div className="content-area">
-                <div className="content-header">
-                  <div className="content-title">Selected Files</div>
-                  <div className="content-actions">
-                    <div className="file-stats">
-                      {selectedFiles.length} files | ~{calculateTotalTokens().toLocaleString()}{' '}
-                      tokens
-                    </div>
-                    <div className="sort-dropdown">
-                      <button className="sort-dropdown-button" onClick={toggleSortDropdown}>
-                        Sort:{' '}
-                        {sortOptions.find((opt) => opt.value === sortOrder)?.label || sortOrder}
-                      </button>
-                      {sortDropdownOpen && (
-                        <div className="sort-options">
-                          {sortOptions.map((option) => (
-                            <div
-                              key={option.value}
-                              className={`sort-option ${
-                                sortOrder === option.value ? 'active' : ''
-                              }`}
-                              onClick={() => handleSortChange(option.value)}
-                            >
-                              {option.label}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+
+              {/*
+               * User Instructions Component
+               * Positioned after the file list and before the copy button
+               * Allows users to enter supplementary text that will be
+               * included at the end of the copied content
+               */}
+              <UserInstructions
+                instructions={userInstructions}
+                setInstructions={setUserInstructions}
+              />
+
+              <div className="copy-button-container">
+                <div className="copy-button-wrapper">
+                  <div
+                    className="toggle-options-container"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    <label className="file-tree-option" style={{ marginRight: '20px' }}>
+                      <input
+                        type="checkbox"
+                        checked={includeFileTree}
+                        onChange={() => setIncludeFileTree(!includeFileTree)}
+                      />
+                      <span>Include File Tree</span>
+                    </label>
+                    <label className="file-tree-option">
+                      <input
+                        type="checkbox"
+                        checked={includeBinaryPaths}
+                        onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
+                      />
+                      <span>Include Binary As Paths</span>
+                    </label>
                   </div>
-                </div>
-
-                <FileList
-                  files={displayedFiles}
-                  selectedFiles={selectedFiles}
-                  toggleFileSelection={toggleFileSelection}
-                />
-
-                {/*
-                 * User Instructions Component
-                 * Positioned after the file list and before the copy button
-                 * Allows users to enter supplementary text that will be
-                 * included at the end of the copied content
-                 */}
-                <UserInstructions
-                  instructions={userInstructions}
-                  setInstructions={setUserInstructions}
-                />
-
-                <div className="copy-button-container">
-                  <div className="copy-button-wrapper">
-                    <div
-                      className="toggle-options-container"
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: '10px',
-                      }}
-                    >
-                      <label className="file-tree-option" style={{ marginRight: '20px' }}>
-                        <input
-                          type="checkbox"
-                          checked={includeFileTree}
-                          onChange={() => setIncludeFileTree(!includeFileTree)}
-                        />
-                        <span>Include File Tree</span>
-                      </label>
-                      <label className="file-tree-option">
-                        <input
-                          type="checkbox"
-                          checked={includeBinaryPaths}
-                          onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
-                        />
-                        <span>Include Binary As Paths</span>
-                      </label>
-                    </div>
-                    {/*
-                     * Copy Button
-                     * When clicked, this will copy all selected files along with:
-                     * - File tree (if enabled via the checkbox)
-                     * - User instructions (if any were entered)
-                     */}
-                    <CopyButton
-                      text={getSelectedFilesContent()}
-                      className="primary full-width copy-button-main"
-                    >
-                      <span className="copy-button-text">
-                        COPY ALL SELECTED ({selectedFiles.length} files)
-                      </span>
-                    </CopyButton>
-                  </div>
+                  {/*
+                   * Copy Button
+                   * When clicked, this will copy all selected files along with:
+                   * - File tree (if enabled via the checkbox)
+                   * - User instructions (if any were entered)
+                   */}
+                  <CopyButton
+                    text={getSelectedFilesContent()}
+                    className="primary full-width copy-button-main"
+                  >
+                    <span className="copy-button-text">
+                      COPY ALL SELECTED ({selectedFiles.length} files)
+                    </span>
+                  </CopyButton>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Ignore Patterns Viewer Modal */}
-          <IgnorePatternsViewer
-            isOpen={isIgnoreViewerOpen}
-            onClose={handleIgnoreViewerClose}
-            patterns={ignorePatterns}
-            error={ignorePatternsError}
-            selectedFolder={selectedFolder}
-            isElectron={isElectron}
-            ignoreSettingsModified={ignoreSettingsModified}
-          />
-        </div>
-      </ThemeProvider>
+        {/* Ignore Patterns Viewer Modal */}
+        <IgnorePatternsViewer
+          isOpen={isIgnoreViewerOpen}
+          onClose={handleIgnoreViewerClose}
+          patterns={ignorePatterns}
+          error={ignorePatternsError}
+          selectedFolder={selectedFolder}
+          isElectron={isElectron}
+          ignoreSettingsModified={ignoreSettingsModified}
+        />
+      </div>
+    </ThemeProvider>
   );
 };
 

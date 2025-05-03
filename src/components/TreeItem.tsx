@@ -134,7 +134,12 @@ const TreeItem = ({
 
   // Check if checkbox should be disabled (file is skipped or excluded by default) - memoize this
   const isCheckboxDisabled = useMemo(
-    () => (fileData ? fileData.isSkipped || fileData.excludedByDefault || (fileData.isBinary && !includeBinaryPaths) : false),
+    () =>
+      fileData
+        ? fileData.isSkipped ||
+          fileData.excludedByDefault ||
+          (fileData.isBinary && !includeBinaryPaths)
+        : false,
     [fileData, includeBinaryPaths]
   );
 

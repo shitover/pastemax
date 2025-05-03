@@ -105,10 +105,10 @@ export const formatContentForCopying = ({
       // Get better file type description using language detection
       const fileType = getLanguageFromFilename(file.name);
       concatenatedString += `File: ${normalizedPath}\nThis is a file of the type: ${fileType.charAt(0).toUpperCase() + fileType.slice(1)}\n\n`;
-        });
+    });
 
-        // Close binary files section with an extra newline for spacing
-        concatenatedString += `</binary_files>\n\n`;
+    // Close binary files section with an extra newline for spacing
+    concatenatedString += `</binary_files>\n\n`;
   }
 
   // Consistent closing of file_contents section
@@ -122,4 +122,4 @@ export const formatContentForCopying = ({
   }
 
   return concatenatedString;
-}
+};
