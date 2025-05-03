@@ -206,6 +206,29 @@ const App = (): JSX.Element => {
     localStorage.setItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS, String(includeBinaryPaths));
   }, [includeBinaryPaths]);
 
+  // Effect to add/remove binary files from selection when includeBinaryPaths changes
+  useEffect(() => {
+    if (includeBinaryPaths) {
+      const binaryFilePaths = allFiles
+        .filter((f: FileData) => f.isBinary)
+        .map((f: FileData) => f.path);
+      
+      setSelectedFiles((prev: string[]) => {
+        const pathsToAdd = binaryFilePaths.filter((binPath: string) =>
+          !prev.some((selPath: string) => arePathsEqual(selPath, binPath))
+        );
+        return [...prev, ...pathsToAdd];
+      });
+    } else {
+      setSelectedFiles((prev: string[]) =>
+        prev.filter((selectedPath: string) => {
+          const file = allFiles.find((f: FileData) => arePathsEqual(f.path, selectedPath));
+          return !file?.isBinary;
+        })
+      );
+    }
+  }, [includeBinaryPaths, allFiles]);
+
   // Add this new useEffect for safe mode detection
   useEffect(() => {
     if (!isElectron) return;
