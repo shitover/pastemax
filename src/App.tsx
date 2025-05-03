@@ -851,6 +851,7 @@ const App = (): JSX.Element => {
                 className="select-folder-btn"
                 onClick={openFolder}
                 disabled={processingStatus.status === 'processing'}
+                title="Select a Folder to import"
               >
                 Select Folder
               </button>
@@ -945,31 +946,38 @@ const App = (): JSX.Element => {
 
               <div className="copy-button-container">
                 <div className="copy-button-wrapper">
-                  <div
+                    <div
                     className="toggle-options-container"
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       marginBottom: '10px',
                     }}
-                  >
-                    <label className="file-tree-option" style={{ marginRight: '20px' }}>
+                    >
+                    <label
+                      className="file-tree-option"
+                      style={{ marginRight: '20px' }}
+                      title="Include file tree in copied content"
+                    >
                       <input
-                        type="checkbox"
-                        checked={includeFileTree}
-                        onChange={() => setIncludeFileTree(!includeFileTree)}
+                      type="checkbox"
+                      checked={includeFileTree}
+                      onChange={() => setIncludeFileTree(!includeFileTree)}
                       />
                       <span>Include File Tree</span>
                     </label>
-                    <label className="file-tree-option">
+                    <label
+                      className="file-tree-option"
+                      title="Include binary files as paths in copied content"
+                    >
                       <input
-                        type="checkbox"
-                        checked={includeBinaryPaths}
-                        onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
+                      type="checkbox"
+                      checked={includeBinaryPaths}
+                      onChange={() => setIncludeBinaryPaths(!includeBinaryPaths)}
                       />
                       <span>Include Binary As Paths</span>
                     </label>
-                  </div>
+                    </div>
                   {/*
                    * Copy Button
                    * When clicked, this will copy all selected files along with:

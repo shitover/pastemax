@@ -345,10 +345,14 @@ const Sidebar = ({
       </div>
 
       <div className="sidebar-actions">
-        <button className="sidebar-action-btn" onClick={selectAllFiles}>
+        <button className="sidebar-action-btn"
+        title="Select all files and folders"
+        onClick={selectAllFiles}>
           Select All
         </button>
-        <button className="sidebar-action-btn" onClick={deselectAllFiles}>
+        <button className="sidebar-action-btn"
+        title="Deselect all files and folders"
+        onClick={deselectAllFiles}>
           Deselect All
         </button>
       </div>
