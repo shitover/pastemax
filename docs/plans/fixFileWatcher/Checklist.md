@@ -8,8 +8,8 @@
 
 **Objective:** Define a new module to exclusively manage the Chokidar watcher instance and its lifecycle.
 
-*   [ ] **Create File:** Create a new file named `electron/watcher.js`.
-*   [ ] **Import Dependencies:** Add necessary requires at the top of `watcher.js`:
+*   [x] **Create File:** Create a new file named `electron/watcher.js`.
+*   [x] **Import Dependencies:** Add necessary requires at the top of `watcher.js`:
     *   `const chokidar = require('chokidar');`
     *   `const path = require('path');`
     *   `const fs = require('fs'); // If needed directly, e.g., for stat calls not in processSingleFile`
@@ -18,10 +18,10 @@
     *   `// Assume utility functions are importable (adjust path as needed)`
     *   `const { processSingleFile } = require('./main.js'); // OrIdeally from a dedicated utils file like './fileProcessor.js'`
     *   `const { normalizePath, safeRelativePath, ensureAbsolutePath } = require('./main.js'); // Or ideally from './pathUtils.js'`
-*   [ ] **Define Module State:**
+*   [x] **Define Module State:**
     *   Declare `let currentWatcher = null;` within the module scope.
     *   Declare `let changeDebounceMap = new Map();` to manage per-file debounce functions for the 'change' event.
-*   [ ] **Define `shutdownWatcher` Function:**
+*   [x] **Define `shutdownWatcher` Function:**
     *   Define the exported function `async function shutdownWatcher(): Promise<void>`.
     *   Implement `shutdownWatcher`: Null Check: Check if `currentWatcher` is not null.
     *   Implement `shutdownWatcher`: Logging (Start): If `currentWatcher` exists, log `[WatcherModule] Attempting to stop existing watcher...`.
@@ -30,15 +30,15 @@
     *   Implement `shutdownWatcher`: Clear Debounce Map: Clear the `changeDebounceMap` (`changeDebounceMap.clear();`).
     *   Implement `shutdownWatcher`: Nullify Instance: In a `finally` block, set `currentWatcher = null;`.
     *   Implement `shutdownWatcher`: Return Promise: Ensure it returns a resolved Promise.
-*   [ ] **Define `initializeWatcher` Function:**
+*   [x] **Define `initializeWatcher` Function:**
     *   Define the exported function `async function initializeWatcher(folderPath: string, window: BrowserWindow, ignoreFilter: Ignore, defaultIgnoreFilterInstance: Ignore): Promise<void>`. (Note: added `defaultIgnoreFilterInstance` as a parameter). Make it `async`.
-*   [ ] **Implement `initializeWatcher`: Shutdown Existing:**
+*   [x] **Implement `initializeWatcher`: Shutdown Existing:**
     *   Call `await shutdownWatcher();` at the *very beginning* of the function.
-*   [ ] **Implement `initializeWatcher`: Logging (Start):**
+*   [x] **Implement `initializeWatcher`: Logging (Start):**
     *   Log `[WatcherModule] Attempting to start watcher for folder: ${folderPath}`.
-*   [ ] **Implement `initializeWatcher`: Define Chokidar Options:**
+*   [x] **Implement `initializeWatcher`: Define Chokidar Options:**
     *   Create a `watcherOptions` object.
-*   [ ] **Implement `initializeWatcher`: Options - `ignored` Function:**
+*   [x] **Implement `initializeWatcher`: Options - `ignored` Function:**
     *   Define the `ignored` property as a function `(filePath) => { ... }`.
     *   Inside the `ignored` function:
         *   Use `try...catch` for error handling (log error, return `true`).
@@ -46,30 +46,30 @@
         *   Check against the passed `defaultIgnoreFilterInstance.ignores(relativePath)`. Log and return `true` if ignored.
         *   Check against the passed `ignoreFilter.ignores(relativePath)`. Return `true` if ignored.
         *   Return `false` otherwise.
-*   [ ] **Implement `initializeWatcher`: Options - Other Settings:**
+*   [x] **Implement `initializeWatcher`: Options - Other Settings:**
     *   Set `ignoreInitial: true`.
     *   Set `persistent: true`.
     *   Set `awaitWriteFinish: { stabilityThreshold: 2000, pollInterval: 100 }`.
-*   [ ] **Implement `initializeWatcher`: Instantiate Watcher:**
+*   [x] **Implement `initializeWatcher`: Instantiate Watcher:**
     *   Wrap `currentWatcher = chokidar.watch(folderPath, watcherOptions);` in a `try...catch` block. Log any instantiation errors. If an error occurs, ensure `currentWatcher` remains `null` and maybe call `shutdownWatcher` for safety.
-*   [ ] **Implement `initializeWatcher`: Error Event Handler:**
+*   [x] **Implement `initializeWatcher`: Error Event Handler:**
     *   Attach `currentWatcher.on('error', (error) => { ... });`. Log `[WatcherModule] Chokidar Error:`, error. Consider calling `shutdownWatcher()` on critical errors.
-*   [ ] **Implement `initializeWatcher`: Add Event Handler:**
+*   [x] **Implement `initializeWatcher`: Add Event Handler:**
     *   Attach `currentWatcher.on('add', async (filePath) => { ... });`.
     *   Inside: log `[WatcherModule] File Added: ${filePath}`. Call `processSingleFile` (passing necessary args like `folderPath`, `ignoreFilter`). If valid `fileData`, send IPC via `window.webContents.send('file-added', fileData);`. Log IPC send. Handle errors.
-*   [ ] **Implement `initializeWatcher`: Change Event Handler (Debounced):**
+*   [x] **Implement `initializeWatcher`: Change Event Handler (Debounced):**
     *   Define the core change logic: `const debouncedChangeHandler = async (filePath) => { ... };`. Inside: Log change, call `processSingleFile`, check `fileData`, send `file-updated` IPC via `window.webContents`, log IPC send, handle errors.
     *   Attach `currentWatcher.on('change', (filePath) => { ... });`.
     *   Inside the `.on('change')` callback:
         *   Check if `changeDebounceMap` has `filePath`.
         *   If not, create a debounced function: `changeDebounceMap.set(filePath, debounce(debouncedChangeHandler, 500));`.
         *   Call the stored debounced function: `changeDebounceMap.get(filePath)(filePath);`.
-*   [ ] **Implement `initializeWatcher`: Unlink Event Handler:**
+*   [x] **Implement `initializeWatcher`: Unlink Event Handler:**
     *   Attach `currentWatcher.on('unlink', (filePath) => { ... });`.
     *   Inside: log `[WatcherModule] File Removed: ${filePath}`. Normalize path, get relative path, send `file-removed` IPC via `window.webContents` with `{ path: normalizedPath, relativePath: relativePath }`. Log IPC send.
-*   [ ] **Implement `initializeWatcher`: Logging (Success):**
+*   [x] **Implement `initializeWatcher`: Logging (Success):**
     *   Log `[WatcherModule] Watcher started successfully for folder: ${folderPath}`.
-*   [ ] **Export Module Functions:** Add `module.exports = { initializeWatcher, shutdownWatcher };` at the end of `watcher.js`.
+*   [x] **Export Module Functions:** Add `module.exports = { initializeWatcher, shutdownWatcher };` at the end of `watcher.js`.
 
 ---
 
