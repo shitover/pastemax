@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { default: PQueue } = require('p-queue'); // Added for controlled concurrency
-const chokidar = require('chokidar'); // Added for file watching
+const watcher = require('./watcher.js'); // New watcher module
 
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
@@ -60,7 +60,6 @@ const DEFAULT_PATTERNS = [
 let currentIgnoreMode = 'automatic';
 let isLoadingDirectory = false;
 let loadingTimeoutId = null;
-let currentWatcher = null; // Added for file watching
 
 /**
  * @typedef {Object} DirectoryLoadingProgress
@@ -504,78 +503,6 @@ async function loadGitignore(rootDir, window) {
       },
     });
 
-    // Start file watcher after initial scan completes
-    if (chokidar) {
-      try {
-        const watcherConfig = {
-          ignored: (filePath) => {
-            try {
-              // Safely handle empty paths
-              if (!filePath || filePath.trim() === '') {
-                console.warn('Empty path passed to watcher ignored function');
-                return true;
-              }
-              return shouldIgnorePath(filePath, rootDir, rootDir, ig);
-            } catch (error) {
-              console.error('Error in watcher ignore function:', error);
-              return true; // Ignore files that cause errors
-            }
-          },
-          ignoreInitial: true,
-          awaitWriteFinish: {
-            stabilityThreshold: 2000,
-            pollInterval: 100,
-          },
-          persistent: true,
-        };
-
-        currentWatcher = chokidar.watch(rootDir, watcherConfig);
-
-        // Handle any setup errors
-        currentWatcher.on('error', (error) => {
-          console.error('File watcher encountered an error:', error);
-        });
-
-        // Setup event handlers with proper error handling
-        currentWatcher.on('add', async (filePath) => {
-          try {
-            const fileData = await processSingleFile(filePath, rootDir, ig);
-            if (fileData && window && !window.isDestroyed()) {
-              window.webContents.send('file-added', fileData);
-            }
-          } catch (error) {
-            console.error(`Error processing added file ${filePath}:`, error);
-          }
-        });
-
-        currentWatcher.on('change', async (filePath) => {
-          try {
-            const fileData = await processSingleFile(filePath, rootDir, ig);
-            if (fileData && window && !window.isDestroyed()) {
-              window.webContents.send('file-updated', fileData);
-            }
-          } catch (error) {
-            console.error(`Error processing changed file ${filePath}:`, error);
-          }
-        });
-
-        currentWatcher.on('unlink', (filePath) => {
-          try {
-            if (window && !window.isDestroyed()) {
-              window.webContents.send('file-removed', {
-                path: normalizePath(filePath),
-                relativePath: safeRelativePath(rootDir, filePath),
-              });
-            }
-          } catch (error) {
-            console.error(`Error handling deleted file ${filePath}:`, error);
-          }
-        });
-      } catch (watcherError) {
-        console.error('Error setting up file watcher:', watcherError);
-        // Continue without watcher rather than failing the whole operation
-      }
-    }
 
     return ig;
   } catch (err) {
@@ -688,6 +615,8 @@ async function processDirectory({
   ignoreMode = 'automatic',
   fileQueue = null,
 }) {
+
+  await watcher.shutdownWatcher();
   const fullPath = safePathJoin(dir, dirent.name);
   const relativePath = safeRelativePath(rootDir, fullPath);
 
@@ -715,6 +644,7 @@ async function processDirectory({
 
   if (!shouldIgnorePath(fullPath, rootDir, currentDir, filterToUse, ignoreMode)) {
     progress.directories++;
+    await watcher.initializeWatcher(dir, window, ignoreFilter, defaultIgnoreFilter);
     window.webContents.send('file-processing-status', {
       status: 'processing',
       message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
@@ -743,6 +673,8 @@ async function readFilesRecursively(
   ignoreMode = 'automatic',
   fileQueue = null
 ) {
+
+  await watcher.shutdownWatcher();
   if (!ignoreFilter) {
     throw new Error('readFilesRecursively requires an ignoreFilter parameter');
   }
@@ -1018,7 +950,8 @@ function setupDirectoryLoadingTimeout(window, folderPath) {
   currentProgress = { directories: 0, files: 0 };
 }
 
-function cancelDirectoryLoading(window, reason = 'user') {
+async function cancelDirectoryLoading(window, reason = 'user') {
+  await watcher.shutdownWatcher();
   if (!isLoadingDirectory) return;
 
   console.log(`Cancelling directory loading process (Reason: ${reason})`);
@@ -1152,14 +1085,7 @@ if (!ipcMain.eventNames().includes('set-ignore-mode')) {
     fileCache.clear();
     fileTypeCache.clear();
 
-    if (currentWatcher) {
-      try {
-        await currentWatcher.close();
-        currentWatcher = null;
-      } catch (error) {
-        console.error('[IgnoreMode] Error closing file watcher:', error);
-      }
-    }
+    // Watcher cleanup is now handled by the watcher module itself
 
     BrowserWindow.getAllWindows().forEach((win) => {
       if (win && win.webContents) {
@@ -1298,6 +1224,7 @@ ipcMain.on('request-file-list', async (event, folderPath) => {
 // ELECTRON WINDOW SETUP
 // ======================
 console.log('--- createWindow() ENTERED ---');
+let mainWindow;
 function createWindow() {
   const isSafeMode = process.argv.includes('--safe-mode');
 
@@ -1312,7 +1239,7 @@ function createWindow() {
       },
     });
   });
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -1328,6 +1255,23 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
     },
+  });
+
+  // Set up window event handlers
+  mainWindow.on('closed', async () => {
+    await watcher.shutdownWatcher();
+    mainWindow = null; // Now allowed since mainWindow is let
+  });
+
+  app.on('before-quit', async (event) => {
+    await watcher.shutdownWatcher();
+  });
+
+  app.on('window-all-closed', async () => {
+    if (process.platform !== 'darwin') {
+      await watcher.shutdownWatcher();
+      app.quit();
+    }
   });
 
   // handle Escape locally (only when focused), not globally
@@ -1354,9 +1298,7 @@ function createWindow() {
 
   // Clean up watcher when window is closed
   mainWindow.on('closed', () => {
-    if (currentWatcher) {
-      currentWatcher.close().then(() => console.log('File watcher closed.'));
-    }
+    // Watcher cleanup is now handled by the watcher module itself
   });
 
   mainWindow.webContents.once('did-finish-load', () => {
@@ -1367,9 +1309,7 @@ function createWindow() {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-      if (currentWatcher) {
-        currentWatcher.close().then(() => console.log('File watcher closed before quit.'));
-      }
+      // Watcher cleanup is now handled by the watcher module itself
       app.quit();
     }
   });
