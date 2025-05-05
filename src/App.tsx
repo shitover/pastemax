@@ -576,6 +576,8 @@ const App = (): JSX.Element => {
       if (!newFile.isSkipped && !newFile.excludedByDefault) {
         setSelectedFiles((prev: string[]) => [...prev, normalizePath(newFile.path)]);
       }
+      // Debounce reload to prevent excessive refreshes
+      setTimeout(() => window.location.reload(), 800);
     };
 
     const handleFileUpdated = (updatedFile: FileData) => {
@@ -587,6 +589,8 @@ const App = (): JSX.Element => {
         applyFiltersAndSort(updatedFiles, sortOrder, searchTerm);
         return updatedFiles;
       });
+      // Debounce reload to prevent excessive refreshes
+      setTimeout(() => window.location.reload(), 800);
     };
 
     const handleFileRemoved = (filePath: string) => {
@@ -602,6 +606,8 @@ const App = (): JSX.Element => {
       setSelectedFiles((prevSelected: string[]) =>
         prevSelected.filter((path: string) => !arePathsEqual(path, normalizedPath))
       );
+      // Debounce reload to prevent excessive refreshes
+      setTimeout(() => window.location.reload(), 800);
     };
 
     window.electron.ipcRenderer.on('file-added', handleFileAdded);
