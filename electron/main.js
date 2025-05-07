@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
-const { excludedFiles } = require('./excluded-files');
+const { GlobalModeExclusion } = require('./excluded-files');
 
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
@@ -148,9 +148,16 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
     async (event, { folderPath, mode = 'automatic', customIgnores = [] } = {}) => {
       if (!folderPath) {
         console.log('get-ignore-patterns called without folderPath - returning default patterns');
+        // Note: defaultIgnoreFilter is an ignore() instance, not an array.
+        // For this fallback, we should use DEFAULT_PATTERNS array from ignore-manager,
+        // or construct a similar list if that's not directly exported/desired.
+        // However, the original code used defaultIgnoreFilter here, which is incorrect for spreading.
+        // Assuming the intent was to provide a comprehensive list for a "default global" view.
+        // For now, sticking to the structure but using GlobalModeExclusion correctly.
+        // A more robust fallback might involve DEFAULT_PATTERNS.
         return {
           patterns: {
-            global: [...defaultIgnoreFilter, ...excludedFiles, ...(customIgnores || [])],
+            global: [...GlobalModeExclusion, ...(customIgnores || [])], // DEFAULT_PATTERNS are implicitly part of createGlobalIgnoreFilter
           },
         };
       }
@@ -160,7 +167,7 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
         const normalizedPath = ensureAbsolutePath(folderPath);
 
         if (mode === 'global') {
-          patterns = { global: [...excludedFiles, ...(customIgnores || [])] };
+          patterns = { global: [...GlobalModeExclusion, ...(customIgnores || [])] };
           const cacheKey = `${normalizedPath}:global:${JSON.stringify(customIgnores?.sort() || [])}`;
           ignoreCache.set(cacheKey, {
             ig: createGlobalIgnoreFilter(customIgnores),
