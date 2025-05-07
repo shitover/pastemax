@@ -37,10 +37,10 @@ const { normalizePath, ensureAbsolutePath } = require('./utils.js');
 const { DEFAULT_PATTERNS, GlobalModeExclusion } = require('./excluded-files.js');
 // Import ignore logic functions
 const {
-  loadGitignore, // for Automatic Mode
+  loadAutomaticModeIgnoreFilter, // for Automatic Mode
   createGlobalIgnoreFilter, // for Global Mode
-  shouldExcludeByDefault, // Utils
-  ignoreCache, // Cache for ignore filters
+  isPathExcludedByDefaults, // Utils
+  compiledIgnoreFilterCache, // Cache for ignore filters
   clearIgnoreCaches, // clear ignore caches
 } = require('./ignore-manager.js');
 
@@ -184,14 +184,14 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
           ];
           patterns = { global: effectiveGlobalPatternsWithFolder };
           const cacheKey = `${normalizedPath}:global:${JSON.stringify(customIgnores?.sort() || [])}`;
-          ignoreCache.set(cacheKey, {
+          compiledIgnoreFilterCache.set(cacheKey, {
             ig: createGlobalIgnoreFilter(customIgnores),
             patterns,
           });
         } else {
-          await loadGitignore(normalizedPath);
+          await loadAutomaticModeIgnoreFilter(normalizedPath);
           const cacheKey = `${normalizedPath}:automatic`;
-          patterns = ignoreCache.get(cacheKey)?.patterns || { gitignoreMap: {} };
+          patterns = compiledIgnoreFilterCache.get(cacheKey)?.patterns || { gitignoreMap: {} };
         }
 
         return { patterns };
@@ -283,7 +283,7 @@ ipcMain.on('request-file-list', async (event, payload) => {
     } else {
       // Default to automatic
       console.log('Using automatic ignore filter (loading .gitignore)');
-      ignoreFilter = await loadGitignore(
+      ignoreFilter = await loadAutomaticModeIgnoreFilter(
         payload.folderPath,
         BrowserWindow.fromWebContents(event.sender)
       );
@@ -335,7 +335,7 @@ ipcMain.on('request-file-list', async (event, payload) => {
           size: file.size,
           isDirectory: file.isDirectory,
           extension: path.extname(file.name).toLowerCase(),
-          excluded: shouldExcludeByDefault(
+          excluded: isPathExcludedByDefaults(
             file.path,
             payload.folderPath,
             payload.ignoreMode ?? currentIgnoreMode
