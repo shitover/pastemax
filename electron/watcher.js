@@ -1,11 +1,8 @@
 const chokidar = require('chokidar');
-const path = require('path');
-const fs = require('fs');
-const { BrowserWindow } = require('electron');
 const { debounce } = require('lodash');
 
-const { normalizePath, safeRelativePath, ensureAbsolutePath } = require('./utils.js');
-const { processSingleFile } = require('./main.js');
+const { normalizePath, safeRelativePath } = require('./utils.js');
+// const { processSingleFile } = require('./file-processor'); // Removed for circular dependency fix
 
 let currentWatcher = null;
 let changeDebounceMap = new Map();
@@ -26,7 +23,13 @@ async function shutdownWatcher() {
   }
 }
 
-async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnoreFilterInstance) {
+async function initializeWatcher(
+  folderPath,
+  window,
+  ignoreFilter,
+  defaultIgnoreFilterInstance,
+  processSingleFileCallback
+) {
   // Shutdown existing watcher (Checklist Item 36)
   await shutdownWatcher();
 
@@ -67,8 +70,8 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
     persistent: true,
     awaitWriteFinish: {
       stabilityThreshold: 2000,
-      pollInterval: 100
-    }
+      pollInterval: 100,
+    },
   };
 
   // Instantiate watcher (Checklist Item 54)
@@ -90,7 +93,7 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
   currentWatcher.on('add', async (filePath) => {
     console.log(`[WatcherModule] File Added: ${filePath}`);
     try {
-      const fileData = await processSingleFile(filePath, folderPath, ignoreFilter);
+      const fileData = await processSingleFileCallback(filePath, folderPath, ignoreFilter);
       if (fileData && window && !window.isDestroyed()) {
         window.webContents.send('file-added', fileData);
         console.log(`[WatcherModule] Sent IPC file-added for: ${fileData.relativePath}`);
@@ -104,7 +107,7 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
   const debouncedChangeHandler = async (filePath) => {
     console.log(`[WatcherModule] File Changed (debounced): ${filePath}`);
     try {
-      const fileData = await processSingleFile(filePath, folderPath, ignoreFilter);
+      const fileData = await processSingleFileCallback(filePath, folderPath, ignoreFilter);
       if (fileData && window && !window.isDestroyed()) {
         window.webContents.send('file-updated', fileData);
         console.log(`[WatcherModule] Sent IPC file-updated for: ${fileData.relativePath}`);
@@ -130,7 +133,7 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
       if (window && !window.isDestroyed() && relativePath) {
         window.webContents.send('file-removed', {
           path: normalizedPath,
-          relativePath: relativePath
+          relativePath: relativePath,
         });
         console.log(`[WatcherModule] Sent IPC file-removed for: ${relativePath}`);
       }
@@ -143,4 +146,5 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
   console.log(`[WatcherModule] Watcher started successfully for folder: ${folderPath}`);
 }
 
+// Exports
 module.exports = { initializeWatcher, shutdownWatcher };
