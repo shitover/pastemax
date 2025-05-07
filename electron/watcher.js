@@ -2,7 +2,7 @@ const chokidar = require('chokidar');
 const { debounce } = require('lodash');
 
 const { normalizePath, safeRelativePath } = require('./utils.js');
-// const { processSingleFile } = require('./file-processor'); // Removed for circular dependency fix
+const { removeFileCacheEntry } = require('./file-processor.js'); // Changed import
 
 let currentWatcher = null;
 let changeDebounceMap = new Map();
@@ -24,7 +24,7 @@ async function shutdownWatcher() {
 }
 
 async function initializeWatcher(
-  folderPath,
+  rootDir, // Parameter name is rootDir
   window,
   ignoreFilter,
   defaultIgnoreFilterInstance,
@@ -34,14 +34,14 @@ async function initializeWatcher(
   await shutdownWatcher();
 
   // Logging start attempt (Checklist Item 38)
-  console.log(`[WatcherModule] Attempting to start watcher for folder: ${folderPath}`);
+  console.log(`[WatcherModule] Attempting to start watcher for folder: ${rootDir}`);
 
   // Define Chokidar options (Checklist Item 40)
   const watcherOptions = {
     // Implement ignored function (Checklist Items 41-48)
     ignored: (filePath) => {
       try {
-        const relativePath = safeRelativePath(folderPath, filePath);
+        const relativePath = safeRelativePath(rootDir, filePath);
         if (!relativePath) {
           console.warn(`[WatcherModule] Could not get relative path for: ${filePath}`);
           return true;
@@ -76,7 +76,7 @@ async function initializeWatcher(
 
   // Instantiate watcher (Checklist Item 54)
   try {
-    currentWatcher = chokidar.watch(folderPath, watcherOptions);
+    currentWatcher = chokidar.watch(rootDir, watcherOptions);
   } catch (error) {
     console.error('[WatcherModule] Chokidar watch instantiation failed:', error);
     currentWatcher = null;
@@ -93,13 +93,18 @@ async function initializeWatcher(
   currentWatcher.on('add', async (filePath) => {
     console.log(`[WatcherModule] File Added: ${filePath}`);
     try {
-      const fileData = await processSingleFileCallback(filePath, folderPath, ignoreFilter);
+      removeFileCacheEntry(filePath); // Use new function name
+      console.log(`[WatcherModule] Processing 'add' for: ${filePath}`);
+      // processSingleFileCallback (which is processSingleFile) will read fresh and update the cache.
+      const fileData = await processSingleFileCallback(filePath, rootDir, ignoreFilter);
       if (fileData && window && !window.isDestroyed()) {
+        console.log(`[WatcherModule][IPC] Sending 'file-added' for: ${fileData.relativePath}. Data:`, JSON.stringify(fileData));
         window.webContents.send('file-added', fileData);
-        console.log(`[WatcherModule] Sent IPC file-added for: ${fileData.relativePath}`);
+      } else {
+        console.log(`[WatcherModule] 'file-added' event for ${filePath} - no fileData or window invalid.`);
       }
     } catch (error) {
-      console.error('[WatcherModule] Error processing added file:', error);
+      console.error(`[WatcherModule] Error processing added file ${filePath}:`, error);
     }
   });
 
@@ -107,13 +112,18 @@ async function initializeWatcher(
   const debouncedChangeHandler = async (filePath) => {
     console.log(`[WatcherModule] File Changed (debounced): ${filePath}`);
     try {
-      const fileData = await processSingleFileCallback(filePath, folderPath, ignoreFilter);
+      removeFileCacheEntry(filePath); // Use new function name
+      console.log(`[WatcherModule] Processing 'change' for: ${filePath}`);
+      // processSingleFileCallback (which is processSingleFile) will read fresh and update the cache.
+      const fileData = await processSingleFileCallback(filePath, rootDir, ignoreFilter);
       if (fileData && window && !window.isDestroyed()) {
+        console.log(`[WatcherModule][IPC] Sending 'file-updated' for: ${fileData.relativePath}. Data:`, JSON.stringify(fileData));
         window.webContents.send('file-updated', fileData);
-        console.log(`[WatcherModule] Sent IPC file-updated for: ${fileData.relativePath}`);
+      } else {
+        console.log(`[WatcherModule] 'file-updated' event for ${filePath} - no fileData or window invalid.`);
       }
     } catch (error) {
-      console.error('[WatcherModule] Error processing changed file:', error);
+      console.error(`[WatcherModule] Error processing changed file ${filePath}:`, error);
     }
   };
 
@@ -128,22 +138,23 @@ async function initializeWatcher(
   currentWatcher.on('unlink', (filePath) => {
     console.log(`[WatcherModule] File Removed: ${filePath}`);
     try {
+      removeFileCacheEntry(filePath); // Use new function name
       const normalizedPath = normalizePath(filePath);
-      const relativePath = safeRelativePath(folderPath, normalizedPath);
+      const relativePath = safeRelativePath(rootDir, normalizedPath);
+      const eventData = { path: normalizedPath, relativePath: relativePath };
       if (window && !window.isDestroyed() && relativePath) {
-        window.webContents.send('file-removed', {
-          path: normalizedPath,
-          relativePath: relativePath,
-        });
-        console.log(`[WatcherModule] Sent IPC file-removed for: ${relativePath}`);
+        console.log(`[WatcherModule][IPC] Sending 'file-removed' for: ${relativePath}. Data:`, JSON.stringify(eventData));
+        window.webContents.send('file-removed', eventData);
+      } else {
+        console.log(`[WatcherModule] 'file-removed' event for ${filePath} - no relativePath or window invalid.`);
       }
     } catch (error) {
-      console.error('[WatcherModule] Error processing removed file:', error);
+      console.error(`[WatcherModule] Error processing removed file ${filePath}:`, error);
     }
   });
 
   // Logging success (Checklist Item 71)
-  console.log(`[WatcherModule] Watcher started successfully for folder: ${folderPath}`);
+  console.log(`[WatcherModule] Watcher started successfully for folder: ${rootDir}`);
 }
 
 // Exports

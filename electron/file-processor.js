@@ -9,8 +9,6 @@ const path = require('path');
 const os = require('os');
 const { default: PQueue } = require('p-queue');
 
-// Electron modules imports
-const watcher = require('./watcher.js');
 const { binaryExtensions } = require('./excluded-files');
 const {
   normalizePath,
@@ -155,6 +153,7 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
     if (stats.size > MAX_FILE_SIZE) {
       fileData.isSkipped = true;
       fileData.error = 'File too large to process';
+      fileCache.set(normalizePath(fullPath), fileData);
       return fileData;
     }
 
@@ -162,12 +161,18 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
     if (binaryExtensions.includes(ext)) {
       fileData.isBinary = true;
       fileData.fileType = ext.toUpperCase();
+      fileCache.set(normalizePath(fullPath), fileData);
       return fileData;
     }
 
     const content = await fs.promises.readFile(fullPath, 'utf8');
+    console.log(`[FileProcessor][processSingleFile] Read content for: ${fullPath} (Size: ${content.length})`);
     fileData.content = content;
     fileData.tokenCount = countTokens(content);
+
+    // Always update the cache with the latest fileData
+    fileCache.set(normalizePath(fullPath), fileData);
+    console.log(`[FileProcessor][processSingleFile] Updated fileCache for: ${normalizePath(fullPath)}`);
 
     return fileData;
   } catch (err) {
@@ -205,7 +210,6 @@ async function processDirectory({
   ignoreMode = 'automatic',
   fileQueue = null,
 }) {
-  await watcher.shutdownWatcher();
   const fullPath = safePathJoin(dir, dirent.name);
   const relativePath = safeRelativePath(rootDir, fullPath);
 
@@ -228,31 +232,13 @@ async function processDirectory({
   // Determine the appropriate ignore filter based on the ignoreMode
   let filterToUse;
   if (ignoreMode === 'global') {
-    // GLOBAL MODE: Use the pre-configured global ignore filter directly.
-    // This filter includes DEFAULT_PATTERNS, GlobalModeExclusion, and custom global ignores,
-    // all combined by createGlobalIgnoreFilter in main.js.
     filterToUse = ignoreFilter;
   } else {
-    // 'automatic' mode
-    // AUTOMATIC MODE: Create a contextual filter for the current directory.
-    // This combines the parent directory's filter (which includes DEFAULT_PATTERNS and any relevant .gitignore from higher up)
-    // with .gitignore rules from the currentDir.
     filterToUse = createAutomaticIgnoreFilter(rootDir, currentDir, ignoreFilter, ignoreMode);
   }
 
   if (!isPathIgnoredByActiveFilter(fullPath, rootDir, filterToUse)) {
     progress.directories++;
-    // Pass ignoreMode to processSingleFile when setting up watcher
-    const processSingleFileCallback = (filePathCb, rootDirCb, ignoreFilterCb) =>
-      processSingleFile(filePathCb, rootDirCb, ignoreFilterCb, ignoreMode);
-
-    await watcher.initializeWatcher(
-      dir,
-      window,
-      ignoreFilter,
-      systemDefaultFilter,
-      processSingleFileCallback
-    );
     window.webContents.send('file-processing-status', {
       status: 'processing',
       message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
@@ -319,7 +305,6 @@ async function readFilesRecursively(
   // (which is pre-determined by the caller for the initial call, or by a recursive call from processDirectory for sub-directories)
   // and passes them down for consistent ignore rule application.
 
-  await watcher.shutdownWatcher();
   if (!ignoreFilter) {
     throw new Error('readFilesRecursively requires an ignoreFilter parameter');
   }
@@ -369,7 +354,7 @@ async function readFilesRecursively(
           progress,
           currentDir,
           ignoreMode,
-          fileQueue,
+          fileQueue
         })
       );
 
@@ -580,6 +565,22 @@ function clearFileCaches() {
   console.log('Cleared all file caches');
 }
 
+// Function to update a single file in the file cache
+function updateFileCacheEntry(filePath, fileData) {
+  const normPath = normalizePath(filePath);
+  fileCache.set(normPath, fileData);
+  console.log(`[FileProcessor] Updated fileCache for: ${normPath}`);
+}
+
+// Function to remove a single file from the file cache
+function removeFileCacheEntry(filePath) {
+  const normPath = normalizePath(filePath);
+  if (fileCache.has(normPath)) {
+    fileCache.delete(normPath);
+    console.log(`[FileProcessor] Removed from fileCache: ${normPath}`);
+  }
+}
+
 // ======================
 // STATE MANAGEMENT FUNCTIONS
 // ======================
@@ -593,7 +594,7 @@ function stopFileProcessing() {
   console.log('[FileProcessor] Stopped file processing state.');
 }
 
-// Exports for file processing functions
+ // Exports for file processing functions
 module.exports = {
   processSingleFile,
   processDirectory,
@@ -601,6 +602,8 @@ module.exports = {
   isBinaryFile,
   countTokens,
   clearFileCaches,
+  updateFileCacheEntry, // Added for export
+  removeFileCacheEntry, // Renamed and added for export
   startFileProcessing,
   stopFileProcessing,
 };
