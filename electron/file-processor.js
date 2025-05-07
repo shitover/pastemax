@@ -166,13 +166,17 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
     }
 
     const content = await fs.promises.readFile(fullPath, 'utf8');
-    console.log(`[FileProcessor][processSingleFile] Read content for: ${fullPath} (Size: ${content.length})`);
+    console.log(
+      `[FileProcessor][processSingleFile] Read content for: ${fullPath} (Size: ${content.length})`
+    );
     fileData.content = content;
     fileData.tokenCount = countTokens(content);
 
     // Always update the cache with the latest fileData
     fileCache.set(normalizePath(fullPath), fileData);
-    console.log(`[FileProcessor][processSingleFile] Updated fileCache for: ${normalizePath(fullPath)}`);
+    console.log(
+      `[FileProcessor][processSingleFile] Updated fileCache for: ${normalizePath(fullPath)}`
+    );
 
     return fileData;
   } catch (err) {
@@ -354,7 +358,7 @@ async function readFilesRecursively(
           progress,
           currentDir,
           ignoreMode,
-          fileQueue
+          fileQueue,
         })
       );
 
@@ -594,7 +598,7 @@ function stopFileProcessing() {
   console.log('[FileProcessor] Stopped file processing state.');
 }
 
- // Exports for file processing functions
+// Exports for file processing functions
 module.exports = {
   processSingleFile,
   processDirectory,
