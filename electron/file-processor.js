@@ -553,6 +553,19 @@ function clearFileCaches() {
   console.log('Cleared all file caches');
 }
 
+// ======================
+// STATE MANAGEMENT FUNCTIONS
+// ======================
+function startFileProcessing() {
+  isLoadingDirectory = true;
+  console.log('[FileProcessor] Started file processing state.');
+}
+
+function stopFileProcessing() {
+  isLoadingDirectory = false;
+  console.log('[FileProcessor] Stopped file processing state.');
+}
+
 // Exports for file processing functions
 module.exports = {
   processSingleFile,
@@ -561,4 +574,6 @@ module.exports = {
   isBinaryFile,
   countTokens,
   clearFileCaches,
+  startFileProcessing,
+  stopFileProcessing,
 };
