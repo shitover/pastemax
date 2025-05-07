@@ -313,7 +313,11 @@ ipcMain.on('request-file-list', async (event, payload) => {
           size: file.size,
           isDirectory: file.isDirectory,
           extension: path.extname(file.name).toLowerCase(),
-          excluded: shouldExcludeByDefault(file.path, payload.folderPath),
+          excluded: shouldExcludeByDefault(
+            file.path,
+            payload.folderPath,
+            payload.ignoreMode ?? currentIgnoreMode
+          ),
           content: file.content,
           tokenCount: file.tokenCount,
           isBinary: file.isBinary,
