@@ -104,7 +104,6 @@ const GlobalModeExclusion = [
   // .NET related
   'bin/**',
   'obj/**',
-  'obj/**',
   '*.suo',
   '*.user',
 
