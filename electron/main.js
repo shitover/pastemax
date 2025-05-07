@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
-const { GlobalModeExclusion } = require('./excluded-files');
+// GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
@@ -33,6 +33,9 @@ const { normalizePath, ensureAbsolutePath } = require('./utils.js');
 // ======================
 // IGNORE MANAGEMENT
 // ======================
+// Import static pattern arrays directly from their source
+const { DEFAULT_PATTERNS, GlobalModeExclusion } = require('./excluded-files.js');
+// Import ignore logic functions
 const {
   loadGitignore, // for Automatic Mode
   createGlobalIgnoreFilter, // for Global Mode
@@ -154,9 +157,15 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
         // Assuming the intent was to provide a comprehensive list for a "default global" view.
         // For now, sticking to the structure but using GlobalModeExclusion correctly.
         // A more robust fallback might involve DEFAULT_PATTERNS.
+        // For the UI, when no folder is selected, show all patterns that would form a base global ignore set.
+        const effectiveGlobalPatternsNoFolder = [
+          ...DEFAULT_PATTERNS,
+          ...GlobalModeExclusion,
+          ...(customIgnores || []),
+        ];
         return {
           patterns: {
-            global: [...GlobalModeExclusion, ...(customIgnores || [])], // DEFAULT_PATTERNS are implicitly part of createGlobalIgnoreFilter
+            global: effectiveGlobalPatternsNoFolder,
           },
         };
       }
@@ -166,7 +175,14 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
         const normalizedPath = ensureAbsolutePath(folderPath);
 
         if (mode === 'global') {
-          patterns = { global: [...GlobalModeExclusion, ...(customIgnores || [])] };
+          // For UI display consistency, include DEFAULT_PATTERNS here as well.
+          // The actual createGlobalIgnoreFilter used for filtering already includes them.
+          const effectiveGlobalPatternsWithFolder = [
+            ...DEFAULT_PATTERNS,
+            ...GlobalModeExclusion,
+            ...(customIgnores || []),
+          ];
+          patterns = { global: effectiveGlobalPatternsWithFolder };
           const cacheKey = `${normalizedPath}:global:${JSON.stringify(customIgnores?.sort() || [])}`;
           ignoreCache.set(cacheKey, {
             ig: createGlobalIgnoreFilter(customIgnores),
