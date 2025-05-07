@@ -21,10 +21,10 @@ const {
 } = require('./utils');
 
 const {
-  defaultIgnoreFilter, // Pre-compiled default ignore filter
-  shouldIgnorePath, // Utils
-  shouldExcludeByDefault, // Utils
-  createContextualIgnoreFilter, // Utils
+  systemDefaultFilter, // Pre-compiled default ignore filter
+  isPathIgnoredByActiveFilter, // Utils
+  isPathExcludedByDefaults, // Utils
+  createAutomaticIgnoreFilter, // Utils
 } = require('./ignore-manager');
 
 // Configuration constants
@@ -117,7 +117,7 @@ function isBinaryFile(filePath) {
  * based on certain criteria. It likely contains a function `ignores()` that checks if a given file
  * path should be ignored according to predefined rules or filters. If the function returns true for a
  * specific file path, that file
- * @param {string} ignoreMode - The current ignore mode ('automatic' or 'global'). This influences checks like `shouldExcludeByDefault`.
+ * @param {string} ignoreMode - The current ignore mode ('automatic' or 'global'). This influences checks like `isPathExcludedByDefaults`.
  * @returns The `processSingleFile` function returns a Promise that resolves to an object representing
  * data about a single file. The object contains properties such as name, path, relativePath, size,
  * isBinary, isSkipped, content, tokenCount, excludedByDefault, and error (if any). The function
@@ -148,8 +148,8 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
       content: '',
       tokenCount: 0,
       // Determine if the file should be marked as 'excluded by default'.
-      // This check is mode-dependent (e.g., GlobalModeExclusion applies only in 'global' mode via shouldExcludeByDefault).
-      excludedByDefault: shouldExcludeByDefault(fullPath, rootDir, ignoreMode),
+      // This check is mode-dependent (e.g., GlobalModeExclusion applies only in 'global' mode via isPathExcludedByDefaults).
+      excludedByDefault: isPathExcludedByDefaults(fullPath, rootDir, ignoreMode),
     };
 
     if (stats.size > MAX_FILE_SIZE) {
@@ -182,7 +182,7 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
       error: `Error: ${err.message}`,
       content: '',
       tokenCount: 0,
-      excludedByDefault: shouldExcludeByDefault(fullPath, rootDir, ignoreMode),
+      excludedByDefault: isPathExcludedByDefaults(fullPath, rootDir, ignoreMode),
     };
   }
 }
@@ -210,7 +210,7 @@ async function processDirectory({
   const relativePath = safeRelativePath(rootDir, fullPath);
 
   // Early check against default ignore patterns
-  if (defaultIgnoreFilter.ignores(relativePath)) {
+  if (systemDefaultFilter.ignores(relativePath)) {
     console.log('Skipped by default ignore patterns:', relativePath);
     return { results: [], progress };
   }
@@ -237,10 +237,10 @@ async function processDirectory({
     // AUTOMATIC MODE: Create a contextual filter for the current directory.
     // This combines the parent directory's filter (which includes DEFAULT_PATTERNS and any relevant .gitignore from higher up)
     // with .gitignore rules from the currentDir.
-    filterToUse = createContextualIgnoreFilter(rootDir, currentDir, ignoreFilter, ignoreMode);
+    filterToUse = createAutomaticIgnoreFilter(rootDir, currentDir, ignoreFilter, ignoreMode);
   }
 
-  if (!shouldIgnorePath(fullPath, rootDir, filterToUse)) {
+  if (!isPathIgnoredByActiveFilter(fullPath, rootDir, filterToUse)) {
     progress.directories++;
     // Pass ignoreMode to processSingleFile when setting up watcher
     const processSingleFileCallback = (filePathCb, rootDirCb, ignoreFilterCb) =>
@@ -250,7 +250,7 @@ async function processDirectory({
       dir,
       window,
       ignoreFilter,
-      defaultIgnoreFilter,
+      systemDefaultFilter,
       processSingleFileCallback
     );
     window.webContents.send('file-processing-status', {
@@ -411,12 +411,12 @@ async function readFilesRecursively(
           }
 
           // Early check against default ignore patterns
-          if (defaultIgnoreFilter.ignores(relativePath)) {
+          if (systemDefaultFilter.ignores(relativePath)) {
             console.log('Skipped by default ignore patterns:', relativePath);
             return;
           }
 
-          if (shouldIgnorePath(fullPath, rootDir, ignoreFilter)) {
+          if (isPathIgnoredByActiveFilter(fullPath, rootDir, ignoreFilter)) {
             // console.log('Ignored by filter, skipping:', relativePath); // Can be noisy
             return;
           }
