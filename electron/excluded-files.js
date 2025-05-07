@@ -4,7 +4,8 @@
 
 module.exports = {
   // Files to always exclude by default when a folder is first loaded
-  excludedFiles: [
+  // if in Global ignore mode. These supplement DEFAULT_PATTERNS.
+  GlobalModeExclusion: [
     // NPM/Yarn/Node related
     'package-lock.json',
     'yarn.lock',
