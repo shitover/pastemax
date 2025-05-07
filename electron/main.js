@@ -10,7 +10,6 @@ const { excludedFiles } = require('./excluded-files');
 // Configuration constants
 const MAX_DIRECTORY_LOAD_TIME = 300000; // 5 minutes timeout for large repositories
 
-
 // ======================
 // GLOBAL STATE
 // ======================
@@ -26,15 +25,10 @@ let loadingTimeoutId = null;
  */
 let currentProgress = { directories: 0, files: 0 };
 
-
 // ======================
 // PATH UTILITIES
 // ======================
-const {
-  normalizePath,
-  ensureAbsolutePath,
-} = require('./utils.js');
-
+const { normalizePath, ensureAbsolutePath } = require('./utils.js');
 
 // ======================
 // IGNORE MANAGEMENT
@@ -48,12 +42,10 @@ const {
   clearIgnoreCaches, // clear ignore caches
 } = require('./ignore-manager.js');
 
-
 // ======================
 // FILE PROCESSING
 // ======================
-const { readFilesRecursively, clearFileCaches} = require('./file-processor.js');
-
+const { readFilesRecursively, clearFileCaches } = require('./file-processor.js');
 
 // ======================
 // DIRECTORY LOADING MANAGEMENT
