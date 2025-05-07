@@ -230,7 +230,7 @@ async function processDirectory({
 
   if (!shouldIgnorePath(fullPath, rootDir, currentDir, filterToUse, ignoreMode)) {
     progress.directories++;
-    await watcher.initializeWatcher(dir, window, ignoreFilter, defaultIgnoreFilter);
+    await watcher.initializeWatcher(dir, window, ignoreFilter, defaultIgnoreFilter, processSingleFile);
     window.webContents.send('file-processing-status', {
       status: 'processing',
       message: `Scanning directories (${progress.directories} processed)... (Press ESC to cancel)`,
