@@ -544,11 +544,18 @@ async function readFilesRecursively(
     return { results, progress };
 }
 
+function clearFileCaches() {
+  fileCache.clear();
+  fileTypeCache.clear();
+  console.log('Cleared all file caches');
+}
+
 // Exports for file processing functions
 module.exports = {
     processSingleFile,
     processDirectory,
     readFilesRecursively,
     isBinaryFile,
-    countTokens
+    countTokens,
+    clearFileCaches,
 };

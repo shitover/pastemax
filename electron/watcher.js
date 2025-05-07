@@ -1,11 +1,8 @@
 const chokidar = require('chokidar');
-const path = require('path');
-const fs = require('fs');
-const { BrowserWindow } = require('electron');
 const { debounce } = require('lodash');
 
-const { normalizePath, safeRelativePath, ensureAbsolutePath } = require('./utils.js');
-const { processSingleFile } = require('./main.js');
+const { normalizePath, safeRelativePath } = require('./utils.js');
+const { processSingleFile } = require('./file-processor');
 
 let currentWatcher = null;
 let changeDebounceMap = new Map();
@@ -143,4 +140,5 @@ async function initializeWatcher(folderPath, window, ignoreFilter, defaultIgnore
   console.log(`[WatcherModule] Watcher started successfully for folder: ${folderPath}`);
 }
 
+// Exports
 module.exports = { initializeWatcher, shutdownWatcher };
