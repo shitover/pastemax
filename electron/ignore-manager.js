@@ -209,7 +209,7 @@ function shouldIgnorePath(filePath, rootDir, currentDir, ignoreFilter, ignoreMod
 /**
  * Clears all ignore-related caches
  */
-function clearCaches() {
+function clearIgnoreCaches() {
   ignoreCache.clear();
   gitIgnoreFound.clear();
   console.log('Cleared all ignore caches');
@@ -509,5 +509,6 @@ module.exports = {
   createContextualIgnoreFilter, // utils
   shouldIgnorePath, // Utils
   shouldExcludeByDefault, // Utils
-  clearCaches, // clear ignore caches
+  ignoreCache, // Cache for ignore filters
+  clearIgnoreCaches, // clear ignore caches
 };
