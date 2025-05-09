@@ -13,7 +13,6 @@ declare module '*.css' {
   export default content;
 }
 
-
 interface IElectronAPI {
   checkForUpdates: () => Promise<UpdateCheckResultFromMain>;
   send: (channel: string, data: any) => void;

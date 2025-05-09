@@ -119,7 +119,7 @@ ipcMain.handle('check-for-updates', async (event) => {
   console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
   try {
     const updateStatus = await checkForUpdates();
-    console.log("Main Process: checkForUpdates result:", updateStatus);
+    console.log('Main Process: checkForUpdates result:', updateStatus);
     // Attach debug info if present
     if (updateStatus && updateStatus.debugLogs) {
       return updateStatus;

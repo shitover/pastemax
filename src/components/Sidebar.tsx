@@ -329,7 +329,6 @@ const Sidebar = ({
     ));
   }, [visibleTree, selectedFiles, toggleFileSelection, toggleFolderSelection, toggleExpanded]);
 
-
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
       <div className="sidebar-header">
@@ -380,7 +379,6 @@ const Sidebar = ({
         onMouseDown={handleResizeStart}
         title="Drag to resize sidebar"
       ></div>
-
     </div>
   );
 };

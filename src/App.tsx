@@ -846,13 +846,13 @@ const App = (): JSX.Element => {
     try {
       console.log("Renderer: Invoking 'check-for-updates'");
       const result = await window.electron.ipcRenderer.invoke('check-for-updates');
-      console.log("Renderer: IPC invoke result:", result);
+      console.log('Renderer: IPC invoke result:', result);
       setUpdateStatus({
         ...result,
         isLoading: false,
       });
     } catch (error: any) {
-      console.error("Renderer: IPC invoke error:", error);
+      console.error('Renderer: IPC invoke error:', error);
       setUpdateStatus({
         isLoading: false,
         isUpdateAvailable: false,
@@ -913,7 +913,13 @@ const App = (): JSX.Element => {
                 className="header-action-btn check-updates-button"
                 title="Check for application updates"
                 onClick={handleCheckForUpdates}
-                style={{ marginLeft: 8, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  marginLeft: 8,
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <DownloadCloud size={16} />
               </button>

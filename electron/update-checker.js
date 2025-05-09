@@ -5,7 +5,6 @@ const https = require('https');
 const { app } = require('electron');
 const semver = require('semver');
 
-
 /**
  * Checks for available updates by comparing current version with latest GitHub release.
  * Uses semver for robust version comparison.
@@ -29,8 +28,8 @@ async function checkForUpdates() {
       path: GITHUB_API_PATH,
       method: 'GET',
       headers: {
-        'User-Agent': USER_AGENT
-      }
+        'User-Agent': USER_AGENT,
+      },
     };
 
     const { latestVersionFromApi, releaseUrlFromApi } = await new Promise((resolve, reject) => {
@@ -43,7 +42,7 @@ async function checkForUpdates() {
 
         let rawData = '';
         res.setEncoding('utf8');
-        
+
         res.on('data', (chunk) => {
           rawData += chunk;
         });
@@ -57,10 +56,10 @@ async function checkForUpdates() {
               reject(new Error('GitHub response missing required fields'));
               return;
             }
-            
+
             resolve({
               latestVersionFromApi: response.tag_name,
-              releaseUrlFromApi: response.html_url
+              releaseUrlFromApi: response.html_url,
             });
           } catch (error) {
             reject(new Error(`Failed to parse GitHub response: ${error.message}`));
@@ -81,18 +80,25 @@ async function checkForUpdates() {
 
     // Robust version comparison using semver
     debugLogs.push(
-      'Current version (clean): ' + cleanCurrentVersion + ' semver.valid: ' + semver.valid(cleanCurrentVersion)
+      'Current version (clean): ' +
+        cleanCurrentVersion +
+        ' semver.valid: ' +
+        semver.valid(cleanCurrentVersion)
     );
     debugLogs.push(
-      'Latest version (clean): ' + cleanLatestVersion + ' semver.valid: ' + semver.valid(cleanLatestVersion)
+      'Latest version (clean): ' +
+        cleanLatestVersion +
+        ' semver.valid: ' +
+        semver.valid(cleanLatestVersion)
     );
     debugLogs.push(
       'semver.gt(latest, current): ' + semver.gt(cleanLatestVersion, cleanCurrentVersion)
     );
 
-    const isUpdateAvailable = semver.valid(cleanLatestVersion) &&
-                              semver.valid(cleanCurrentVersion) &&
-                              semver.gt(cleanLatestVersion, cleanCurrentVersion);
+    const isUpdateAvailable =
+      semver.valid(cleanLatestVersion) &&
+      semver.valid(cleanCurrentVersion) &&
+      semver.gt(cleanLatestVersion, cleanCurrentVersion);
 
     return {
       isUpdateAvailable,
@@ -100,7 +106,7 @@ async function checkForUpdates() {
       latestVersion: cleanLatestVersion,
       releaseUrl: releaseUrlFromApi,
       error: null,
-      debugLogs: debugLogs.join('\n')
+      debugLogs: debugLogs.join('\n'),
     };
   } catch (error) {
     debugLogs.push('Update check failed: ' + error.message);
@@ -110,7 +116,7 @@ async function checkForUpdates() {
       latestVersion: null,
       releaseUrl: null,
       error: error.message,
-      debugLogs: debugLogs.join('\n')
+      debugLogs: debugLogs.join('\n'),
     };
   }
 }

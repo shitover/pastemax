@@ -1567,11 +1567,18 @@ input[type='checkbox'][disabled] {
   border: var(--standard-border);
   border-radius: 6px;
   position: relative;
-  /*Forabsolutepositioningofactions*/transition:    transform 0.2s ease,    box-shadow 0.2s ease,    border-color 0.2s ease,    background-color 0.2s ease;
+  /*Forabsolutepositioningofactions*/
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
   height: 80px;
-  /*Fixedheightforconsistency*/background-color: var(--background-primary);
+  /*Fixedheightforconsistency*/
+  background-color: var(--background-primary);
   overflow: hidden;
-  /*Preventcontentspillover*/animation: scaleIn 0.3s ease-out;
+  /*Preventcontentspillover*/
+  animation: scaleIn 0.3s ease-out;
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
   -ms-border-radius: 6px;
@@ -2741,14 +2748,22 @@ button:hover svg.lucide {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   width: 80%;
-  /*Adjustasneeded*/max-width: 1000px;
-  /*Maxwidth*/max-height: 80vh;
-  /*Maxheight,viewportrelative*/display: flex;
+  /*Adjustasneeded*/
+  max-width: 1000px;
+  /*Maxwidth*/
+  max-height: 80vh;
+  /*Maxheight,viewportrelative*/
+  display: flex;
   flex-direction: column;
   animation: scaleIn 0.25s ease-out;
-  /*Scaleinanimation*/transform-origin: center;
-  /*Scalefromcenter*/will-change: transform, opacity;
-  /*Optimizationforanimations*/transition:    transform 0.2s ease,    opacity 0.2s ease;
+  /*Scaleinanimation*/
+  transform-origin: center;
+  /*Scalefromcenter*/
+  will-change: transform, opacity;
+  /*Optimizationforanimations*/
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   -webkit-border-radius: 8px;
   -moz-border-radius: 8px;
   -ms-border-radius: 8px;
@@ -2890,7 +2905,7 @@ button:hover svg.lucide {
 .update-modal-content {
   background-color: var(--background-primary);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   border: var(--standard-border);
   width: 95%;
   max-width: 450px;
@@ -3023,4 +3038,3 @@ button:hover svg.lucide {
 .update-modal-body > * {
   margin-bottom: 10px;
 }
-

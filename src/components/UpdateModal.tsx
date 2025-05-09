@@ -47,7 +47,9 @@ const checkForUpdates = async (): Promise<UpdateDisplayState> => {
 };
 
 const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: UpdateModalProps) => {
-  const [updateStatus, setUpdateStatus] = useState(externalUpdateStatus as UpdateDisplayState | null);
+  const [updateStatus, setUpdateStatus] = useState(
+    externalUpdateStatus as UpdateDisplayState | null
+  );
   const [isChecking, setIsChecking] = useState(false);
 
   // Sync with external updateStatus prop
@@ -57,7 +59,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
 
   const handleDownloadUpdate = useCallback(() => {
     if (updateStatus?.releaseUrl) {
-      window.open(updateStatus.releaseUrl, "_blank");
+      window.open(updateStatus.releaseUrl, '_blank');
     }
   }, [updateStatus]);
 
@@ -98,24 +100,28 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
             <p className="update-message">Checking for updates...</p>
           ) : updateStatus.error ? (
             <>
-              <p className="update-message update-message-error">
-                Error: {updateStatus.error}
-              </p>
+              <p className="update-message update-message-error">Error: {updateStatus.error}</p>
               {updateStatus.debugLogs && (
                 <details style={{ marginTop: 8 }}>
-                  <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}>
+                  <summary
+                    style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}
+                  >
                     Show debug logs
                   </summary>
-                  <pre style={{
-                    fontSize: 12,
-                    background: 'var(--background-tertiary)',
-                    color: 'var(--text-secondary)',
-                    padding: 8,
-                    borderRadius: 8,
-                    marginTop: 6,
-                    maxHeight: 180,
-                    overflow: 'auto'
-                  }}>{updateStatus.debugLogs}</pre>
+                  <pre
+                    style={{
+                      fontSize: 12,
+                      background: 'var(--background-tertiary)',
+                      color: 'var(--text-secondary)',
+                      padding: 8,
+                      borderRadius: 8,
+                      marginTop: 6,
+                      maxHeight: 180,
+                      overflow: 'auto',
+                    }}
+                  >
+                    {updateStatus.debugLogs}
+                  </pre>
                 </details>
               )}
               <button
@@ -131,10 +137,12 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
           ) : updateStatus.isUpdateAvailable ? (
             <div>
               <p className="update-message update-message-success">
-                New version available: <span className="update-version">{updateStatus.latestVersion}</span>
+                New version available:{' '}
+                <span className="update-version">{updateStatus.latestVersion}</span>
               </p>
               <p className="update-message">
-                Current version: <span className="update-version">{updateStatus.currentVersion}</span>
+                Current version:{' '}
+                <span className="update-version">{updateStatus.currentVersion}</span>
               </p>
               <button
                 className="check-updates-button"
