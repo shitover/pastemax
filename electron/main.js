@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electro
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
-const { checkForUpdates } = require('./update-checker');
+const { getUpdateStatus, resetUpdateSessionState } = require('./update-manager');
 // GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
@@ -118,12 +118,8 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 ipcMain.handle('check-for-updates', async (event) => {
   console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
   try {
-    const updateStatus = await checkForUpdates();
-    console.log('Main Process: checkForUpdates result:', updateStatus);
-    // Attach debug info if present
-    if (updateStatus && updateStatus.debugLogs) {
-      return updateStatus;
-    }
+    const updateStatus = await getUpdateStatus();
+    console.log('Main Process: getUpdateStatus result:', updateStatus);
     return updateStatus;
   } catch (error) {
     console.error('Main Process: IPC Error in check-for-updates:', error);
@@ -484,6 +480,10 @@ function createWindow() {
 
   app.on('before-quit', async () => {
     await watcher.shutdownWatcher();
+  });
+
+  app.on('will-quit', () => {
+    resetUpdateSessionState();
   });
 
   app.on('window-all-closed', async () => {

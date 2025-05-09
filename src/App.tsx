@@ -837,22 +837,31 @@ const App = (): JSX.Element => {
   // ============================== Update Modal State ==============================
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
+  const initialUpdateCheckAttemptedRef = useRef(false);
 
   // Handler for checking updates
   const handleCheckForUpdates = useCallback(async () => {
-    console.log("Renderer: 'Check for Updates' button clicked, handleCheckForUpdates CALLED.");
     setIsUpdateModalOpen(true);
-    setUpdateStatus({ isLoading: true, isUpdateAvailable: false, currentVersion: '' });
+
+    // Only fetch if not already checked this session or if updateStatus is null/loading
+    if (updateStatus && !updateStatus.isLoading && initialUpdateCheckAttemptedRef.current) {
+      console.log('Renderer: Modal opened, update status already exists. Not re-invoking IPC.');
+      return;
+    }
+
+    setUpdateStatus((prevStatus: UpdateDisplayState | null) => ({
+      ...(prevStatus || { currentVersion: '', isUpdateAvailable: false }),
+      isLoading: true,
+    }));
+
     try {
-      console.log("Renderer: Invoking 'check-for-updates'");
       const result = await window.electron.ipcRenderer.invoke('check-for-updates');
-      console.log('Renderer: IPC invoke result:', result);
       setUpdateStatus({
         ...result,
         isLoading: false,
       });
+      initialUpdateCheckAttemptedRef.current = true;
     } catch (error: any) {
-      console.error('Renderer: IPC invoke error:', error);
       setUpdateStatus({
         isLoading: false,
         isUpdateAvailable: false,
@@ -860,8 +869,9 @@ const App = (): JSX.Element => {
         error: error?.message || 'Unknown error during IPC invoke',
         debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
       });
+      initialUpdateCheckAttemptedRef.current = true;
     }
-  }, []);
+  }, [updateStatus]);
 
   /* ===================================================================== */
   /* ============================== RENDER =============================== */

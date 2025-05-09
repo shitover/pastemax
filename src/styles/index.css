@@ -589,7 +589,7 @@ input[type='checkbox'][disabled] {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
-  padding: var(--space-sm) var (--space-lg);
+  padding: var(--space-sm) var(--space-lg);
 }
 
 .sidebar-folder-path {
@@ -3036,5 +3036,5 @@ button:hover svg.lucide {
 
 /* Ensure consistent vertical spacing in update modal */
 .update-modal-body > * {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }

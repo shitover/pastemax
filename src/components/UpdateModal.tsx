@@ -50,12 +50,21 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
   const [updateStatus, setUpdateStatus] = useState(
     externalUpdateStatus as UpdateDisplayState | null
   );
-  const [isChecking, setIsChecking] = useState(false);
   const [isRetryOnCooldown, setIsRetryOnCooldown] = useState(false);
+  const [sessionRetryAttempts, setSessionRetryAttempts] = useState(0);
+  const MAX_BUTTON_CLICKS_PER_MODAL_SESSION = 2;
 
   // Sync with external updateStatus prop
   React.useEffect(() => {
     setUpdateStatus(externalUpdateStatus);
+    if (externalUpdateStatus && !externalUpdateStatus.isLoading) {
+      if (
+        !externalUpdateStatus.error ||
+        externalUpdateStatus.error?.includes('Maximum update check attempts')
+      ) {
+        setSessionRetryAttempts(0);
+      }
+    }
   }, [externalUpdateStatus]);
 
   const handleDownloadUpdate = useCallback(() => {
@@ -65,30 +74,46 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
   }, [updateStatus]);
 
   const handleRecheck = useCallback(async () => {
-    if (isRetryOnCooldown) return;
+    if (isRetryOnCooldown || (updateStatus?.isLoading ?? false)) return;
+    if (
+      sessionRetryAttempts >= MAX_BUTTON_CLICKS_PER_MODAL_SESSION &&
+      updateStatus?.error &&
+      !updateStatus.error.includes('Maximum update check attempts')
+    ) {
+      return;
+    }
 
-    setIsChecking(true);
     setIsRetryOnCooldown(true);
+    setSessionRetryAttempts((prev: number) => prev + 1);
 
-    setUpdateStatus((prevStatus: UpdateDisplayState | null) => ({
-      ...(prevStatus || { currentVersion: '', isUpdateAvailable: false }),
-      isLoading: true,
-      isUpdateAvailable: false,
-      error: undefined,
-      latestVersion: undefined,
-      releaseUrl: undefined,
-      debugLogs: undefined,
-    }));
+    setUpdateStatus(
+      (prev: UpdateDisplayState | null): UpdateDisplayState => ({
+        ...(prev || { currentVersion: '', isUpdateAvailable: false }),
+        isLoading: true,
+        error: undefined,
+      })
+    );
 
     const result = await checkForUpdates();
     setUpdateStatus(result);
-    setIsChecking(false);
 
-    const cooldownDuration = result.error?.includes('403') ? 60000 : 10000;
+    const cooldownDuration = result.error?.includes('403') ? 60000 : result.error ? 10000 : 1000;
     setTimeout(() => {
       setIsRetryOnCooldown(false);
     }, cooldownDuration);
-  }, [isRetryOnCooldown]);
+  }, [isRetryOnCooldown, updateStatus, sessionRetryAttempts]);
+
+  const retryButtonDisabled =
+    (updateStatus?.isLoading ?? false) ||
+    isRetryOnCooldown ||
+    updateStatus?.error?.includes('Maximum update check attempts reached');
+
+  const retryButtonText = updateStatus?.error?.includes('Maximum update check attempts reached')
+    ? 'Restart to Check'
+    : 'Retry';
+  const recheckButtonText = updateStatus?.error?.includes('Maximum update check attempts reached')
+    ? 'Restart to Check'
+    : 'Re-check';
 
   if (!isOpen) {
     return null;
@@ -111,7 +136,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
         <div className="update-modal-body">
           {!updateStatus ? (
             <p className="update-message">Loading update status...</p>
-          ) : updateStatus.isLoading || isChecking ? (
+          ) : updateStatus.isLoading ? (
             <p className="update-message">Checking for updates...</p>
           ) : updateStatus.error ? (
             <>
@@ -139,15 +164,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
                   </pre>
                 </details>
               )}
-              <button
-                className="check-updates-button"
-                type="button"
-                tabIndex={0}
-                onClick={handleRecheck}
-                disabled={isChecking || isRetryOnCooldown || updateStatus?.isLoading}
-              >
-                Retry
-              </button>
+              {/* Retry button removed */}
             </>
           ) : updateStatus.isUpdateAvailable ? (
             <div>
@@ -173,15 +190,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
               <p className="update-message update-message-success">
                 You're up to date with version {updateStatus.currentVersion}
               </p>
-              <button
-                className="check-updates-button"
-                type="button"
-                tabIndex={0}
-                onClick={handleRecheck}
-                disabled={isChecking || isRetryOnCooldown || updateStatus?.isLoading}
-              >
-                Re-check
-              </button>
+              {/* Re-check button removed */}
             </>
           )}
         </div>
