@@ -3024,6 +3024,7 @@ button:hover svg.lucide {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 1px;
 }
 
 .check-updates-button:hover {
@@ -3037,4 +3038,17 @@ button:hover svg.lucide {
 /* Ensure consistent vertical spacing in update modal */
 .update-modal-body > * {
   margin-bottom: 14px;
+}
+
+.dark-mode, .update-modal-overlay, .update-modal-header, .update-modal-content, .update-modal-body {
+  border-color: var(--border-color);
+}
+
+.dark-mode .check-updates-button:hover {
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
+  color: var(--text-primary);
+  transition:
+    all 0.2s var(--animation-curve),
+    background-color 0.3s ease;
 }
