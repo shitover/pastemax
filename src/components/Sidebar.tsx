@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SidebarProps, TreeNode } from '../types/FileTypes';
-import { UpdateDisplayState } from '../types/UpdateTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
-import UpdateModal from './UpdateModal';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -331,14 +329,6 @@ const Sidebar = ({
     ));
   }, [visibleTree, selectedFiles, toggleFileSelection, toggleFolderSelection, toggleExpanded]);
 
-  // --- Update Modal State and Handler ---
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
-
-  const handleCheckForUpdates = useCallback(() => {
-    setIsUpdateModalOpen(true);
-    // Optionally, trigger update check logic here if needed
-  }, []);
 
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
@@ -370,13 +360,6 @@ const Sidebar = ({
         >
           Deselect All
         </button>
-        <button
-          className="sidebar-action-btn check-updates-button"
-          title="Check for application updates"
-          onClick={handleCheckForUpdates}
-        >
-          Check for Updates
-        </button>
       </div>
 
       {allFiles.length > 0 ? (
@@ -398,11 +381,6 @@ const Sidebar = ({
         title="Drag to resize sidebar"
       ></div>
 
-      <UpdateModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        updateStatus={updateStatus}
-      />
     </div>
   );
 };

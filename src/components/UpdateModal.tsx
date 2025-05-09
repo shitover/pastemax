@@ -4,7 +4,7 @@ import type { UpdateDisplayState } from '../types/UpdateTypes';
 interface UpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  updateStatus: UpdateDisplayState;
+  updateStatus: UpdateDisplayState | null;
 }
 
 const UpdateModal = ({ isOpen, onClose, updateStatus }: UpdateModalProps) => {
@@ -19,8 +19,9 @@ const UpdateModal = ({ isOpen, onClose, updateStatus }: UpdateModalProps) => {
           &times;
         </button>
         <h4>Update Status</h4>
-        
-        {updateStatus.isLoading ? (
+        {!updateStatus ? (
+          <p>Loading update status...</p>
+        ) : updateStatus.isLoading ? (
           <p>Checking for updates...</p>
         ) : updateStatus.error ? (
           <p className="update-error">Error: {updateStatus.error}</p>
