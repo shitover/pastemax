@@ -1,7 +1,7 @@
 // ======================
 // IMPORTS AND CONSTANTS
 // ======================
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
@@ -455,6 +455,25 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
     },
+  });
+
+  // Open external links in user's default browser
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      if (mainWindow.webContents.getURL() !== url) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    }
+  });
+
+  // Handle requests to open a new window (e.g., target="_blank")
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
   });
 
   // Set up window event handlers
