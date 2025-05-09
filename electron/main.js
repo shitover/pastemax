@@ -1,10 +1,11 @@
 // ======================
 // IMPORTS AND CONSTANTS
 // ======================
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
+const { getUpdateStatus, resetUpdateSessionState } = require('./update-manager');
 // GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
@@ -114,6 +115,23 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // ======================
 // IPC HANDLERS
 // ======================
+ipcMain.handle('check-for-updates', async (event) => {
+  console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
+  try {
+    const updateStatus = await getUpdateStatus();
+    console.log('Main Process: getUpdateStatus result:', updateStatus);
+    return updateStatus;
+  } catch (error) {
+    console.error('Main Process: IPC Error in check-for-updates:', error);
+    return {
+      isUpdateAvailable: false,
+      currentVersion: app.getVersion(),
+      error: error.message || 'An IPC error occurred while processing the update check.',
+      debugLogs: error.stack || null,
+    };
+  }
+});
+
 ipcMain.on('clear-main-cache', () => {
   console.log('Clearing main process caches');
   clearIgnoreCaches();
@@ -435,6 +453,25 @@ function createWindow() {
     },
   });
 
+  // Open external links in user's default browser
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      if (mainWindow.webContents.getURL() !== url) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    }
+  });
+
+  // Handle requests to open a new window (e.g., target="_blank")
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+
   // Set up window event handlers
   mainWindow.on('closed', async () => {
     await watcher.shutdownWatcher();
@@ -443,6 +480,10 @@ function createWindow() {
 
   app.on('before-quit', async () => {
     await watcher.shutdownWatcher();
+  });
+
+  app.on('will-quit', () => {
+    resetUpdateSessionState();
   });
 
   app.on('window-all-closed', async () => {

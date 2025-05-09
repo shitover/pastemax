@@ -35,6 +35,12 @@ function ensureSerializable(data) {
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electron', {
+  /**
+   * Invokes the main process to check for application updates.
+   * @returns {Promise<object>} A promise that resolves to an object containing update status.
+   * Expected format: { isUpdateAvailable: boolean, currentVersion: string, latestVersion?: string, releaseUrl?: string, error?: string }
+   */
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   send: (channel, data) => {
     // whitelist channels
     const validChannels = [
@@ -100,9 +106,9 @@ contextBridge.exposeInMainWorld('electron', {
         ipcRenderer.removeListener(channel, (event, ...args) => func(...args));
       }
     },
+    // PATCH: Allow invoke for 'check-for-updates' as well as 'get-ignore-patterns'
     invoke: (channel, data) => {
-      // whitelist channels
-      const validChannels = ['get-ignore-patterns'];
+      const validChannels = ['get-ignore-patterns', 'check-for-updates'];
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
       }

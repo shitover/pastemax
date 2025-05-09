@@ -7,9 +7,11 @@ import { FileData, IgnoreMode } from './types/FileTypes';
 import { ThemeProvider } from './context/ThemeContext';
 import IgnorePatternsViewer from './components/IgnorePatternsViewer';
 import ThemeToggle from './components/ThemeToggle';
+import UpdateModal from './components/UpdateModal';
 import ViewIgnoresButton from './components/ViewIgnoresButton';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
+import { DownloadCloud } from 'lucide-react';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -23,6 +25,7 @@ import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
  * via the languageUtils module internally.
  */
 import { formatContentForCopying } from './utils/contentFormatUtils';
+import type { UpdateDisplayState } from './types/UpdateTypes';
 
 /* ============================== GLOBAL DECLARATIONS ============================== */
 // Access the electron API from the window object
@@ -63,6 +66,7 @@ const STORAGE_KEYS = {
  * - File content copying
  * - UI state management
  */
+
 const App = (): JSX.Element => {
   /* ============================== STATE: Load initial state from localStorage ============================== */
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
@@ -830,6 +834,45 @@ const App = (): JSX.Element => {
     });
   };
 
+  // ============================== Update Modal State ==============================
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
+  const initialUpdateCheckAttemptedRef = useRef(false);
+
+  // Handler for checking updates
+  const handleCheckForUpdates = useCallback(async () => {
+    setIsUpdateModalOpen(true);
+
+    // Only fetch if not already checked this session or if updateStatus is null/loading
+    if (updateStatus && !updateStatus.isLoading && initialUpdateCheckAttemptedRef.current) {
+      console.log('Renderer: Modal opened, update status already exists. Not re-invoking IPC.');
+      return;
+    }
+
+    setUpdateStatus((prevStatus: UpdateDisplayState | null) => ({
+      ...(prevStatus || { currentVersion: '', isUpdateAvailable: false }),
+      isLoading: true,
+    }));
+
+    try {
+      const result = await window.electron.ipcRenderer.invoke('check-for-updates');
+      setUpdateStatus({
+        ...result,
+        isLoading: false,
+      });
+      initialUpdateCheckAttemptedRef.current = true;
+    } catch (error: any) {
+      setUpdateStatus({
+        isLoading: false,
+        isUpdateAvailable: false,
+        currentVersion: '',
+        error: error?.message || 'Unknown error during IPC invoke',
+        debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
+      });
+      initialUpdateCheckAttemptedRef.current = true;
+    }
+  }, [updateStatus]);
+
   /* ===================================================================== */
   /* ============================== RENDER =============================== */
   /* ===================================================================== */
@@ -864,15 +907,10 @@ const App = (): JSX.Element => {
                 Clear All
               </button>
               <button
-                className="refresh-list-btn" // Add a new class for styling
+                className="refresh-list-btn"
                 onClick={() => {
                   if (selectedFolder) {
-                    // Only refresh if a folder is selected
-                    console.log('[Refresh Button] Clicked, selectedFolder:', selectedFolder);
-                    // DO NOT setProcessingStatus here. Let the useEffect handle it.
                     setReloadTrigger((prev: number) => prev + 1);
-                  } else {
-                    console.log('[Refresh Button] Clicked, but no folder selected.');
                   }
                 }}
                 disabled={processingStatus.status === 'processing' || !selectedFolder}
@@ -881,6 +919,20 @@ const App = (): JSX.Element => {
                 Refresh
               </button>
               <ViewIgnoresButton onClick={handleViewIgnorePatterns} />
+              <button
+                className="header-action-btn check-updates-button"
+                title="Check for application updates"
+                onClick={handleCheckForUpdates}
+                style={{
+                  marginLeft: 8,
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <DownloadCloud size={16} />
+              </button>
             </div>
           </div>
         </header>
@@ -1025,6 +1077,11 @@ const App = (): JSX.Element => {
           selectedFolder={selectedFolder}
           isElectron={isElectron}
           ignoreSettingsModified={ignoreSettingsModified}
+        />
+        <UpdateModal
+          isOpen={isUpdateModalOpen}
+          onClose={() => setIsUpdateModalOpen(false)}
+          updateStatus={updateStatus}
         />
       </div>
     </ThemeProvider>

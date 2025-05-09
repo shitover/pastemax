@@ -1,3 +1,22 @@
+## [1.0.4] - 2025-05-09
+
+### Added
+
+- **Update Checker Feature:**
+  - Introduced an in-app Update Checker accessible from the main UI.
+  - Added `UpdateModal` React component for update status and Github release download links.
+  - Implemented backend GitHub release integration (`electron/update-checker.js`).
+  - Added session-based caching in `electron/update-manager.js` to prevent repeated API calls.
+  - IPC integration for renderer/main process communication.
+
+### Fixed
+
+- **Update Checker Robustness:**
+  - Prevented repeated GitHub API calls by caching update results for the session.
+  - Removed retry/re-check buttons from the modal to avoid rate limiting and UI confusion.
+  - Ensured update status is consistent and only one API call is made per session.
+  - Fixed TypeScript type error in update modal state logic.
+
 ## [1.0.3] - 2025-05-09
 
 ### Fixed
