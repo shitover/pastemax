@@ -116,8 +116,8 @@
 ## Phase 3: Frontend Implementation (React/TypeScript - `src/`)
 
 ### Story 3.1: Define TypeScript Types for the Update Feature
-- [ ] Open `src/declarations.d.ts` (or the project's designated global TypeScript definitions file).
-- [ ] Define and export an interface `UpdateCheckResultFromMain`:
+- [x] Open `src/declarations.d.ts` (or the project's designated global TypeScript definitions file).
+- [x] Define and export an interface `UpdateCheckResultFromMain`:
     ```typescript
     export interface UpdateCheckResultFromMain {
       isUpdateAvailable: boolean; // Note: backend always provides this
@@ -127,24 +127,24 @@
       error?: string;
     }
     ```
-- [ ] Define and export an interface `UpdateDisplayState` for the frontend component's state:
+- [x] Define and export an interface `UpdateDisplayState` for the frontend component's state:
     ```typescript
     export interface UpdateDisplayState extends UpdateCheckResultFromMain {
       isLoading: boolean; // Frontend specific state
     }
     ```
-- [ ] Locate or define the `IElectronAPI` interface.
-- [ ] Add the `checkForUpdates` method signature to `IElectronAPI`:
+- [x] Locate or define the `IElectronAPI` interface.
+- [x] Add the `checkForUpdates` method signature to `IElectronAPI`:
     ```typescript
     checkForUpdates: () => Promise<UpdateCheckResultFromMain>;
     ```
-- [ ] Ensure the `Window` interface in `declare global { ... }` includes `electronAPI: IElectronAPI;`.
+- [x] Ensure the `Window` interface in `declare global { ... }` includes `electronAPI: IElectronAPI;`.
 
 ### Story 3.2: Create `UpdateModal.tsx` Component Structure
-- [ ] Create the file `src/components/UpdateModal.tsx`.
-- [ ] In `UpdateModal.tsx`, import `React`: `import React from 'react';`.
-- [ ] Import the `UpdateDisplayState` type: `import { UpdateDisplayState } from '../declarations'; // Adjust path as needed`.
-- [ ] Define the props interface for the `UpdateModal` component:
+- [x] Create the file `src/components/UpdateModal.tsx`.
+- [x] In `UpdateModal.tsx`, import `React`: `import React from 'react';`.
+- [x] Import the `UpdateDisplayState` type: `import { UpdateDisplayState } from '../declarations'; // Adjust path as needed`.
+- [x] Define the props interface for the `UpdateModal` component:
     ```typescript
     interface UpdateModalProps {
       isOpen: boolean;
@@ -152,10 +152,10 @@
       updateStatus: UpdateDisplayState;
     }
     ```
-- [ ] Create the functional component `UpdateModal`: `const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose, updateStatus }) => { /* ... */ };`.
-- [ ] Add the export statement: `export default UpdateModal;`.
-- [ ] Implement the conditional rendering: `if (!isOpen) { return null; }`.
-- [ ] Return the basic modal JSX structure:
+- [x] Create the functional component `UpdateModal`: `const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose, updateStatus }) => { /* ... */ };`.
+- [x] Add the export statement: `export default UpdateModal;`.
+- [x] Implement the conditional rendering: `if (!isOpen) { return null; }`.
+- [x] Return the basic modal JSX structure:
     ```tsx
     return (
       <div className="update-modal-overlay">
@@ -168,18 +168,18 @@
     ```
 
 ### Story 3.3: Implement Dynamic Content Rendering in `UpdateModal.tsx`
-- [ ] Inside `UpdateModal.tsx`, within the `update-modal-content` div, add a section for the title: `<h4>Update Status</h4>`.
-- [ ] Implement conditional rendering for `updateStatus.isLoading`:
+- [x] Inside `UpdateModal.tsx`, within the `update-modal-content` div, add a section for the title: `<h4>Update Status</h4>`.
+- [x] Implement conditional rendering for `updateStatus.isLoading`:
     ```tsx
     {updateStatus.isLoading && <p>Checking for updates...</p>}
     ```
-- [ ] Implement conditional rendering for `updateStatus.error` (only if not loading):
+- [x] Implement conditional rendering for `updateStatus.error` (only if not loading):
     ```tsx
     {!updateStatus.isLoading && updateStatus.error && (
       <p className="update-error">Error: {updateStatus.error}</p>
     )}
     ```
-- [ ] Implement conditional rendering for `updateStatus.isUpdateAvailable === true` (only if not loading and no error):
+- [x] Implement conditional rendering for `updateStatus.isUpdateAvailable === true` (only if not loading and no error):
     ```tsx
     {!updateStatus.isLoading && !updateStatus.error && updateStatus.isUpdateAvailable && (
       <div>
@@ -195,7 +195,7 @@
       </div>
     )}
     ```
-- [ ] Implement conditional rendering for `updateStatus.isUpdateAvailable === false` (only if not loading and no error):
+- [x] Implement conditional rendering for `updateStatus.isUpdateAvailable === false` (only if not loading and no error):
     ```tsx
     {!updateStatus.isLoading && !updateStatus.error && !updateStatus.isUpdateAvailable && (
       <p>You are using the latest version ({updateStatus.currentVersion}).</p>
@@ -203,12 +203,12 @@
     ```
 
 ### Story 3.4: Integrate "Check for Updates" Button and Logic (e.g., in `Sidebar.tsx`)
-- [ ] Open the chosen component file for the button (e.g., `src/components/Sidebar.tsx`).
-- [ ] Import `React` and `useState`: `import React, { useState } from 'react';`.
-- [ ] Import the `UpdateModal` component: `import UpdateModal from './UpdateModal'; // Adjust path`.
-- [ ] Import the `UpdateDisplayState` type: `import { UpdateDisplayState } from '../declarations'; // Adjust path`.
-- [ ] Add state for modal visibility: `const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);`.
-- [ ] Add state for update status, initializing `isLoading` to `false` and other fields as undefined or default:
+- [x] Open the chosen component file for the button (e.g., `src/components/Sidebar.tsx`).
+- [x] Import `React` and `useState`: `import React, { useState } from 'react';`.
+- [x] Import the `UpdateModal` component: `import UpdateModal from './UpdateModal'; // Adjust path`.
+- [x] Import the `UpdateDisplayState` type: `import { UpdateDisplayState } from '../declarations'; // Adjust path`.
+- [x] Add state for modal visibility: `const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);`.
+- [x] Add state for update status, initializing `isLoading` to `false` and other fields as undefined or default:
     ```typescript
     const [updateStatus, setUpdateStatus] = useState<UpdateDisplayState>({
       isLoading: false,
@@ -216,11 +216,11 @@
       currentVersion: 'N/A',   // Default
     });
     ```
-- [ ] Create an asynchronous function `handleCheckForUpdates`: `const handleCheckForUpdates = async () => { /* ... */ };`.
-- [ ] Inside `handleCheckForUpdates`:
-    - [ ] `setIsUpdateModalOpen(true);`
-    - [ ] `setUpdateStatus(prev => ({ ...prev, isLoading: true, error: undefined })); // Clear previous error`
-    - [ ] Wrap the API call in `try...catch (error: any)`:
+- [x] Create an asynchronous function `handleCheckForUpdates`: `const handleCheckForUpdates = async () => { /* ... */ };`.
+- [x] Inside `handleCheckForUpdates`:
+    - [x] `setIsUpdateModalOpen(true);`
+    - [x] `setUpdateStatus(prev => ({ ...prev, isLoading: true, error: undefined })); // Clear previous error`
+    - [x] Wrap the API call in `try...catch (error: any)`:
         ```typescript
         try {
           const result = await window.electronAPI.checkForUpdates();
@@ -235,13 +235,13 @@
           });
         }
         ```
-- [ ] In the JSX of the chosen component, add the "Check for Updates" button:
+- [x] In the JSX of the chosen component, add the "Check for Updates" button:
     ```tsx
     <button onClick={handleCheckForUpdates} className="check-updates-button">
       Check for Updates
     </button>
     ```
-- [ ] In the JSX, render the `UpdateModal` component, passing the necessary props:
+- [x] In the JSX, render the `UpdateModal` component, passing the necessary props:
     ```tsx
     <UpdateModal
       isOpen={isUpdateModalOpen}
@@ -251,8 +251,8 @@
     ```
 
 ### Story 3.5: Style the Update Modal and Button
-- [ ] Open `src/styles/index.css` (or the project's main/component-specific stylesheet).
-- [ ] Add CSS for `.update-modal-overlay`:
+- [x] Open `src/styles/index.css` (or the project's main/component-specific stylesheet).
+- [x] Add CSS for `.update-modal-overlay`:
     ```css
     .update-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -261,7 +261,7 @@
       z-index: 1000; /* Ensure it's on top */
     }
     ```
-- [ ] Add CSS for `.update-modal-content`:
+- [x] Add CSS for `.update-modal-content`:
     ```css
     .update-modal-content {
       background-color: #fff; /* Or theme-appropriate background */
@@ -274,10 +274,10 @@
     }
     /* Add styles for dark mode if applicable */
     ```
-- [ ] Add CSS for `.update-modal-close-button` (e.g., float right, simple styling).
-- [ ] Add CSS for `.update-error` (e.g., `color: red;`).
-- [ ] Style the `.check-updates-button` to be consistent with other buttons in the application.
-- [ ] Style any links within the modal for better visibility and interaction.
+- [x] Add CSS for `.update-modal-close-button` (e.g., float right, simple styling).
+- [x] Add CSS for `.update-error` (e.g., `color: red;`).
+- [x] Style the `.check-updates-button` to be consistent with other buttons in the application.
+- [x] Style any links within the modal for better visibility and interaction.
 
 ## Phase 4: Documentation and Testing
 
