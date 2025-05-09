@@ -282,43 +282,43 @@
 ## Phase 4: Documentation and Testing
 
 ### Story 4.1: Create Documentation for the Update Feature
-- [ ] Create a new markdown file: `docs/features/update-checker.md`.
-- [ ] In `update-checker.md`, add a title: `# Update Checker Feature`.
-- [ ] Add a section "Overview" describing the feature's purpose.
-- [ ] Add a section "Backend (`electron/update-checker.js`)" detailing its role in fetching and comparing versions.
-- [ ] Add a section "Frontend (`src/components/UpdateModal.tsx`)" describing the modal's role and states.
-- [ ] Add a section "IPC Communication" mentioning the `check-for-updates` channel.
-- [ ] Add a section "API Endpoint" specifying `https://api.github.com/repos/kleneway/pastemax/releases/latest`.
-- [ ] Add a section "Configuration" noting the `User-Agent` used.
+- [x] Create a new markdown file: `docs/features/update-checker.md`.
+- [x] In `update-checker.md`, add a title: `# Update Checker Feature`.
+- [x] Add a section "Overview" describing the feature's purpose.
+- [x] Add a section "Backend (`electron/update-checker.js`)" detailing its role in fetching and comparing versions.
+- [x] Add a section "Frontend (`src/components/UpdateModal.tsx`)" describing the modal's role and states.
+- [x] Add a section "IPC Communication" mentioning the `check-for-updates` channel.
+- [x] Add a section "API Endpoint" specifying `https://api.github.com/repos/kleneway/pastemax/releases/latest`.
+- [x] Add a section "Configuration" noting the `User-Agent` used.
 
 ### Story 4.2: Manual Testing Plan and Execution
-- [ ] In `docs/features/update-checker.md` (or a separate test plan), add a section "Manual Testing Scenarios".
-- [ ] Document Test Case 1: "Up-to-date Scenario"
-    - Precondition: Local app version matches or is newer than the latest GitHub release `tag_name`.
+- [x] In `docs/features/update-checker.md` (or a separate test plan), add a section "Manual Testing Scenarios".
+- [x] Document Test Case 1: "Up-to-date Scenario"
+- Precondition: Local app version matches or is newer than the latest GitHub release `tag_name`.
     - Steps: Click "Check for Updates".
     - Expected Result: Modal shows "You are using the latest version (vX.Y.Z)."
-- [ ] Document Test Case 2: "Update Available Scenario"
+- [x] Document Test Case 2: "Update Available Scenario"
     - Precondition: Manually edit `package.json` to an older version (e.g., "0.9.0"). If needed, rebuild/restart Electron.
     - Steps: Click "Check for Updates".
     - Expected Result: Modal shows "A new version (vLatest) is available!" with current and latest versions, and a working link to release notes.
-- [ ] Document Test Case 3: "Network Offline Scenario"
+- [x] Document Test Case 3: "Network Offline Scenario"
     - Precondition: Disconnect the machine from the internet.
     - Steps: Click "Check for Updates".
     - Expected Result: Modal shows an appropriate error message (e.g., "Network error..." or "Failed to fetch...").
-- [ ] Document Test Case 4: "Modal Interaction"
+- [x] Document Test Case 4: "Modal Interaction"
     - Steps: Open modal, click "Close" button.
     - Expected Result: Modal closes. Re-clicking "Check for Updates" re-opens and re-fetches.
-- [ ] Execute all documented manual test cases and verify results.
+- [x] Execute all documented manual test cases and verify results.
 
 ## Phase 5: (Optional but Recommended) Refinements
 
 ### Story 5.1: Implement `semver` for Robust Version Comparison
-- [ ] In the project root, run `npm install semver`.
-- [ ] Run `npm install --save-dev @types/semver` to install TypeScript type definitions for `semver`.
-- [ ] In `electron/update-checker.js`, import `semver`: `const semver = require('semver');`.
-- [ ] In `checkForUpdates`, ensure both `currentVersion` and `normalizedLatestVersion` are clean (e.g., "1.2.3", not "v1.2.3").
+- [x] In the project root, run `npm install semver`.
+- [x] Run `npm install --save-dev @types/semver` to install TypeScript type definitions for `semver`.
+- [x] In `electron/update-checker.js`, import `semver`: `const semver = require('semver');`.
+- [x] In `checkForUpdates`, ensure both `currentVersion` and `normalizedLatestVersion` are clean (e.g., "1.2.3", not "v1.2.3").
     - `const cleanCurrentVersion = currentVersion.replace(/^v/, '');`
     - `const cleanLatestVersion = normalizedLatestVersion; // Already cleaned`
-- [ ] Replace the string comparison with `semver.gt()`: `const isUpdateAvailable = semver.valid(cleanLatestVersion) && semver.valid(cleanCurrentVersion) && semver.gt(cleanLatestVersion, cleanCurrentVersion);`. Add null/invalid checks for safety.
-- [ ] Update any JSDoc comments or internal comments regarding version comparison to reflect the use of `semver`.
-- [ ] Retest "Up-to-date" and "Update Available" scenarios with `semver` logic.
+- [x] Replace the string comparison with `semver.gt()`: `const isUpdateAvailable = semver.valid(cleanLatestVersion) && semver.valid(cleanCurrentVersion) && semver.gt(cleanLatestVersion, cleanCurrentVersion);`. Add null/invalid checks for safety.
+- [x] Update any JSDoc comments or internal comments regarding version comparison to reflect the use of `semver`.
+- [x] Retest "Up-to-date" and "Update Available" scenarios with `semver` logic.

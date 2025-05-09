@@ -104,6 +104,7 @@
     "@types/node": "^20.17.30",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",
+    "@types/semver": "^7.7.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.4.1",
@@ -123,11 +124,12 @@
     "chokidar": "^3.6.0",
     "gpt-3-encoder": "^1.1.4",
     "ignore": "^7.0.3",
-    "lucide-react": "^0.477.0",
     "lodash": "^4.17.21",
+    "lucide-react": "^0.477.0",
     "p-queue": "^8.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "semver": "^7.7.1",
     "tiktoken": "^1.0.21"
   }
 }

@@ -3,15 +3,16 @@
  */
 const { https } = require('https');
 const { app } = require('electron');
+const semver = require('semver');
 
-// Consider using 'semver' for robust version comparison: npm install semver
 
 /**
  * Checks for available updates by comparing current version with latest GitHub release.
+ * Uses semver for robust version comparison.
  * @returns {Promise<Object>} Resolves to update status object with:
  *   - isUpdateAvailable {boolean}
- *   - currentVersion {string}
- *   - latestVersion {string|null}
+ *   - currentVersion {string} (cleaned of any 'v' prefix)
+ *   - latestVersion {string|null} (cleaned of any 'v' prefix)
  *   - releaseUrl {string|null}
  *   - error {string|null}
  */
@@ -19,7 +20,7 @@ async function checkForUpdates() {
   try {
     const currentVersion = app.getVersion();
     const GITHUB_API_URL = 'api.github.com';
-    const GITHUB_API_PATH = '/kleneway/pastemax/releases/latest';
+    const GITHUB_API_PATH = '/repos/kleneway/pastemax/releases/latest';
     const USER_AGENT = 'PasteMax-Update-Checker';
 
     const options = {
@@ -70,18 +71,19 @@ async function checkForUpdates() {
       req.end();
     });
 
-    // Normalize version by removing 'v' prefix if present
-    const normalizedLatestVersion = latestVersionFromApi.startsWith('v')
-      ? latestVersionFromApi.substring(1)
-      : latestVersionFromApi;
+    // Clean versions by removing 'v' prefix if present
+    const cleanLatestVersion = latestVersionFromApi.replace(/^v/, '');
+    const cleanCurrentVersion = currentVersion.replace(/^v/, '');
 
-    // Simple version comparison - consider using semver for more robust comparison
-    const isUpdateAvailable = normalizedLatestVersion > currentVersion;
+    // Robust version comparison using semver
+    const isUpdateAvailable = semver.valid(cleanLatestVersion) &&
+                              semver.valid(cleanCurrentVersion) &&
+                              semver.gt(cleanLatestVersion, cleanCurrentVersion);
 
     return {
       isUpdateAvailable,
-      currentVersion,
-      latestVersion: normalizedLatestVersion,
+      currentVersion: cleanCurrentVersion,
+      latestVersion: cleanLatestVersion,
       releaseUrl: releaseUrlFromApi,
       error: null
     };
