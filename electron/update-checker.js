@@ -35,6 +35,20 @@ async function checkForUpdates() {
     const { latestVersionFromApi, releaseUrlFromApi } = await new Promise((resolve, reject) => {
       const req = https.request(options, (res) => {
         debugLogs.push('GitHub API Status Code: ' + res.statusCode);
+
+        // Log rate limit headers if present
+        if (res.headers['x-ratelimit-limit']) {
+          debugLogs.push('GitHub API X-RateLimit-Limit: ' + res.headers['x-ratelimit-limit']);
+        }
+        if (res.headers['x-ratelimit-remaining']) {
+          debugLogs.push(
+            'GitHub API X-RateLimit-Remaining: ' + res.headers['x-ratelimit-remaining']
+          );
+        }
+        if (res.headers['x-ratelimit-reset']) {
+          debugLogs.push('GitHub API X-RateLimit-Reset: ' + res.headers['x-ratelimit-reset']);
+        }
+
         if (res.statusCode !== 200) {
           reject(new Error(`GitHub API returned status code ${res.statusCode}`));
           return;

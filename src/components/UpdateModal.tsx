@@ -51,6 +51,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
     externalUpdateStatus as UpdateDisplayState | null
   );
   const [isChecking, setIsChecking] = useState(false);
+  const [isRetryOnCooldown, setIsRetryOnCooldown] = useState(false);
 
   // Sync with external updateStatus prop
   React.useEffect(() => {
@@ -64,16 +65,30 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
   }, [updateStatus]);
 
   const handleRecheck = useCallback(async () => {
+    if (isRetryOnCooldown) return;
+
     setIsChecking(true);
-    setUpdateStatus({
+    setIsRetryOnCooldown(true);
+
+    setUpdateStatus((prevStatus: UpdateDisplayState | null) => ({
+      ...(prevStatus || { currentVersion: '', isUpdateAvailable: false }),
       isLoading: true,
       isUpdateAvailable: false,
-      currentVersion: '',
-    });
+      error: undefined,
+      latestVersion: undefined,
+      releaseUrl: undefined,
+      debugLogs: undefined,
+    }));
+
     const result = await checkForUpdates();
     setUpdateStatus(result);
     setIsChecking(false);
-  }, []);
+
+    const cooldownDuration = result.error?.includes('403') ? 60000 : 10000;
+    setTimeout(() => {
+      setIsRetryOnCooldown(false);
+    }, cooldownDuration);
+  }, [isRetryOnCooldown]);
 
   if (!isOpen) {
     return null;
@@ -129,7 +144,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
                 type="button"
                 tabIndex={0}
                 onClick={handleRecheck}
-                disabled={isChecking}
+                disabled={isChecking || isRetryOnCooldown || updateStatus?.isLoading}
               >
                 Retry
               </button>
@@ -163,7 +178,7 @@ const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: Up
                 type="button"
                 tabIndex={0}
                 onClick={handleRecheck}
-                disabled={isChecking}
+                disabled={isChecking || isRetryOnCooldown || updateStatus?.isLoading}
               >
                 Re-check
               </button>
