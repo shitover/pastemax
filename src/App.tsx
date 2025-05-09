@@ -840,20 +840,25 @@ const App = (): JSX.Element => {
 
   // Handler for checking updates
   const handleCheckForUpdates = useCallback(async () => {
+    console.log("Renderer: 'Check for Updates' button clicked, handleCheckForUpdates CALLED.");
     setIsUpdateModalOpen(true);
     setUpdateStatus({ isLoading: true, isUpdateAvailable: false, currentVersion: '' });
     try {
+      console.log("Renderer: Invoking 'check-for-updates'");
       const result = await window.electron.ipcRenderer.invoke('check-for-updates');
+      console.log("Renderer: IPC invoke result:", result);
       setUpdateStatus({
         ...result,
         isLoading: false,
       });
     } catch (error: any) {
+      console.error("Renderer: IPC invoke error:", error);
       setUpdateStatus({
         isLoading: false,
         isUpdateAvailable: false,
         currentVersion: '',
-        error: error?.message || 'Unknown error',
+        error: error?.message || 'Unknown error during IPC invoke',
+        debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
       });
     }
   }, []);

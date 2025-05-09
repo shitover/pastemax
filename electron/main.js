@@ -116,15 +116,22 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // IPC HANDLERS
 // ======================
 ipcMain.handle('check-for-updates', async (event) => {
+  console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
   try {
     const updateStatus = await checkForUpdates();
+    console.log("Main Process: checkForUpdates result:", updateStatus);
+    // Attach debug info if present
+    if (updateStatus && updateStatus.debugLogs) {
+      return updateStatus;
+    }
     return updateStatus;
   } catch (error) {
-    console.error('IPC Error: Failed to check for updates:', error);
+    console.error('Main Process: IPC Error in check-for-updates:', error);
     return {
       isUpdateAvailable: false,
       currentVersion: app.getVersion(),
       error: error.message || 'An IPC error occurred while processing the update check.',
+      debugLogs: error.stack || null,
     };
   }
 });

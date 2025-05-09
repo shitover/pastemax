@@ -106,9 +106,9 @@ contextBridge.exposeInMainWorld('electron', {
         ipcRenderer.removeListener(channel, (event, ...args) => func(...args));
       }
     },
+    // PATCH: Allow invoke for 'check-for-updates' as well as 'get-ignore-patterns'
     invoke: (channel, data) => {
-      // whitelist channels
-      const validChannels = ['get-ignore-patterns'];
+      const validChannels = ['get-ignore-patterns', 'check-for-updates'];
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
       }

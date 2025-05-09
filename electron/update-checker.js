@@ -1,7 +1,7 @@
 /**
  * Module to handle application update checks against GitHub releases.
  */
-const { https } = require('https');
+const https = require('https');
 const { app } = require('electron');
 const semver = require('semver');
 
@@ -17,6 +17,7 @@ const semver = require('semver');
  *   - error {string|null}
  */
 async function checkForUpdates() {
+  const debugLogs = [];
   try {
     const currentVersion = app.getVersion();
     const GITHUB_API_URL = 'api.github.com';
@@ -34,6 +35,7 @@ async function checkForUpdates() {
 
     const { latestVersionFromApi, releaseUrlFromApi } = await new Promise((resolve, reject) => {
       const req = https.request(options, (res) => {
+        debugLogs.push('GitHub API Status Code: ' + res.statusCode);
         if (res.statusCode !== 200) {
           reject(new Error(`GitHub API returned status code ${res.statusCode}`));
           return;
@@ -47,8 +49,10 @@ async function checkForUpdates() {
         });
 
         res.on('end', () => {
+          debugLogs.push('GitHub API Raw Response: ' + rawData);
           try {
             const response = JSON.parse(rawData);
+            debugLogs.push('GitHub API Parsed Response: ' + JSON.stringify(response));
             if (!response.tag_name || !response.html_url) {
               reject(new Error('GitHub response missing required fields'));
               return;
@@ -76,6 +80,16 @@ async function checkForUpdates() {
     const cleanCurrentVersion = currentVersion.replace(/^v/, '');
 
     // Robust version comparison using semver
+    debugLogs.push(
+      'Current version (clean): ' + cleanCurrentVersion + ' semver.valid: ' + semver.valid(cleanCurrentVersion)
+    );
+    debugLogs.push(
+      'Latest version (clean): ' + cleanLatestVersion + ' semver.valid: ' + semver.valid(cleanLatestVersion)
+    );
+    debugLogs.push(
+      'semver.gt(latest, current): ' + semver.gt(cleanLatestVersion, cleanCurrentVersion)
+    );
+
     const isUpdateAvailable = semver.valid(cleanLatestVersion) &&
                               semver.valid(cleanCurrentVersion) &&
                               semver.gt(cleanLatestVersion, cleanCurrentVersion);
@@ -85,16 +99,18 @@ async function checkForUpdates() {
       currentVersion: cleanCurrentVersion,
       latestVersion: cleanLatestVersion,
       releaseUrl: releaseUrlFromApi,
-      error: null
+      error: null,
+      debugLogs: debugLogs.join('\n')
     };
   } catch (error) {
-    console.error('Update check failed:', error);
+    debugLogs.push('Update check failed: ' + error.message);
     return {
       isUpdateAvailable: false,
       currentVersion: app.getVersion(),
       latestVersion: null,
       releaseUrl: null,
-      error: error.message
+      error: error.message,
+      debugLogs: debugLogs.join('\n')
     };
   }
 }
