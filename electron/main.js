@@ -5,6 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
+const { checkForUpdates } = require('./update-checker');
 // GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
@@ -114,6 +115,20 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // ======================
 // IPC HANDLERS
 // ======================
+ipcMain.handle('check-for-updates', async (event) => {
+  try {
+    const updateStatus = await checkForUpdates();
+    return updateStatus;
+  } catch (error) {
+    console.error('IPC Error: Failed to check for updates:', error);
+    return {
+      isUpdateAvailable: false,
+      currentVersion: app.getVersion(),
+      error: error.message || 'An IPC error occurred while processing the update check.',
+    };
+  }
+});
+
 ipcMain.on('clear-main-cache', () => {
   console.log('Clearing main process caches');
   clearIgnoreCaches();

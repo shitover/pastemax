@@ -3,14 +3,14 @@
 ## Phase 1: Backend Implementation (Electron Main Process - Modular)
 
 ### Story 1.1: Create `electron/update-checker.js` Module Foundation
-- [ ] Create the file `electron/update-checker.js` in the `electron` directory.
-- [ ] Add a JSDoc comment at the top of `electron/update-checker.js` describing its purpose: "Module to handle application update checks against GitHub releases."
-- [ ] In `electron/update-checker.js`, import the `https` module from Node.js: `const https = require('https');`
-- [ ] In `electron/update-checker.js`, import `app` from the `electron` module: `const { app } = require('electron');`
-- [ ] Add a comment in `electron/update-checker.js`: `// Consider using 'semver' for robust version comparison: npm install semver`
-- [ ] In `electron/update-checker.js`, define an exported asynchronous function named `checkForUpdates`: `async function checkForUpdates() { /* ... */ }`
-- [ ] Add the export statement for `checkForUpdates` at the bottom of the file: `module.exports = { checkForUpdates };`
-- [ ] Add a JSDoc comment above the `checkForUpdates` function detailing its purpose, parameters (none), and return type:
+- [x] Create the file `electron/update-checker.js` in the `electron` directory.
+- [x] Add a JSDoc comment at the top of `electron/update-checker.js` describing its purpose: "Module to handle application update checks against GitHub releases."
+- [x] In `electron/update-checker.js`, import the `https` module from Node.js: `const https = require('https');`
+- [x] In `electron/update-checker.js`, import `app` from the `electron` module: `const { app } = require('electron');`
+- [x] Add a comment in `electron/update-checker.js`: `// Consider using 'semver' for robust version comparison: npm install semver`
+- [x] In `electron/update-checker.js`, define an exported asynchronous function named `checkForUpdates`: `async function checkForUpdates() { /* ... */ }`
+- [x] Add the export statement for `checkForUpdates` at the bottom of the file: `module.exports = { checkForUpdates };`
+- [x] Add a JSDoc comment above the `checkForUpdates` function detailing its purpose, parameters (none), and return type:
     ```javascript
     /**
      * Checks for application updates by querying the GitHub releases API.
@@ -21,10 +21,10 @@
     ```
 
 ### Story 1.2: Implement GitHub API Call within `checkForUpdates`
-- [ ] Inside the `checkForUpdates` function in `electron/update-checker.js`, define the GitHub API URL constant: `const GITHUB_API_URL = 'api.github.com';`
-- [ ] Define the GitHub API path constant: `const GITHUB_API_PATH = '/repos/kleneway/pastemax/releases/latest';`
-- [ ] Define the `User-Agent` header string constant: `const USER_AGENT = 'PasteMax-Update-Checker/1.0.0'; // Or a dynamic version later`
-- [ ] Construct the options object for the `https.request` call:
+- [x] Inside the `checkForUpdates` function in `electron/update-checker.js`, define the GitHub API URL constant: `const GITHUB_API_URL = 'api.github.com';`
+- [x] Define the GitHub API path constant: `const GITHUB_API_PATH = '/repos/kleneway/pastemax/releases/latest';`
+- [x] Define the `User-Agent` header string constant: `const USER_AGENT = 'PasteMax-Update-Checker/1.0.0'; // Or a dynamic version later`
+- [x] Construct the options object for the `https.request` call:
     ```javascript
     const options = {
       hostname: GITHUB_API_URL,
@@ -35,26 +35,26 @@
       },
     };
     ```
-- [ ] Wrap the `https.request` call within a `new Promise((resolve, reject) => { /* ... */ });` block.
-- [ ] Implement the `https.request(options, (res) => { /* ... */ });` call.
-- [ ] Inside the `https.request` callback, check `res.statusCode`. If not 200, `reject(new Error(\`GitHub API responded with status code: \${res.statusCode}\`)); return;`.
-- [ ] Initialize an empty string for data accumulation: `let rawData = '';`.
-- [ ] Set response encoding: `res.setEncoding('utf8');`.
-- [ ] Handle the `data` event on `res`: `res.on('data', (chunk) => { rawData += chunk; });`.
-- [ ] Handle the `end` event on `res`.
-- [ ] Inside the `end` event handler, attempt to `JSON.parse(rawData)` within a `try...catch` block.
-- [ ] If `JSON.parse` fails, `reject(new Error('Failed to parse GitHub API response.')); return;`.
-- [ ] If parsing is successful, extract `tag_name` and `html_url` from the parsed JSON data (e.g., `const { tag_name, html_url } = parsedData;`).
-- [ ] Check if `tag_name` and `html_url` exist. If not, `reject(new Error('Essential data (tag_name or html_url) missing from API response.')); return;`.
-- [ ] If data extraction is successful, `resolve({ latestVersionFromApi: tag_name, releaseUrlFromApi: html_url });`.
-- [ ] Handle the `error` event on the `req` object itself (from `https.request`): `req.on('error', (e) => { reject(new Error(\`Network error during GitHub API request: \${e.message}\`)); });`.
-- [ ] Call `req.end();` to send the request.
+- [x] Wrap the `https.request` call within a `new Promise((resolve, reject) => { /* ... */ });` block.
+- [x] Implement the `https.request(options, (res) => { /* ... */ });` call.
+- [x] Inside the `https.request` callback, check `res.statusCode`. If not 200, `reject(new Error(\`GitHub API responded with status code: \${res.statusCode}\`)); return;`.
+- [x] Initialize an empty string for data accumulation: `let rawData = '';`.
+- [x] Set response encoding: `res.setEncoding('utf8');`.
+- [x] Handle the `data` event on `res`: `res.on('data', (chunk) => { rawData += chunk; });`.
+- [x] Handle the `end` event on `res`.
+- [x] Inside the `end` event handler, attempt to `JSON.parse(rawData)` within a `try...catch` block.
+- [x] If `JSON.parse` fails, `reject(new Error('Failed to parse GitHub API response.')); return;`.
+- [x] If parsing is successful, extract `tag_name` and `html_url` from the parsed JSON data (e.g., `const { tag_name, html_url } = parsedData;`).
+- [x] Check if `tag_name` and `html_url` exist. If not, `reject(new Error('Essential data (tag_name or html_url) missing from API response.')); return;`.
+- [x] If data extraction is successful, `resolve({ latestVersionFromApi: tag_name, releaseUrlFromApi: html_url });`.
+- [x] Handle the `error` event on the `req` object itself (from `https.request`): `req.on('error', (e) => { reject(new Error(\`Network error during GitHub API request: \${e.message}\`)); });`.
+- [x] Call `req.end();` to send the request.
 
 ### Story 1.3: Implement Version Retrieval and Comparison in `checkForUpdates`
-- [ ] Get the current application version: `const currentVersion = app.getVersion();`. Place this near the top of `checkForUpdates` or where `currentVersion` is first needed.
-- [ ] Inside `checkForUpdates`, after successfully fetching API data (i.e., after `await`ing the promise from Story 1.2), normalize the `latestVersionFromApi` by removing any leading 'v': `const normalizedLatestVersion = latestVersionFromApi.replace(/^v/, '');`.
-- [ ] Perform version comparison. For now, use simple string comparison: `const isUpdateAvailable = normalizedLatestVersion > currentVersion;`. (Add a comment: `// TODO: Consider semver for robust comparison if versions become complex (e.g., pre-releases).`)
-- [ ] Construct the success result object to be returned by `checkForUpdates`:
+- [x] Get the current application version: `const currentVersion = app.getVersion();`. Place this near the top of `checkForUpdates` or where `currentVersion` is first needed.
+- [x] Inside `checkForUpdates`, after successfully fetching API data (i.e., after `await`ing the promise from Story 1.2), normalize the `latestVersionFromApi` by removing any leading 'v': `const normalizedLatestVersion = latestVersionFromApi.replace(/^v/, '');`.
+- [x] Perform version comparison. For now, use simple string comparison: `const isUpdateAvailable = normalizedLatestVersion > currentVersion;`. (Add a comment: `// TODO: Consider semver for robust comparison if versions become complex (e.g., pre-releases).`)
+- [x] Construct the success result object to be returned by `checkForUpdates`:
     ```javascript
     return {
       isUpdateAvailable,
@@ -63,10 +63,10 @@
       releaseUrl: releaseUrlFromApi,
     };
     ```
-- [ ] Wrap the entire logic of `checkForUpdates` (API call, version comparison) in a top-level `try...catch (error)` block.
-- [ ] In the `catch (error)` block at the end of `checkForUpdates`:
-    - [ ] `console.error('Error in checkForUpdates module:', error);`
-    - [ ] Return an error object:
+- [x] Wrap the entire logic of `checkForUpdates` (API call, version comparison) in a top-level `try...catch (error)` block.
+- [x] In the `catch (error)` block at the end of `checkForUpdates`:
+    - [x] `console.error('Error in checkForUpdates module:', error);`
+    - [x] Return an error object:
         ```javascript
         return {
           isUpdateAvailable: false,
@@ -76,15 +76,15 @@
         ```
 
 ### Story 1.4: Integrate `update-checker` Module into `electron/main.js`
-- [ ] Open `electron/main.js`.
-- [ ] At the top of `electron/main.js`, import the `checkForUpdates` function: `const { checkForUpdates } = require('./update-checker');`. Also import `ipcMain` if not already: `const { app, BrowserWindow, ipcMain } = require('electron');`.
-- [ ] Locate or create the section for IPC handlers in `main.js` (typically within or after `app.whenReady()`).
-- [ ] Define the IPC handler for `check-for-updates`: `ipcMain.handle('check-for-updates', async (event) => { /* ... */ });`.
-- [ ] Inside the `check-for-updates` IPC handler, wrap the call to `checkForUpdates` in a `try...catch` block.
-- [ ] In the `try` block, call and return the result: `const updateStatus = await checkForUpdates(); return updateStatus;`.
-- [ ] In the `catch (error)` block of the IPC handler:
-    - [ ] `console.error('IPC Error: Failed to check for updates:', error);`
-    - [ ] Return a standardized error object:
+- [x] Open `electron/main.js`.
+- [x] At the top of `electron/main.js`, import the `checkForUpdates` function: `const { checkForUpdates } = require('./update-checker');`. Also import `ipcMain` if not already: `const { app, BrowserWindow, ipcMain } = require('electron');`.
+- [x] Locate or create the section for IPC handlers in `main.js` (typically within or after `app.whenReady()`).
+- [x] Define the IPC handler for `check-for-updates`: `ipcMain.handle('check-for-updates', async (event) => { /* ... */ });`.
+- [x] Inside the `check-for-updates` IPC handler, wrap the call to `checkForUpdates` in a `try...catch` block.
+- [x] In the `try` block, call and return the result: `const updateStatus = await checkForUpdates(); return updateStatus;`.
+- [x] In the `catch (error)` block of the IPC handler:
+    - [x] `console.error('IPC Error: Failed to check for updates:', error);`
+    - [x] Return a standardized error object:
         ```javascript
         return {
           isUpdateAvailable: false,
