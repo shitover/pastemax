@@ -366,7 +366,7 @@ ipcMain.on('request-file-list', async (event, payload) => {
       // For defaultIgnoreFilterInstance, use the system default filter
       require('./ignore-manager.js').systemDefaultFilter,
       // processSingleFileCallback
-      (filePath, rootDirCb, ignoreFilterCb) =>
+      (filePath) =>
         require('./file-processor.js').processSingleFile(
           filePath,
           payload.folderPath,
