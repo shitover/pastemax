@@ -589,7 +589,7 @@ input[type='checkbox'][disabled] {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var (--space-lg);
 }
 
 .sidebar-folder-path {
@@ -889,6 +889,10 @@ input[type='checkbox'][disabled] {
   position: relative;
   z-index: 1002;
   animation: scaleIn 0.3s ease-out;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
 }
 
 .ignore-patterns-header {
@@ -1156,11 +1160,15 @@ input[type='checkbox'][disabled] {
   background-color: var(--background-primary);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
+  transition: all var (--transition-fast);
   -webkit-border-radius: var(--border-radius-md);
   -moz-border-radius: var(--border-radius-md);
   -ms-border-radius: var(--border-radius-md);
   -o-border-radius: var(--border-radius-md);
+  -webkit-transition: all var(--transition-fast);
+  -moz-transition: all var(--transition-fast);
+  -ms-transition: all var(--transition-fast);
+  -o-transition: all var(--transition-fast);
 }
 
 .custom-global-ignores .custom-ignore-list li:hover {
@@ -1557,17 +1565,17 @@ input[type='checkbox'][disabled] {
   flex-direction: column;
   padding: 10px;
   border: var(--standard-border);
-  border-radius: 4px;
-  position: relative; /* For absolute positioning of actions */
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease;
-  height: 80px; /* Fixed height for consistency */
-  background-color: var(--background-primary);
-  overflow: hidden; /* Prevent content spillover */
-  animation: scaleIn 0.3s ease-out;
+  border-radius: 6px;
+  position: relative;
+  /*Forabsolutepositioningofactions*/transition:    transform 0.2s ease,    box-shadow 0.2s ease,    border-color 0.2s ease,    background-color 0.2s ease;
+  height: 80px;
+  /*Fixedheightforconsistency*/background-color: var(--background-primary);
+  overflow: hidden;
+  /*Preventcontentspillover*/animation: scaleIn 0.3s ease-out;
+  -webkit-border-radius: 6px;
+  -moz-border-radius: 6px;
+  -ms-border-radius: 6px;
+  -o-border-radius: 6px;
 }
 
 .file-card:hover {
@@ -2730,19 +2738,21 @@ button:hover svg.lucide {
 .file-preview-modal {
   background-color: var(--background-primary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  width: 80%; /* Adjust as needed */
-  max-width: 1000px; /* Max width */
-  max-height: 80vh; /* Max height, viewport relative */
-  display: flex;
+  width: 80%;
+  /*Adjustasneeded*/max-width: 1000px;
+  /*Maxwidth*/max-height: 80vh;
+  /*Maxheight,viewportrelative*/display: flex;
   flex-direction: column;
-  animation: scaleIn 0.25s ease-out; /* Scale in animation */
-  transform-origin: center; /* Scale from center */
-  will-change: transform, opacity; /* Optimization for animations */
-  transition:
-    transform 0.2s ease,
-    opacity 0.2s ease; /* For closing animations */
+  animation: scaleIn 0.25s ease-out;
+  /*Scaleinanimation*/transform-origin: center;
+  /*Scalefromcenter*/will-change: transform, opacity;
+  /*Optimizationforanimations*/transition:    transform 0.2s ease,    opacity 0.2s ease;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
 }
 
 .file-preview-modal-header {
@@ -2872,64 +2882,145 @@ button:hover svg.lucide {
   justify-content: center;
   z-index: var(--z-modal);
   animation: fadeIn 0.2s ease-out;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: opacity 0.2s ease;
 }
 
 .update-modal-content {
   background-color: var(--background-primary);
-  padding: var(--space-lg);
-  border-radius: var(--border-radius-md);
-  width: 90%;
-  max-width: 500px;
-  box-shadow: var(--shadow-lg);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  border: var(--standard-border);
+  width: 95%;
+  max-width: 450px;
+  padding: 0;
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.25s ease-out;
+  will-change: transform, opacity;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
+}
+
+.update-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--standard-border);
+  background: none;
   position: relative;
-  animation: slideInFromBottom 0.3s ease-out;
+  min-height: 48px;
+}
+
+.update-modal-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
 }
 
 .update-modal-close-button {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  background: none;
-  border: none;
-  font-size: var(--font-size-lg);
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: var(--space-xs);
+  padding: 4px 12px;
+  color: var(--text-primary);
+  border: solid 1px var(--border-color);
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  line-height: 1;
+  text-align: center;
+  border-radius: 4px;
 }
 
-.update-modal-close-button:hover {
+.update-modal-close-button:hover,
+.update-modal-close-button:focus-visible {
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
   color: var(--text-primary);
 }
 
 .update-error {
   color: var(--error-color);
-  margin-top: var(--space-sm);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 8px 0;
+  padding: 0 18px;
+  text-align: center;
+}
+
+/* UpdateModal message and button spacing */
+.update-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-modal-body .update-message {
+  font-size: var(--font-size-md);
+  padding: 2px 18px;
+  text-align: center;
+  align-items: center;
+  min-height: 40px;
+}
+
+.update-modal-body .update-message-success {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-align: center;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.update-modal-body .check-updates-button {
+  margin-top: 8px;
+  margin-bottom: 20px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .check-updates-button {
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   border-color: var(--color-primary);
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .check-updates-button:hover {
-  background-color: var(--color-primary-light);
-  border-color: var(--color-primary-light);
+  background-color: var(--hover-color);
+  color: var(--text-primary);
+  transition:
+    all 0.2s var(--animation-curve),
+    background-color 0.3s ease;
 }
 
-/* Animation keyframes */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Ensure consistent vertical spacing in update modal */
+.update-modal-body > * {
+  margin-bottom: 10px;
 }
 
-@keyframes slideInFromBottom {
-  from { 
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to { 
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
