@@ -2,7 +2,6 @@ import { useCallback, memo, useMemo } from 'react';
 import { FileData } from '../types/FileTypes';
 import { Plus, X, FileText, Eye, FileWarning } from 'lucide-react';
 import CopyButton from './CopyButton';
-import { normalizePath } from '../utils/pathUtils';
 
 interface FileCardComponentProps {
   file: FileData;
