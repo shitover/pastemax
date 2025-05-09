@@ -35,6 +35,12 @@ function ensureSerializable(data) {
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electron', {
+  /**
+   * Invokes the main process to check for application updates.
+   * @returns {Promise<object>} A promise that resolves to an object containing update status.
+   * Expected format: { isUpdateAvailable: boolean, currentVersion: string, latestVersion?: string, releaseUrl?: string, error?: string }
+   */
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   send: (channel, data) => {
     // whitelist channels
     const validChannels = [

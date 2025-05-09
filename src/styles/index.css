@@ -2855,3 +2855,81 @@ button:hover svg.lucide {
   -moz-tab-size: 4; /* Firefox support */
   overflow: hidden;
 }
+
+/* ==========================================================================
+   Update Modal Styles
+   ========================================================================== */
+
+.update-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.update-modal-content {
+  background-color: var(--background-primary);
+  padding: var(--space-lg);
+  border-radius: var(--border-radius-md);
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  animation: slideInFromBottom 0.3s ease-out;
+}
+
+.update-modal-close-button {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: var(--space-xs);
+}
+
+.update-modal-close-button:hover {
+  color: var(--text-primary);
+}
+
+.update-error {
+  color: var(--error-color);
+  margin-top: var(--space-sm);
+}
+
+.check-updates-button {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border-color: var(--color-primary);
+}
+
+.check-updates-button:hover {
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  from { 
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

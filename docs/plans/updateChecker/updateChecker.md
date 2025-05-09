@@ -96,14 +96,14 @@
 ## Phase 2: Preload Script (`electron/preload.js`)
 
 ### Story 2.1: Expose `checkForUpdates` Functionality via Context Bridge
-- [ ] Open `electron/preload.js`.
-- [ ] Ensure `contextBridge` and `ipcRenderer` are imported from `electron`: `const { contextBridge, ipcRenderer } = require('electron');`.
-- [ ] Locate the `contextBridge.exposeInMainWorld('electronAPI', { /* ... existing API methods ... */ });` block.
-- [ ] Add the `checkForUpdates` method to the `electronAPI` object:
+- [x] Open `electron/preload.js`.
+- [x] Ensure `contextBridge` and `ipcRenderer` are imported from `electron`: `const { contextBridge, ipcRenderer } = require('electron');`.
+- [x] Locate the `contextBridge.exposeInMainWorld('electronAPI', { /* ... existing API methods ... */ });` block.
+- [x] Add the `checkForUpdates` method to the `electronAPI` object:
     ```javascript
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     ```
-- [ ] Add a JSDoc comment above the `checkForUpdates` property in `preload.js` describing its purpose and return type (Promise resolving to the update status object from the main process).
+- [x] Add a JSDoc comment above the `checkForUpdates` property in `preload.js` describing its purpose and return type (Promise resolving to the update status object from the main process).
     ```javascript
     // checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     /**
