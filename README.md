@@ -12,16 +12,16 @@
 <p align="center">
    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
    <a href="https://github.com/kleneway/pastemax/issues"><img src="https://img.shields.io/github/issues/kleneway/pastemax" alt="GitHub issues"></a>
-   <a href="https://github.com/kleneway/pastemax/releases"><img src="https://img.shields.io/github/v/release/kleneway/pastemax" alt="GitHub releases"></a>
+   <a href="https://github.com/kleneway/pastemax/releases/latest"><img src="https://img.shields.io/github/v/release/kleneway/pastemax" alt="GitHub releases"></a>
 </p>
 
 ## Overview
 
 PasteMax is a simple desktop app built for developers using AI coding assistants. It makes sharing your code with LLMs easy, thanks to a smart file explorer with token counting, file filtering, quick copy, and a previewer. Select the files you need, skip binaries and junk, and get clean, formatted snippets ready for your LLM.
 
-![PasteMax](https://github.com/user-attachments/assets/85ac9935-5ff9-45b2-b9fe-6b6cbdcdf6e7)
-![IgnoreList](https://github.com/user-attachments/assets/25c4a56f-1470-4a91-a0f1-fe8d439e435d)
-![FilePreviewer](https://github.com/user-attachments/assets/8f98fcca-3557-4225-92f4-38387cf6e843)
+![PasteMax](https://github.com/user-attachments/assets/d2a2cecc-47aa-4c14-a2b8-db9c2213d8da)
+![IgnoreList](https://github.com/user-attachments/assets/24e44bd2-710c-476e-85d1-26814476e4ba)
+![FilePreview](https://github.com/user-attachments/assets/432661ab-ff05-42b0-85d4-3f9b40fe1fd4)
 
 ## Video
 
@@ -29,24 +29,25 @@ PasteMax is a simple desktop app built for developers using AI coding assistants
 
 ## Features
 
-- **File Tree Navigation**: Browse directories and files with an expandable tree view
-- **Token Counting**: View the approximate token count for each file (useful for LLM context limits)
-- **Search Capabilities**: Quickly find files by name or content
-- **Selection Management**: Select multiple files and copy their contents together
-- **Sorting Options**: Sort files by name, size, or token count
-- **File Previewer**: View file contents in a dedicated preview pane
-- **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment
-- **Binary File Detection**: Automatic detection and exclusion of binary files
-- **Smart File Exclusion**: Automatically excludes common files like package-lock.json, binary files, and more by default
-- **File Change Watcher**: Automatically updates the files whenever changes are detected
+- **File Tree Navigation**: Browse directories and files with an expandable tree view.
+- **Token Counting**: View the approximate token count for each file (useful for LLM context limits).
+- **Search Capabilities**: Quickly find files by name or content.
+- **Selection Management**: Select multiple files and copy their contents together.
+- **Sorting Options**: Sort files by name, size, or token count.
+- **File Previewer**: View file contents in a dedicated preview pane.
+- **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment.
+- **Binary File Detection**: Automatic detection and exclusion of binary files.
+- **Smart File Exclusion**: Automatically excludes common files like package-lock.json, binary files, and more by default.
+- **File Change Watcher**: Automatically updates the files whenever changes are detected.
+- **Automatic Update Checker**: Automatically check for new updates from Latest Github Release.
 
 ## Installation
 
 ### Download Binary
 
-Download the latest version from the [releases page](https://github.com/kleneway/pastemax/releases).
+Download the latest PasteMax version from the [releases page](https://github.com/kleneway/pastemax/releases/latest).
 
-### Or Build from Source
+### Build from Source
 
 1. Clone the repository:
 
@@ -135,12 +136,19 @@ npm run package
   - `utils/` - Utility functions
   - `styles/` - CSS styles
   - `assets/` - Static assets like images
-- `electron/` - Electron-related files
+- `electron/` - Electron-Backend related files
   - `main.js` - Electron main process
   - `preload.js` - Preload script for secure IPC
   - `renderer.js` - Renderer process utilities
   - `build.js` - Build script for production
+  - `dev.js` - Development script
   - `excluded-files.js` - Configuration for files to exclude by default
+  - `file-processor.js` - File processing utilities
+  - `ignore-manager.js` - Ignore pattern management
+  - `update-checker.js` - Update checking functionality
+  - `update-manager.js` - Update management
+  - `utils.js` - Utility functions
+  - `watcher.js` - File change watcher
 - `public/` - Public assets (favicon, etc.)
 - `scripts/` - Utility scripts for building and testing
 - `docs/` - Documentation
@@ -157,31 +165,16 @@ npm run package
 
 ## Troubleshooting
 
-### "Cannot find module 'ignore'" error
+### Getting "Warning: Not trusted" on Windows
+If you see a warning about the app not being trusted, you can bypass this by clicking "run anyways". This is a common issue with Electron apps, especially since PasteMax is not signed.
 
-If you encounter this error when running the packaged application:
+### Getting "App not responding" on Mac
+If you encounter an "App not responding" message on Mac, it may be due to macOS security settings. You can try the following:
 
-```
-Error: Cannot find module 'ignore'
-Require stack:
-- /Applications/PasteMax.app/Contents/Resources/app.asar/main.js
-```
-
-This is caused by dependencies not being properly included in the package. To fix it:
-
-1. Run the dependency fixer script:
-
-   ```
-   node fix-dependencies.js
-   ```
-
-2. Rebuild the application:
-
-   ```
-   npm run build:electron && npm run package
-   ```
-
-3. Install the new version
+1. Open System Preferences.
+2. Go to Security & Privacy.
+3. Under the General tab, look for the "Allow apps downloaded from" section.
+4. Look for "PasteMax" and click "Open Anyway".
 
 ### Other Issues
 
