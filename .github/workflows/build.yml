@@ -74,9 +74,8 @@ jobs:
           name: macos-artifacts
           path: |
             release-builds/PasteMax-*.dmg
-            release-builds/PasteMax-*-x64.dmg
+            release-builds/PasteMax-*-mac.zip
             release-builds/PasteMax-*-arm64.dmg
-            release-builds/PasteMax-*-x64-mac.zip
             release-builds/PasteMax-*-arm64-mac.zip
           if-no-files-found: error
 
@@ -106,16 +105,15 @@ jobs:
             release-builds/pastemax-*.AppImage
             release-builds/pastemax-*-*.*.rpm
             release-builds/pastemax_*_amd64.rpm
-          if-no-files-found: error
-
-      # Create GitHub release
+          if-no-files-found: error      # Create GitHub release
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*.dmg' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-x64-mac.zip' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-arm64.dmg' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-mac.zip' || '' }}
             ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-arm64-mac.zip' || '' }}
             ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax [0-9]*.exe' || '' }}
             ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax Setup [0-9]*.exe' || '' }}

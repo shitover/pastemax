@@ -64,8 +64,7 @@
       "icon": "public/favicon.icns",
       "target": [
         {
-          "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "target": "dmg"
         },
         {
           "target": "zip",
