@@ -847,10 +847,10 @@ input[type='checkbox'][disabled] {
 }
 
 /* ==========================================================================
-   Ignore Patterns Viewer
+   Ignore List Modal
    ========================================================================== */
 
-/* -------------------- Ignore Patterns Modal -------------------- */
+/* -------------------- Ignore Patterns/List Modal -------------------- */
 .ignore-patterns-container {
   position: fixed;
   top: 0;
@@ -3040,7 +3040,11 @@ button:hover svg.lucide {
   margin-bottom: 14px;
 }
 
-.dark-mode, .update-modal-overlay, .update-modal-header, .update-modal-content, .update-modal-body {
+.dark-mode,
+.update-modal-overlay,
+.update-modal-header,
+.update-modal-content,
+.update-modal-body {
   border-color: var(--border-color);
 }
 

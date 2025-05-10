@@ -1,8 +1,23 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useIgnorePatterns } from '../hooks/useIgnorePatterns';
-import ToggleSwitch from './ToggleSwitch';
+// ToggleSwitch is now defined below
 
-interface IgnorePatternsViewerProps {
+interface ToggleSwitchProps {
+  isOn: boolean;
+  onToggle: () => void;
+}
+
+const ToggleSwitch = ({ isOn, onToggle }: ToggleSwitchProps) => {
+  return (
+    <div className="toggle-switch" onClick={onToggle}>
+      <span className={`toggle-label left ${!isOn ? 'active' : ''}`}>Automatic</span>
+      <div className={`toggle-switch-inner ${isOn ? 'on' : 'off'}`}></div>
+      <span className={`toggle-label right ${isOn ? 'active' : ''}`}>Global</span>
+    </div>
+  );
+};
+
+interface IgnoreListModalProps {
   isOpen: boolean;
   onClose: (modeChanged?: boolean) => void;
   patterns?: {
@@ -85,7 +100,7 @@ const PatternSection = ({
   );
 };
 
-export const IgnorePatternsViewer = ({
+export const IgnoreListModal = ({
   isOpen,
   onClose,
   patterns,
@@ -93,7 +108,7 @@ export const IgnorePatternsViewer = ({
   selectedFolder,
   isElectron,
   ignoreSettingsModified,
-}: IgnorePatternsViewerProps): JSX.Element | null => {
+}: IgnoreListModalProps): JSX.Element | null => {
   const [searchTerm, setSearchTerm] = useState('');
   const { ignoreMode, setIgnoreMode, customIgnores, setCustomIgnores } = useIgnorePatterns(
     selectedFolder,
@@ -116,10 +131,7 @@ export const IgnorePatternsViewer = ({
   // Log the received patterns prop for debugging
   useEffect(() => {
     if (isOpen) {
-      console.log(
-        'DEBUG: IgnorePatternsViewer received patterns:',
-        JSON.stringify(patterns, null, 2)
-      );
+      console.log('DEBUG: IgnoreListModal received patterns:', JSON.stringify(patterns, null, 2));
       // Only log gitignoreMap entries when in automatic mode
       if (ignoreMode === 'automatic' && patterns?.gitignoreMap) {
         console.log('DEBUG: gitignoreMap entries:', Object.keys(patterns.gitignoreMap).length);
@@ -334,4 +346,4 @@ export const IgnorePatternsViewer = ({
   );
 };
 
-export default IgnorePatternsViewer;
+export default IgnoreListModal;

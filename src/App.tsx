@@ -5,10 +5,9 @@ import FileList from './components/FileList';
 import CopyButton from './components/CopyButton';
 import { FileData, IgnoreMode } from './types/FileTypes';
 import { ThemeProvider } from './context/ThemeContext';
-import IgnorePatternsViewer from './components/IgnorePatternsViewer';
+import IgnoreListModal from './components/ignoreListModal';
 import ThemeToggle from './components/ThemeToggle';
 import UpdateModal from './components/UpdateModal';
-import ViewIgnoresButton from './components/ViewIgnoresButton';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
 import { DownloadCloud } from 'lucide-react';
@@ -918,7 +917,13 @@ const App = (): JSX.Element => {
               >
                 Refresh
               </button>
-              <ViewIgnoresButton onClick={handleViewIgnorePatterns} />
+              <button
+                onClick={handleViewIgnorePatterns}
+                title="View Applied Ignore Rules"
+                className="view-ignores-btn"
+              >
+                Ignore Filters
+              </button>
               <button
                 className="header-action-btn check-updates-button"
                 title="Check for application updates"
@@ -1069,7 +1074,7 @@ const App = (): JSX.Element => {
         )}
 
         {/* Ignore Patterns Viewer Modal */}
-        <IgnorePatternsViewer
+        <IgnoreListModal
           isOpen={isIgnoreViewerOpen}
           onClose={handleIgnoreViewerClose}
           patterns={ignorePatterns}
