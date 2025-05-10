@@ -840,23 +840,23 @@ const App = (): JSX.Element => {
       const contentToTokenize = getSelectedFilesContent();
       if (contentToTokenize && isElectron) {
         try {
+          // Invoke IPC to get token count from the main process
           const result = await window.electron.ipcRenderer.invoke('get-token-count', contentToTokenize);
-          // Add a check for result being undefined
           if (result && result.tokenCount !== undefined) {
             setTotalFormattedContentTokens(result.tokenCount);
           } else if (result && result.error) {
             console.error('Error from get-token-count IPC:', result.error);
-            setTotalFormattedContentTokens(0); 
+            setTotalFormattedContentTokens(0); // Fallback or error state
           } else {
-            // Handle cases where result is undefined or doesn't match expected structure
             console.error('Unexpected response from get-token-count IPC:', result);
-            setTotalFormattedContentTokens(0);
+            setTotalFormattedContentTokens(0); // Fallback
           }
         } catch (error) {
           console.error('Failed to invoke get-token-count:', error);
-          setTotalFormattedContentTokens(0);
+          setTotalFormattedContentTokens(0); // Fallback on IPC error
         }
       } else {
+        // If not in Electron or no content, set tokens to 0
         setTotalFormattedContentTokens(0);
       }
     };
@@ -864,7 +864,7 @@ const App = (): JSX.Element => {
     // Debounce the calculation
     const debounceTimeout = setTimeout(() => {
       calculateAndSetTokenCount();
-    }, 150); // Reduced debounce to 150ms for faster updates
+    }, 150); // Debounce to avoid rapid recalculations
 
     return () => clearTimeout(debounceTimeout);
   }, [
@@ -875,7 +875,7 @@ const App = (): JSX.Element => {
     selectedFolder,
     userInstructions,
     includeBinaryPaths,
-    isElectron,
+    isElectron, // isElectron is now a necessary dependency
   ]);
 
   // ============================== Update Modal State ==============================
