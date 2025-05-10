@@ -864,7 +864,7 @@ const App = (): JSX.Element => {
     // Debounce the calculation
     const debounceTimeout = setTimeout(() => {
       calculateAndSetTokenCount();
-    }, 500); // 500ms debounce
+    }, 150); // Reduced debounce to 150ms for faster updates
 
     return () => clearTimeout(debounceTimeout);
   }, [
