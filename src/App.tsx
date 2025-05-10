@@ -737,17 +737,6 @@ const App = (): JSX.Element => {
     setSortDropdownOpen(!sortDropdownOpen);
   };
 
-  // Calculate total tokens from selected files
-  // const calculateTotalTokens = () => { // This function will be replaced by the new useEffect logic
-  // Ensure paths are normalized before summing tokens
-  // const normalizedSelectedPaths = selectedFiles.map(normalizePath);
-  // return normalizedSelectedPaths.reduce((total: number, selectedPath: string) => {
-  // Use arePathsEqual for comparison
-  // const file = allFiles.find((f: FileData) => arePathsEqual(f.path, selectedPath));
-  // return total + (file ? file.tokenCount : 0);
-  // }, 0);
-  // };
-
   /**
    * State for storing user instructions
    * This text will be appended at the end of all copied content
@@ -841,7 +830,10 @@ const App = (): JSX.Element => {
       if (contentToTokenize && isElectron) {
         try {
           // Invoke IPC to get token count from the main process
-          const result = await window.electron.ipcRenderer.invoke('get-token-count', contentToTokenize);
+          const result = await window.electron.ipcRenderer.invoke(
+            'get-token-count',
+            contentToTokenize
+          );
           if (result && result.tokenCount !== undefined) {
             setTotalFormattedContentTokens(result.tokenCount);
           } else if (result && result.error) {
@@ -1024,7 +1016,8 @@ const App = (): JSX.Element => {
                 <div className="content-title">Selected Files</div>
                 <div className="content-actions">
                   <div className="file-stats">
-                    {selectedFiles.length} files | ~{totalFormattedContentTokens.toLocaleString()} tokens
+                    {selectedFiles.length} files | ~{totalFormattedContentTokens.toLocaleString()}{' '}
+                    tokens
                   </div>
                   <div className="sort-dropdown">
                     <button className="sort-dropdown-button" onClick={toggleSortDropdown}>
