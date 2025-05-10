@@ -1,3 +1,22 @@
+## [1.0.5] - 2025-05-10
+
+### Improved
+
+- **Tokenization Accuracy and Consistency:**
+  - Standardized token counting to use the `o200k_base` encoding across the application.
+  - The displayed token count now accurately reflects the entire formatted output, including file contents, file tree (if enabled), user instructions, and all formatting tags.
+
+### Fixed
+
+- Resolved an issue where the token count was not accurately reflecting the entire formatted output.
+
+### Changed
+
+- Refactored token counting mechanism:
+  - The renderer process (`src/App.tsx`) now prepares the complete string for copying.
+  - This string is then sent to the main process (`electron/main.js`) via an IPC channel (`get-token-count`).
+  - The main process performs the tokenization using the `countTokens` function from `electron/file-processor.js`, ensuring consistent use of the `o200k_base` encoder.
+
 ## [1.0.4] - 2025-05-09
 
 ### Added

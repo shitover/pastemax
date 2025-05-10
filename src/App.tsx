@@ -117,6 +117,7 @@ const App = (): JSX.Element => {
 
   /* ============================== STATE: User Instructions ============================== */
   const [userInstructions, setUserInstructions] = useState('');
+  const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0); // New state for accurate token count
   /**
    * State variable used to trigger data re-fetching when its value changes.
    * The `reloadTrigger` is incremented whenever a refresh of the file list or
@@ -736,17 +737,6 @@ const App = (): JSX.Element => {
     setSortDropdownOpen(!sortDropdownOpen);
   };
 
-  // Calculate total tokens from selected files
-  const calculateTotalTokens = () => {
-    // Ensure paths are normalized before summing tokens
-    const normalizedSelectedPaths = selectedFiles.map(normalizePath);
-    return normalizedSelectedPaths.reduce((total: number, selectedPath: string) => {
-      // Use arePathsEqual for comparison
-      const file = allFiles.find((f: FileData) => arePathsEqual(f.path, selectedPath));
-      return total + (file ? file.tokenCount : 0);
-    }, 0);
-  };
-
   /**
    * State for storing user instructions
    * This text will be appended at the end of all copied content
@@ -832,6 +822,53 @@ const App = (): JSX.Element => {
       return newState;
     });
   };
+
+  // useEffect for calculating token count of the fully formatted content
+  useEffect(() => {
+    const calculateAndSetTokenCount = async () => {
+      const contentToTokenize = getSelectedFilesContent();
+      if (contentToTokenize && isElectron) {
+        try {
+          // Invoke IPC to get token count from the main process
+          const result = await window.electron.ipcRenderer.invoke(
+            'get-token-count',
+            contentToTokenize
+          );
+          if (result && result.tokenCount !== undefined) {
+            setTotalFormattedContentTokens(result.tokenCount);
+          } else if (result && result.error) {
+            console.error('Error from get-token-count IPC:', result.error);
+            setTotalFormattedContentTokens(0); // Fallback or error state
+          } else {
+            console.error('Unexpected response from get-token-count IPC:', result);
+            setTotalFormattedContentTokens(0); // Fallback
+          }
+        } catch (error) {
+          console.error('Failed to invoke get-token-count:', error);
+          setTotalFormattedContentTokens(0); // Fallback on IPC error
+        }
+      } else {
+        // If not in Electron or no content, set tokens to 0
+        setTotalFormattedContentTokens(0);
+      }
+    };
+
+    // Debounce the calculation
+    const debounceTimeout = setTimeout(() => {
+      calculateAndSetTokenCount();
+    }, 150); // Debounce to avoid rapid recalculations
+
+    return () => clearTimeout(debounceTimeout);
+  }, [
+    allFiles,
+    selectedFiles,
+    sortOrder,
+    includeFileTree,
+    selectedFolder,
+    userInstructions,
+    includeBinaryPaths,
+    isElectron, // isElectron is now a necessary dependency
+  ]);
 
   // ============================== Update Modal State ==============================
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -979,7 +1016,8 @@ const App = (): JSX.Element => {
                 <div className="content-title">Selected Files</div>
                 <div className="content-actions">
                   <div className="file-stats">
-                    {selectedFiles.length} files | ~{calculateTotalTokens().toLocaleString()} tokens
+                    {selectedFiles.length} files | ~{totalFormattedContentTokens.toLocaleString()}{' '}
+                    tokens
                   </div>
                   <div className="sort-dropdown">
                     <button className="sort-dropdown-button" onClick={toggleSortDropdown}>

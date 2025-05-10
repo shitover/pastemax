@@ -108,10 +108,13 @@ contextBridge.exposeInMainWorld('electron', {
     },
     // PATCH: Allow invoke for 'check-for-updates' as well as 'get-ignore-patterns'
     invoke: (channel, data) => {
-      const validChannels = ['get-ignore-patterns', 'check-for-updates'];
+      const validChannels = ['get-ignore-patterns', 'check-for-updates', 'get-token-count']; // Added 'get-token-count'
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
       }
+      // Optionally, you could add a console.warn or throw an error for unhandled channels
+      console.warn(`[preload.js] Attempted to invoke unhandled channel: ${channel}`);
+      return Promise.reject(new Error(`Unhandled IPC invoke channel: ${channel}`));
     },
   },
 });

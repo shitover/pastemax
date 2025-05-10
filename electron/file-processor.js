@@ -610,4 +610,5 @@ module.exports = {
   removeFileCacheEntry, // Renamed and added for export
   startFileProcessing,
   stopFileProcessing,
+  encoder, // Export the encoder for consistent token counting
 };

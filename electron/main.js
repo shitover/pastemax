@@ -53,6 +53,7 @@ const {
   clearFileCaches,
   startFileProcessing,
   stopFileProcessing,
+  countTokens, // Added countTokens
 } = require('./file-processor.js');
 
 // ======================
@@ -257,6 +258,21 @@ if (!ipcMain.eventNames().includes('set-ignore-mode')) {
     });
   });
 }
+
+// IPC Handler for getting token count
+ipcMain.handle('get-token-count', async (event, textToTokenize) => {
+  if (typeof textToTokenize !== 'string') {
+    console.error('[IPC:get-token-count] Invalid textToTokenize received:', textToTokenize);
+    return { error: 'Invalid input: textToTokenize must be a string.' };
+  }
+  try {
+    const tokenCount = countTokens(textToTokenize);
+    return { tokenCount };
+  } catch (error) {
+    console.error('[IPC:get-token-count] Error counting tokens:', error);
+    return { error: `Error counting tokens: ${error.message}` };
+  }
+});
 
 ipcMain.on('request-file-list', async (event, payload) => {
   console.log('Received request-file-list payload:', payload); // Log the entire payload
