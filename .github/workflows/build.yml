@@ -12,9 +12,9 @@ permissions:
   packages: write
 
 jobs:
-  release:
+  build:
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -105,21 +105,43 @@ jobs:
             release-builds/pastemax-*.AppImage
             release-builds/pastemax-*-*.*.rpm
             release-builds/pastemax_*_amd64.rpm
-          if-no-files-found: error      # Create GitHub release
-      - name: Release
+          if-no-files-found: error
+
+  # Separate job for creating GitHub release after all builds are complete
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release-artifacts/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release-artifacts/windows
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release-artifacts/linux
+
+      - name: List artifacts
+        run: ls -la release-artifacts/*/
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*.dmg' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-arm64.dmg' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-mac.zip' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'release-builds/PasteMax-*-arm64-mac.zip' || '' }}
-            ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax [0-9]*.exe' || '' }}
-            ${{ matrix.os == 'windows-latest' && 'release-builds/PasteMax Setup [0-9]*.exe' || '' }}
-            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/pastemax_*_amd64.deb' || '' }}
-            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/pastemax-*-*.*.rpm' || '' }}
-            ${{ matrix.os == 'ubuntu-latest' && 'release-builds/*.AppImage' || '' }}
+            release-artifacts/macos/*
+            release-artifacts/windows/*
+            release-artifacts/linux/*
           fail_on_unmatched_files: false
           draft: true
           generate_release_notes: true
