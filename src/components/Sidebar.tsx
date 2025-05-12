@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SidebarProps, TreeNode } from '../types/FileTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
+import TaskTypeSelector from './TaskTypeSelector';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -29,6 +30,8 @@ const Sidebar = ({
   expandedNodes,
   toggleExpanded,
   includeBinaryPaths,
+  selectedTaskType,
+  onTaskTypeChange,
 }: Omit<SidebarProps, 'openFolder'>) => {
   // State for managing the file tree and UI
   const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
@@ -331,9 +334,18 @@ const Sidebar = ({
 
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
+      {/* Task Type Selector */}
+      {selectedTaskType && onTaskTypeChange && (
+        <TaskTypeSelector selectedTaskType={selectedTaskType} onTaskTypeChange={onTaskTypeChange} />
+      )}
+
       <div className="sidebar-header">
         <div className="sidebar-title">Files</div>
-        <div className="sidebar-folder-path">{selectedFolder}</div>
+        {selectedFolder && (
+          <div className="sidebar-folder-path" title={selectedFolder}>
+            {selectedFolder}
+          </div>
+        )}
       </div>
 
       <div className="sidebar-search">
