@@ -13,6 +13,7 @@ import UserInstructions from './components/UserInstructions';
 import TaskTypeSelector from './components/TaskTypeSelector';
 import { DEFAULT_TASK_TYPES, STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
 import { DownloadCloud } from 'lucide-react';
+import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -121,6 +122,7 @@ const App = (): JSX.Element => {
   const [selectedTaskType, setSelectedTaskType] = useState(
     savedTaskType || DEFAULT_TASK_TYPES[0].id
   );
+  const [isCustomTaskTypeModalOpen, setIsCustomTaskTypeModalOpen] = useState(false);
 
   /* ============================== STATE: User Instructions ============================== */
   const [userInstructions, setUserInstructions] = useState('');
@@ -945,6 +947,21 @@ const App = (): JSX.Element => {
     }
   };
 
+  const handleManageCustomTaskTypes = () => {
+    setIsCustomTaskTypeModalOpen(true);
+  };
+
+  const handleCustomTaskTypesUpdated = () => {
+    // Force reload task types by triggering a re-render with a temporary state update
+    // This creates a state change that will cause the TaskTypeSelector to reload custom types
+    const currentTaskType = selectedTaskType;
+    // Temporarily set to the first default type and then back to selected
+    setSelectedTaskType('none');
+    setTimeout(() => {
+      setSelectedTaskType(currentTaskType);
+    }, 50);
+  };
+
   /* ===================================================================== */
   /* ============================== RENDER =============================== */
   /* ===================================================================== */
@@ -1048,6 +1065,7 @@ const App = (): JSX.Element => {
               includeBinaryPaths={includeBinaryPaths}
               selectedTaskType={selectedTaskType}
               onTaskTypeChange={handleTaskTypeChange}
+              onManageCustomTypes={handleManageCustomTaskTypes}
             />
             <div className="content-area">
               <div className="content-header">
@@ -1148,6 +1166,13 @@ const App = (): JSX.Element => {
           onClose={() => setIsUpdateModalOpen(false)}
           updateStatus={updateStatus}
         />
+        {isCustomTaskTypeModalOpen && (
+          <CustomTaskTypeModal
+            isOpen={isCustomTaskTypeModalOpen}
+            onClose={() => setIsCustomTaskTypeModalOpen(false)}
+            onTaskTypesUpdated={handleCustomTaskTypesUpdated}
+          />
+        )}
       </div>
     </ThemeProvider>
   );

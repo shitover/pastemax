@@ -42,6 +42,7 @@ export interface SidebarProps {
   includeBinaryPaths: boolean;
   selectedTaskType?: string;
   onTaskTypeChange?: (taskTypeId: string) => void;
+  onManageCustomTypes?: () => void;
 }
 
 export interface FileListProps {

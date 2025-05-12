@@ -32,6 +32,7 @@ const Sidebar = ({
   includeBinaryPaths,
   selectedTaskType,
   onTaskTypeChange,
+  onManageCustomTypes,
 }: Omit<SidebarProps, 'openFolder'>) => {
   // State for managing the file tree and UI
   const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
@@ -168,7 +169,6 @@ const Sidebar = ({
         const convertToTreeNodes = (node: Record<string, any>, level = 0): TreeNode[] => {
           return Object.keys(node).map((key) => {
             const item = node[key];
-
             if (item.type === 'file') {
               return item as TreeNode;
             } else {
@@ -336,7 +336,11 @@ const Sidebar = ({
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
       {/* Task Type Selector */}
       {selectedTaskType && onTaskTypeChange && (
-        <TaskTypeSelector selectedTaskType={selectedTaskType} onTaskTypeChange={onTaskTypeChange} />
+        <TaskTypeSelector
+          selectedTaskType={selectedTaskType}
+          onTaskTypeChange={onTaskTypeChange}
+          onManageCustomTypes={onManageCustomTypes}
+        />
       )}
 
       <div className="sidebar-header">
