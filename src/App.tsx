@@ -12,6 +12,7 @@ import UserInstructions from './components/UserInstructions';
 import { DEFAULT_TASK_TYPES, STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
 import { DownloadCloud, ArrowDownUp } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
+import TaskTypeSelector from './components/TaskTypeSelector';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -1045,8 +1046,10 @@ const App = (): JSX.Element => {
           <div className="error-message">Error: {processingStatus.message}</div>
         )}
 
-        {selectedFolder && (
-          <div className="main-content">
+        {/* Main content area - always rendered regardless of whether a folder is selected */}
+        <div className="main-content">
+          {/* Render Sidebar if folder selected, otherwise show empty sidebar with task type selector */}
+          {selectedFolder ? (
             <Sidebar
               selectedFolder={selectedFolder}
               allFiles={allFiles}
@@ -1064,16 +1067,38 @@ const App = (): JSX.Element => {
               onTaskTypeChange={handleTaskTypeChange}
               onManageCustomTypes={handleManageCustomTaskTypes}
             />
-            <div className="content-area">
-              <div className="content-header">
-                <div className="content-title">Selected Files</div>
-                <div className="content-header-actions-group">
-                  {' '}
-                  {/* New wrapper div */}
-                  <div className="stats-info">
-                    {displayedFiles.length} files | ~{totalFormattedContentTokens.toLocaleString()}{' '}
-                    tokens
-                  </div>
+          ) : (
+            <div className="sidebar" style={{ width: '300px' }}>
+              {/* Task Type Selector - always visible */}
+              <TaskTypeSelector
+                selectedTaskType={selectedTaskType}
+                onTaskTypeChange={handleTaskTypeChange}
+                onManageCustomTypes={handleManageCustomTaskTypes}
+              />
+
+              <div className="sidebar-header">
+                <div className="sidebar-title">Files</div>
+              </div>
+
+              <div className="tree-empty">
+                No folder selected. Use the "Select Folder" button to choose a project folder.
+              </div>
+
+              <div className="sidebar-resize-handle"></div>
+            </div>
+          )}
+
+          {/* Content area - always visible with appropriate empty states */}
+          <div className="content-area">
+            <div className="content-header">
+              <div className="content-title">Selected Files</div>
+              <div className="content-header-actions-group">
+                <div className="stats-info">
+                  {selectedFolder
+                    ? `${displayedFiles.length} files | ~${totalFormattedContentTokens.toLocaleString()} tokens`
+                    : '0 files | ~0 tokens'}
+                </div>
+                {selectedFolder && (
                   <div className="sort-options">
                     <div className="sort-selector-wrapper">
                       <button
@@ -1089,8 +1114,6 @@ const App = (): JSX.Element => {
                           aria-hidden="true"
                           style={{ display: 'flex', alignItems: 'center' }}
                         >
-                          {/* Lucide React sort icon */}
-                          {/* Import ArrowDownUp from 'lucide-react' at the top */}
                           <ArrowDownUp size={16} />
                         </span>
                         <span id="current-sort-value" className="current-sort">
@@ -1126,58 +1149,69 @@ const App = (): JSX.Element => {
                       )}
                     </div>
                   </div>
-                </div>{' '}
-                {/* This closes content-header-actions-group */}
-              </div>{' '}
-              {/* This closes content-header */}
-              <FileList
-                files={displayedFiles}
-                selectedFiles={selectedFiles}
-                toggleFileSelection={toggleFileSelection}
-              />
-              {/* User instructions section */}
-              <UserInstructions
-                instructions={userInstructions}
-                setInstructions={setUserInstructions}
-                selectedTaskType={selectedTaskType}
-              />
-              {/* Options for content format */}
-              <div className="copy-options">
-                <div className="option">
-                  <input
-                    type="checkbox"
-                    id="includeFileTree"
-                    checked={includeFileTree}
-                    onChange={(e) => setIncludeFileTree(e.target.checked)}
-                  />
-                  <label htmlFor="includeFileTree">Include File Tree</label>
-                </div>
-
-                <div className="option">
-                  <input
-                    type="checkbox"
-                    id="includeBinaryPaths"
-                    checked={includeBinaryPaths}
-                    onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
-                  />
-                  <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
-                </div>
-              </div>
-              {/* Copy button */}
-              <div className="copy-button-container">
-                <button
-                  className="primary copy-button-main"
-                  onClick={handleCopy}
-                  disabled={selectedFiles.length === 0}
-                >
-                  <span className="copy-button-text">
-                    COPY ALL SELECTED ({selectedFiles.length} files)
-                  </span>
-                </button>
+                )}
               </div>
             </div>
+
+            {/* File List - show appropriate message when no folder is selected */}
+            <div className="file-list-container">
+              {selectedFolder ? (
+                <FileList
+                  files={displayedFiles}
+                  selectedFiles={selectedFiles}
+                  toggleFileSelection={toggleFileSelection}
+                />
+              ) : (
+                <div className="file-list-empty">
+                  No folder selected. Use the "Select Folder" button to choose a project folder.
+                </div>
+              )}
+            </div>
+
+            {/* User instructions section - always visible */}
+            <UserInstructions
+              instructions={userInstructions}
+              setInstructions={setUserInstructions}
+              selectedTaskType={selectedTaskType}
+            />
+
+            {/* Options for content format - always visible */}
+            <div className="copy-options">
+              <div className="option">
+                <input
+                  type="checkbox"
+                  id="includeFileTree"
+                  checked={includeFileTree}
+                  onChange={(e) => setIncludeFileTree(e.target.checked)}
+                />
+                <label htmlFor="includeFileTree">Include File Tree</label>
+              </div>
+
+              <div className="option">
+                <input
+                  type="checkbox"
+                  id="includeBinaryPaths"
+                  checked={includeBinaryPaths}
+                  onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
+                />
+                <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
+              </div>
+            </div>
+
+            {/* Copy button - always visible but disabled when no files selected */}
+            <div className="copy-button-container">
+              <button
+                className="primary copy-button-main"
+                onClick={handleCopy}
+                disabled={selectedFiles.length === 0}
+              >
+                <span className="copy-button-text">
+                  COPY ALL SELECTED ({selectedFiles.length} files)
+                </span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Ignore Patterns Viewer Modal */}
         <IgnoreListModal
