@@ -10,9 +10,11 @@ import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
 import { DEFAULT_TASK_TYPES, STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp } from 'lucide-react';
+import { DownloadCloud, ArrowDownUp, FolderKanban } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
+import WorkspaceManager from './components/WorkspaceManager';
+import { Workspace } from './types/WorkspaceTypes';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -58,6 +60,8 @@ const STORAGE_KEYS = {
   IGNORE_SETTINGS_MODIFIED: 'pastemax-ignore-settings-modified',
   INCLUDE_BINARY_PATHS: 'pastemax-include-binary-paths',
   TASK_TYPE: STORAGE_KEY_TASK_TYPE,
+  WORKSPACES: 'pastemax-workspaces',
+  CURRENT_WORKSPACE: 'pastemax-current-workspace',
 };
 
 /* ============================== MAIN APP COMPONENT ============================== */
@@ -136,9 +140,17 @@ const App = (): JSX.Element => {
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
     console.time('clearSavedState');
-    // Clear all localStorage items except ignore mode, custom ignores, and ignore settings modified flag
+    // Clear only folder-related localStorage items, preserving workspaces and other settings
+    const keysToPreserve = [
+      STORAGE_KEYS.IGNORE_MODE,
+      STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
+      STORAGE_KEYS.WORKSPACES,
+      STORAGE_KEYS.CURRENT_WORKSPACE,
+      STORAGE_KEYS.TASK_TYPE,
+    ];
+
     Object.values(STORAGE_KEYS).forEach((key) => {
-      if (key !== STORAGE_KEYS.IGNORE_MODE && key !== STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED) {
+      if (!keysToPreserve.includes(key)) {
         localStorage.removeItem(key);
       }
     });
@@ -163,10 +175,37 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.send('clear-main-cache');
     }
 
-    // Reload the application window
+    // Reset only folder-related state, keep workspaces intact
     console.timeEnd('clearSavedState');
-    window.location.reload();
-  }, [isElectron]); // Added isElectron dependency
+
+    // Keep the task type
+    const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
+
+    // Reload the page to refresh UI, but without affecting workspaces data
+    setProcessingStatus({
+      status: 'complete',
+      message: 'Selected folder cleared',
+    });
+
+    // Avoid full page reload to preserve workspace data
+    setSelectedFolder(null);
+    setAllFiles([]);
+    setSelectedFiles([]);
+    setDisplayedFiles([]);
+
+    // Restore task type if it was saved
+    if (savedTaskType) {
+      setSelectedTaskType(savedTaskType);
+    }
+  }, [
+    isElectron,
+    setSelectedFolder,
+    setAllFiles,
+    setSelectedFiles,
+    setDisplayedFiles,
+    setSelectedTaskType,
+    setProcessingStatus,
+  ]); // Updated dependencies
 
   /* ============================== EFFECTS ============================== */
 
@@ -885,6 +924,23 @@ const App = (): JSX.Element => {
   const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
   const initialUpdateCheckAttemptedRef = useRef(false);
 
+  // Workspace state
+  const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
+  });
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
+    const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
+    if (savedWorkspaces) {
+      try {
+        return JSON.parse(savedWorkspaces);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   // Handler for checking updates
   const handleCheckForUpdates = useCallback(async () => {
     setIsUpdateModalOpen(true);
@@ -923,6 +979,73 @@ const App = (): JSX.Element => {
   const handleTaskTypeChange = (taskTypeId: string) => {
     setSelectedTaskType(taskTypeId);
   };
+
+  // Workspace functions
+  const handleOpenWorkspaceManager = () => {
+    setIsWorkspaceManagerOpen(true);
+  };
+
+  const handleSelectWorkspace = (workspaceId: string) => {
+    // Find the workspace
+    const workspace = workspaces.find((w) => w.id === workspaceId);
+    if (!workspace) return;
+
+    // Save current workspace id
+    localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, workspaceId);
+    setCurrentWorkspaceId(workspaceId);
+
+    // Update last used timestamp
+    const updatedWorkspaces = workspaces.map((w) =>
+      w.id === workspaceId ? { ...w, lastUsed: Date.now() } : w
+    );
+    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+    setWorkspaces(updatedWorkspaces);
+
+    // Load the workspace's folder path if it exists
+    if (workspace.folderPath) {
+      handleFolderSelected(workspace.folderPath);
+    }
+
+    setIsWorkspaceManagerOpen(false);
+  };
+
+  const handleCreateWorkspace = (name: string) => {
+    // Create a new workspace
+    const newWorkspace: Workspace = {
+      id: `workspace-${Date.now()}`,
+      name,
+      folderPath: selectedFolder,
+      createdAt: Date.now(),
+      lastUsed: Date.now(),
+    };
+
+    // Add to workspaces
+    const newWorkspaces = [...workspaces, newWorkspace];
+    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(newWorkspaces));
+    setWorkspaces(newWorkspaces);
+
+    // Set as current workspace
+    localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, newWorkspace.id);
+    setCurrentWorkspaceId(newWorkspace.id);
+  };
+
+  const handleDeleteWorkspace = (workspaceId: string) => {
+    // Filter out the deleted workspace
+    const filteredWorkspaces = workspaces.filter((w) => w.id !== workspaceId);
+    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(filteredWorkspaces));
+    setWorkspaces(filteredWorkspaces);
+
+    // If deleting current workspace, clear current selection
+    if (currentWorkspaceId === workspaceId) {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
+      setCurrentWorkspaceId(null);
+    }
+  };
+
+  // Get current workspace name for display
+  const currentWorkspaceName = currentWorkspaceId
+    ? workspaces.find((w) => w.id === currentWorkspaceId)?.name || 'Untitled'
+    : null;
 
   // Handle copying content to clipboard
   const handleCopy = async () => {
@@ -1009,6 +1132,18 @@ const App = (): JSX.Element => {
                 className="view-ignores-btn"
               >
                 Ignore Filters
+              </button>
+              <button
+                className="workspace-button"
+                title="Workspace Manager"
+                onClick={handleOpenWorkspaceManager}
+              >
+                <FolderKanban size={16} />
+                {currentWorkspaceName ? (
+                  <span className="current-workspace-name">{currentWorkspaceName}</span>
+                ) : (
+                  'Workspaces'
+                )}
               </button>
               <button
                 className="header-action-btn check-updates-button"
@@ -1233,6 +1368,14 @@ const App = (): JSX.Element => {
             onTaskTypesUpdated={handleCustomTaskTypesUpdated}
           />
         )}
+        <WorkspaceManager
+          isOpen={isWorkspaceManagerOpen}
+          onClose={() => setIsWorkspaceManagerOpen(false)}
+          currentWorkspace={currentWorkspaceId}
+          onSelectWorkspace={handleSelectWorkspace}
+          onCreateWorkspace={handleCreateWorkspace}
+          onDeleteWorkspace={handleDeleteWorkspace}
+        />
       </div>
     </ThemeProvider>
   );

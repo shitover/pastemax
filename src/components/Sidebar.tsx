@@ -335,9 +335,9 @@ const Sidebar = ({
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
       {/* Task Type Selector */}
-      {selectedTaskType && onTaskTypeChange && (
+      {onTaskTypeChange && (
         <TaskTypeSelector
-          selectedTaskType={selectedTaskType}
+          selectedTaskType={selectedTaskType || ''}
           onTaskTypeChange={onTaskTypeChange}
           onManageCustomTypes={onManageCustomTypes}
         />
