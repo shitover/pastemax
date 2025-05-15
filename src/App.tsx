@@ -89,6 +89,39 @@ const App = (): JSX.Element => {
   const isElectron = window.electron !== undefined;
   const [allFiles, setAllFiles] = useState([] as FileData[]);
 
+  /* ============================== STATE: Workspace Management ============================== */
+  const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
+  });
+  const [workspaces, setWorkspaces] = useState(() => {
+    const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
+    if (savedWorkspaces) {
+      try {
+        const parsed = JSON.parse(savedWorkspaces);
+        if (Array.isArray(parsed)) {
+          console.log(`Initialized workspaces state with ${parsed.length} workspaces`);
+          return parsed as Workspace[];
+        } else {
+          console.warn(
+            'Invalid workspaces data in localStorage (not an array), resetting to empty array'
+          );
+          localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+          return [] as Workspace[];
+        }
+      } catch (error) {
+        console.error('Failed to parse workspaces from localStorage during initialization:', error);
+        // Reset localStorage to prevent further errors
+        localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+        return [] as Workspace[];
+      }
+    }
+    // Initialize with empty array and ensure localStorage has a valid value
+    console.log('No workspaces found in localStorage, initializing with empty array');
+    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+    return [] as Workspace[];
+  });
+
   /* ============================== STATE: Ignore Patterns ============================== */
   const {
     isIgnoreViewerOpen,
@@ -418,8 +451,22 @@ const App = (): JSX.Element => {
       if (!arePathsEqual(normalizedFolderPath, selectedFolder)) {
         setSelectedFiles([]);
       }
+
+      // Update current workspace's folder path if a workspace is active
+      if (currentWorkspaceId) {
+        setWorkspaces((prevWorkspaces: Workspace[]) => {
+          const updatedWorkspaces = prevWorkspaces.map((workspace: Workspace) =>
+            workspace.id === currentWorkspaceId
+              ? { ...workspace, folderPath: normalizedFolderPath, lastUsed: Date.now() }
+              : workspace
+          );
+          // Save to localStorage
+          localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+          return updatedWorkspaces;
+        });
+      }
     },
-    [selectedFolder, allFiles, processingStatus]
+    [selectedFolder, allFiles, processingStatus, currentWorkspaceId]
   );
 
   // The handleFileListData function is implemented as stableHandleFileListData below
@@ -924,23 +971,6 @@ const App = (): JSX.Element => {
   const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
   const initialUpdateCheckAttemptedRef = useRef(false);
 
-  // Workspace state
-  const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
-  });
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
-    const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
-    if (savedWorkspaces) {
-      try {
-        return JSON.parse(savedWorkspaces);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
-
   // Handler for checking updates
   const handleCheckForUpdates = useCallback(async () => {
     setIsUpdateModalOpen(true);
@@ -982,69 +1012,217 @@ const App = (): JSX.Element => {
 
   // Workspace functions
   const handleOpenWorkspaceManager = () => {
+    // Force reload workspaces from localStorage before opening
+    const storedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
+    if (storedWorkspaces) {
+      try {
+        const parsed = JSON.parse(storedWorkspaces);
+        if (Array.isArray(parsed)) {
+          // Update state with a fresh copy from localStorage
+          setWorkspaces(parsed);
+          console.log('Workspaces refreshed from localStorage before opening manager');
+        }
+      } catch (error) {
+        console.error('Failed to parse workspaces from localStorage:', error);
+      }
+    }
+
+    // Open the workspace manager
     setIsWorkspaceManagerOpen(true);
   };
 
   const handleSelectWorkspace = (workspaceId: string) => {
     // Find the workspace
-    const workspace = workspaces.find((w) => w.id === workspaceId);
+    const workspace = workspaces.find((w: Workspace) => w.id === workspaceId);
     if (!workspace) return;
 
     // Save current workspace id
     localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, workspaceId);
     setCurrentWorkspaceId(workspaceId);
 
-    // Update last used timestamp
-    const updatedWorkspaces = workspaces.map((w) =>
-      w.id === workspaceId ? { ...w, lastUsed: Date.now() } : w
-    );
-    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
-    setWorkspaces(updatedWorkspaces);
+    // Update last used timestamp using functional state update
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      const updatedWorkspaces = currentWorkspaces.map((w: Workspace) =>
+        w.id === workspaceId ? { ...w, lastUsed: Date.now() } : w
+      );
 
-    // Load the workspace's folder path if it exists
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+
+      return updatedWorkspaces;
+    });
+
+    // If the workspace has a folder associated with it
     if (workspace.folderPath) {
-      handleFolderSelected(workspace.folderPath);
+      // Only reload if it's different from the current folder
+      if (!arePathsEqual(workspace.folderPath, selectedFolder)) {
+        console.log(`Switching to workspace folder: ${workspace.folderPath}`);
+
+        // First set the selected folder
+        setSelectedFolder(workspace.folderPath);
+        localStorage.setItem(STORAGE_KEYS.SELECTED_FOLDER, workspace.folderPath);
+
+        // Request file data from the main process (if in Electron)
+        if (isElectron && !isSafeMode) {
+          setProcessingStatus({
+            status: 'processing',
+            message: 'Loading files...',
+          });
+
+          // Ensure we're sending the updated folder path to the main process
+          window.electron.ipcRenderer.send('request-file-list', {
+            folderPath: workspace.folderPath,
+            ignoreMode,
+            customIgnores,
+          });
+        }
+      }
+    } else {
+      // Clear current selection if workspace has no folder
+      setSelectedFolder(null);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      setSelectedFiles([]);
+      setAllFiles([]);
+      setProcessingStatus({
+        status: 'idle',
+        message: '',
+      });
     }
 
     setIsWorkspaceManagerOpen(false);
   };
 
   const handleCreateWorkspace = (name: string) => {
-    // Create a new workspace
-    const newWorkspace: Workspace = {
-      id: `workspace-${Date.now()}`,
+    console.log('App: Creating new workspace with name:', name);
+
+    // Create a new workspace with a unique id
+    const newWorkspace = {
+      id: `workspace-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name,
-      folderPath: selectedFolder,
+      folderPath: null, // Explicitly set to null to start with blank layout
       createdAt: Date.now(),
       lastUsed: Date.now(),
     };
 
-    // Add to workspaces
-    const newWorkspaces = [...workspaces, newWorkspace];
-    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(newWorkspaces));
-    setWorkspaces(newWorkspaces);
+    // Add to workspaces list - use functional update to ensure we're working with latest state
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      console.log('Updating workspaces state, current count:', currentWorkspaces.length);
+      const updatedWorkspaces = [...currentWorkspaces, newWorkspace];
+
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+      console.log('Saved updated workspaces to localStorage, new count:', updatedWorkspaces.length);
+
+      return updatedWorkspaces;
+    });
 
     // Set as current workspace
     localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, newWorkspace.id);
     setCurrentWorkspaceId(newWorkspace.id);
+    console.log('Set current workspace ID to:', newWorkspace.id);
+
+    // Clear selected folder to start with blank layout
+    setSelectedFolder(null);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FILES);
+    setSelectedFiles([]);
+    setAllFiles([]);
+    setProcessingStatus({
+      status: 'idle',
+      message: '',
+    });
+
+    // Close the workspace manager
+    setIsWorkspaceManagerOpen(false);
+
+    // Log final state
+    console.log('Workspace creation complete, manager closed');
   };
 
   const handleDeleteWorkspace = (workspaceId: string) => {
-    // Filter out the deleted workspace
-    const filteredWorkspaces = workspaces.filter((w) => w.id !== workspaceId);
-    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(filteredWorkspaces));
-    setWorkspaces(filteredWorkspaces);
+    console.log('App: Deleting workspace with ID:', workspaceId);
+
+    const workspaceBeingDeleted = workspaces.find((w: Workspace) => w.id === workspaceId);
+    console.log('Deleting workspace:', workspaceBeingDeleted?.name);
+
+    // Filter out the deleted workspace, using functional update to prevent stale state
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      const filteredWorkspaces = currentWorkspaces.filter((w: Workspace) => w.id !== workspaceId);
+      console.log(
+        `Filtered workspaces: ${currentWorkspaces.length} -> ${filteredWorkspaces.length}`
+      );
+
+      // Save the updated workspaces list to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(filteredWorkspaces));
+      console.log('Saved filtered workspaces to localStorage');
+
+      // Ensure empty array is properly saved when deleting the last workspace
+      if (filteredWorkspaces.length === 0) {
+        console.log('No workspaces left, ensuring empty array is saved');
+        localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+      }
+
+      return filteredWorkspaces;
+    });
 
     // If deleting current workspace, clear current selection
     if (currentWorkspaceId === workspaceId) {
+      console.log('Deleted the current workspace, clearing workspace state');
       localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
       setCurrentWorkspaceId(null);
+
+      // Also clear folder selection when current workspace is deleted
+      setSelectedFolder(null);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      setSelectedFiles([]);
+      setAllFiles([]);
+      setProcessingStatus({
+        status: 'idle',
+        message: '',
+      });
+    }
+
+    console.log('Workspace deletion complete');
+
+    // Important: Keep the workspace manager open so user can create a new workspace immediately
+    // The visual update with the deleted workspace removed will happen thanks to our useEffect in WorkspaceManager
+  };
+
+  // Handler to update a workspace's folder path
+  const handleUpdateWorkspaceFolder = (workspaceId: string, folderPath: string | null) => {
+    setWorkspaces((prevWorkspaces: Workspace[]) => {
+      const updatedWorkspaces = prevWorkspaces.map((workspace: Workspace) =>
+        workspace.id === workspaceId
+          ? { ...workspace, folderPath, lastUsed: Date.now() }
+          : workspace
+      );
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+      return updatedWorkspaces;
+    });
+
+    // If updating the current workspace, also update the selected folder
+    if (currentWorkspaceId === workspaceId) {
+      if (folderPath) {
+        // Update local storage and request file list
+        localStorage.setItem(STORAGE_KEYS.SELECTED_FOLDER, folderPath);
+        handleFolderSelected(folderPath);
+      } else {
+        // Clear folder selection in localStorage and state
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+        setSelectedFolder(null);
+        setSelectedFiles([]);
+        setAllFiles([]);
+        setProcessingStatus({
+          status: 'idle',
+          message: '',
+        });
+      }
     }
   };
 
   // Get current workspace name for display
   const currentWorkspaceName = currentWorkspaceId
-    ? workspaces.find((w) => w.id === currentWorkspaceId)?.name || 'Untitled'
+    ? workspaces.find((w: Workspace) => w.id === currentWorkspaceId)?.name || 'Untitled'
     : null;
 
   // Handle copying content to clipboard
@@ -1080,6 +1258,23 @@ const App = (): JSX.Element => {
       setSelectedTaskType(currentTaskType);
     }, 50);
   };
+
+  // Persist workspaces when they change
+  useEffect(() => {
+    if (workspaces) {
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(workspaces));
+
+      // Log information for debugging purposes
+      console.log(`Workspaces updated: ${workspaces.length} workspaces saved to localStorage`);
+
+      // If we have a current workspace, ensure it still exists in the workspaces array
+      if (currentWorkspaceId && !workspaces.some((w: Workspace) => w.id === currentWorkspaceId)) {
+        console.log('Current workspace no longer exists, clearing currentWorkspaceId');
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
+        setCurrentWorkspaceId(null);
+      }
+    }
+  }, [workspaces, currentWorkspaceId]);
 
   /* ===================================================================== */
   /* ============================== RENDER =============================== */
@@ -1199,6 +1394,7 @@ const App = (): JSX.Element => {
               selectedTaskType={selectedTaskType}
               onTaskTypeChange={handleTaskTypeChange}
               onManageCustomTypes={handleManageCustomTaskTypes}
+              currentWorkspaceName={currentWorkspaceName}
             />
           ) : (
             <div className="sidebar" style={{ width: '300px' }}>
@@ -1375,6 +1571,8 @@ const App = (): JSX.Element => {
           onSelectWorkspace={handleSelectWorkspace}
           onCreateWorkspace={handleCreateWorkspace}
           onDeleteWorkspace={handleDeleteWorkspace}
+          onUpdateWorkspaceFolder={handleUpdateWorkspaceFolder}
+          selectedFolder={selectedFolder}
         />
       </div>
     </ThemeProvider>

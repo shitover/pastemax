@@ -13,4 +13,6 @@ export interface WorkspaceManagerProps {
   onSelectWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (name: string) => void;
   onDeleteWorkspace: (workspaceId: string) => void;
+  onUpdateWorkspaceFolder: (workspaceId: string, folderPath: string | null) => void;
+  selectedFolder: string | null;
 }

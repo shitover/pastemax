@@ -43,6 +43,7 @@ export interface SidebarProps {
   selectedTaskType?: string;
   onTaskTypeChange?: (taskTypeId: string) => void;
   onManageCustomTypes?: () => void;
+  currentWorkspaceName?: string | null;
 }
 
 export interface FileListProps {

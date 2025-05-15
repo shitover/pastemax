@@ -606,6 +606,21 @@ input[type='checkbox'][disabled] {
   letter-spacing: 0.5px;
 }
 
+.sidebar-workspace-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin: 0 var(--space-lg) 8px;
+}
+
+.dark-mode .sidebar-workspace-badge {
+  background-color: #0c4a6e;
+  color: #7dd3fc;
+}
+
 .sidebar-folder-path {
   font-size: 12px;
   color: var(--text-secondary);
@@ -3846,158 +3861,109 @@ button:hover svg.lucide {
   }
 }
 /* Workspace Manager Styles */
-.workspace-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  background-color: var(--button-bg);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 4px 10px;
-  margin-left: 8px;
-  cursor: pointer;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-.workspace-button:hover {
-  background-color: var(--button-hover-bg);
-}
-
-.workspace-button svg {
-  margin-right: 4px;
-}
 
 .workspace-manager-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.85);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.3s ease;
+  overflow: hidden;
 }
 
 .workspace-manager {
-  width: 600px;
-  max-width: 90vw;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 500px;
+  max-width: 90%;
   max-height: 90vh;
-  background-color: #1a1a1a;
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: scaleIn 0.2s ease-out;
-  color: #e0e0e0;
-  border: 1px solid #2c2c2c;
+}
+
+.dark-mode .workspace-manager {
+  background-color: #1e1e1e;
+  border: 1px solid #333;
 }
 
 .workspace-manager-header {
+  padding: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #2c2c2c;
+  border-bottom: 1px solid #eee;
+}
+
+.dark-mode .workspace-manager-header {
+  border-bottom: 1px solid #333;
 }
 
 .workspace-manager-header h2 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #e0e0e0;
+  font-size: 1.2rem;
+  color: #333;
 }
 
-.workspace-manager-header .close-button {
-  background: transparent;
-  border: none;
-  color: #999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 4px;
-}
-
-.workspace-manager-header .close-button:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+.dark-mode .workspace-manager-header h2 {
   color: #fff;
 }
 
 .workspace-manager-content {
-  padding: 20px;
+  padding: 16px;
+  flex: 1;
   overflow-y: auto;
-  max-height: calc(90vh - 60px);
+  max-height: 70vh;
 }
 
 .new-workspace-form {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .new-workspace-input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #444;
+  border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  background-color: #2a2a2a;
-  color: #e0e0e0;
 }
 
-.new-workspace-input:focus {
-  border-color: #3e78f1;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(62, 120, 241, 0.2);
+.dark-mode .new-workspace-input {
+  background-color: #333;
+  border-color: #444;
+  color: #fff;
 }
 
 .new-workspace-button {
-  display: flex;
-  align-items: center;
-  background-color: #3e78f1;
+  padding: 8px 12px;
+  background-color: #2563eb;
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 8px 12px;
-  margin-left: 8px;
-  font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.new-workspace-button svg {
-  margin-right: 4px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .new-workspace-button:hover {
-  background-color: #2d67e0;
+  background-color: #1d4ed8;
 }
 
 .new-workspace-button:disabled {
-  background-color: #363636;
-  color: #666;
+  background-color: #93c5fd;
   cursor: not-allowed;
 }
 
 .workspaces-list {
-  margin-top: 12px;
-}
-
-.no-workspaces {
-  padding: 20px;
-  text-align: center;
-  color: #999;
-  font-style: italic;
-  border: 1px dashed #444;
-  border-radius: 4px;
-  background-color: #222;
+  margin-top: 8px;
 }
 
 .workspaces-list ul {
@@ -4010,99 +3976,160 @@ button:hover svg.lucide {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border: 1px solid #333;
+  padding: 12px;
+  border: 1px solid #eee;
   border-radius: 4px;
   margin-bottom: 8px;
   cursor: pointer;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s;
-  background-color: #222;
+  transition: all 0.2s ease;
+}
+
+.dark-mode .workspace-item {
+  border-color: #333;
 }
 
 .workspace-item:hover {
+  background-color: #f5f5f5;
+}
+
+.dark-mode .workspace-item:hover {
   background-color: #2a2a2a;
 }
 
 .workspace-item.active {
-  border-color: #3e78f1;
-  background-color: rgba(62, 120, 241, 0.15);
+  border-left: 3px solid #2563eb;
+  background-color: #f0f7ff;
+}
+
+.dark-mode .workspace-item.active {
+  background-color: #1e293b;
 }
 
 .workspace-info {
+  flex: 1;
   overflow: hidden;
 }
 
 .workspace-name {
   font-weight: 500;
-  font-size: 15px;
   margin-bottom: 4px;
-  color: #e0e0e0;
+  color: #333;
+}
+
+.dark-mode .workspace-name {
+  color: #fff;
 }
 
 .workspace-path {
-  font-size: 13px;
-  color: #999;
+  font-size: 12px;
+  color: #666;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 360px;
+  max-width: 300px;
 }
 
+.dark-mode .workspace-path {
+  color: #aaa;
+}
+
+.workspace-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.set-folder-button,
+.clear-folder-button,
 .delete-workspace-button {
-  background: transparent;
-  border: none;
-  color: #999;
-  padding: 6px;
-  border-radius: 4px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.set-folder-button:hover {
+  background-color: #e6e6e6;
+  color: #2563eb;
+}
+
+.clear-folder-button:hover {
+  background-color: #e6e6e6;
+  color: #f59e0b;
 }
 
 .delete-workspace-button:hover {
-  background-color: rgba(244, 67, 54, 0.15);
-  color: #f44336;
+  background-color: #e6e6e6;
+  color: #ef4444;
 }
 
-.delete-workspace-button:focus-visible {
-  outline: 2px solid #3e78f1;
-  outline-offset: 2px;
+.dark-mode .set-folder-button,
+.dark-mode .clear-folder-button,
+.dark-mode .delete-workspace-button {
+  color: #aaa;
 }
 
-/* Current workspace indicator in header */
-.current-workspace {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: #999;
-  margin-left: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
+.dark-mode .set-folder-button:hover {
+  background-color: #333;
+  color: #3b82f6;
+}
+
+.dark-mode .clear-folder-button:hover {
+  background-color: #333;
+  color: #f59e0b;
+}
+
+.dark-mode .delete-workspace-button:hover {
+  background-color: #333;
+  color: #ef4444;
+}
+
+.no-workspaces {
+  text-align: center;
+  padding: 16px;
+  color: #666;
+  font-style: italic;
+}
+
+.dark-mode .no-workspaces {
+  color: #aaa;
 }
 
 .current-workspace-name {
+  margin-left: 8px;
   font-weight: 500;
-  color: #e0e0e0;
 }
 
-@media (max-width: 768px) {
-  .workspace-manager {
-    width: 95vw;
-  }
+/* Header workspace button */
+.workspace-button {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
 
-  .workspace-path {
-    max-width: 240px;
-  }
+.dark-mode .workspace-button {
+  background-color: #333;
+  border-color: #444;
+  color: #fff;
+}
 
-  .current-workspace {
-    max-width: 120px;
-  }
+.workspace-button:hover {
+  background-color: #e6e6e6;
+}
+
+.dark-mode .workspace-button:hover {
+  background-color: #444;
 }
