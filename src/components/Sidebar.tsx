@@ -345,11 +345,6 @@ const Sidebar = ({
 
       <div className="sidebar-header">
         <div className="sidebar-title">Files</div>
-        {selectedFolder && (
-          <div className="sidebar-folder-path" title={selectedFolder}>
-            {selectedFolder}
-          </div>
-        )}
       </div>
 
       <div className="sidebar-search">
