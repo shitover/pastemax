@@ -75,7 +75,7 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
+  // const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE); // Removed this line
   // const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE); no longer needed
 
   /* ============================== STATE: Core App State ============================== */
@@ -118,9 +118,7 @@ const App = (): JSX.Element => {
   /* ============================== STATE: UI Controls ============================== */
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isSafeMode, setIsSafeMode] = useState(false);
-  const [selectedTaskType, setSelectedTaskType] = useState(
-    savedTaskType || DEFAULT_TASK_TYPES[0].id
-  );
+  const [selectedTaskType, setSelectedTaskType] = useState('');
   const [isCustomTaskTypeModalOpen, setIsCustomTaskTypeModalOpen] = useState(false);
 
   /* ============================== STATE: User Instructions ============================== */
