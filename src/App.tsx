@@ -10,8 +10,11 @@ import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
 import { DEFAULT_TASK_TYPES, STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp } from 'lucide-react';
+import { DownloadCloud, ArrowDownUp, FolderKanban } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
+import TaskTypeSelector from './components/TaskTypeSelector';
+import WorkspaceManager from './components/WorkspaceManager';
+import { Workspace } from './types/WorkspaceTypes';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -57,6 +60,8 @@ const STORAGE_KEYS = {
   IGNORE_SETTINGS_MODIFIED: 'pastemax-ignore-settings-modified',
   INCLUDE_BINARY_PATHS: 'pastemax-include-binary-paths',
   TASK_TYPE: STORAGE_KEY_TASK_TYPE,
+  WORKSPACES: 'pastemax-workspaces',
+  CURRENT_WORKSPACE: 'pastemax-current-workspace',
 };
 
 /* ============================== MAIN APP COMPONENT ============================== */
@@ -74,7 +79,7 @@ const App = (): JSX.Element => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
+  // const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE); // Removed this line
   // const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE); no longer needed
 
   /* ============================== STATE: Core App State ============================== */
@@ -83,6 +88,39 @@ const App = (): JSX.Element => {
   );
   const isElectron = window.electron !== undefined;
   const [allFiles, setAllFiles] = useState([] as FileData[]);
+
+  /* ============================== STATE: Workspace Management ============================== */
+  const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
+  });
+  const [workspaces, setWorkspaces] = useState(() => {
+    const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
+    if (savedWorkspaces) {
+      try {
+        const parsed = JSON.parse(savedWorkspaces);
+        if (Array.isArray(parsed)) {
+          console.log(`Initialized workspaces state with ${parsed.length} workspaces`);
+          return parsed as Workspace[];
+        } else {
+          console.warn(
+            'Invalid workspaces data in localStorage (not an array), resetting to empty array'
+          );
+          localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+          return [] as Workspace[];
+        }
+      } catch (error) {
+        console.error('Failed to parse workspaces from localStorage during initialization:', error);
+        // Reset localStorage to prevent further errors
+        localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+        return [] as Workspace[];
+      }
+    }
+    // Initialize with empty array and ensure localStorage has a valid value
+    console.log('No workspaces found in localStorage, initializing with empty array');
+    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+    return [] as Workspace[];
+  });
 
   /* ============================== STATE: Ignore Patterns ============================== */
   const {
@@ -117,9 +155,7 @@ const App = (): JSX.Element => {
   /* ============================== STATE: UI Controls ============================== */
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isSafeMode, setIsSafeMode] = useState(false);
-  const [selectedTaskType, setSelectedTaskType] = useState(
-    savedTaskType || DEFAULT_TASK_TYPES[0].id
-  );
+  const [selectedTaskType, setSelectedTaskType] = useState('');
   const [isCustomTaskTypeModalOpen, setIsCustomTaskTypeModalOpen] = useState(false);
 
   /* ============================== STATE: User Instructions ============================== */
@@ -137,9 +173,17 @@ const App = (): JSX.Element => {
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
     console.time('clearSavedState');
-    // Clear all localStorage items except ignore mode, custom ignores, and ignore settings modified flag
+    // Clear only folder-related localStorage items, preserving workspaces and other settings
+    const keysToPreserve = [
+      STORAGE_KEYS.IGNORE_MODE,
+      STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
+      STORAGE_KEYS.WORKSPACES,
+      STORAGE_KEYS.CURRENT_WORKSPACE,
+      STORAGE_KEYS.TASK_TYPE,
+    ];
+
     Object.values(STORAGE_KEYS).forEach((key) => {
-      if (key !== STORAGE_KEYS.IGNORE_MODE && key !== STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED) {
+      if (!keysToPreserve.includes(key)) {
         localStorage.removeItem(key);
       }
     });
@@ -164,10 +208,37 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.send('clear-main-cache');
     }
 
-    // Reload the application window
+    // Reset only folder-related state, keep workspaces intact
     console.timeEnd('clearSavedState');
-    window.location.reload();
-  }, [isElectron]); // Added isElectron dependency
+
+    // Keep the task type
+    const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
+
+    // Reload the page to refresh UI, but without affecting workspaces data
+    setProcessingStatus({
+      status: 'complete',
+      message: 'Selected folder cleared',
+    });
+
+    // Avoid full page reload to preserve workspace data
+    setSelectedFolder(null);
+    setAllFiles([]);
+    setSelectedFiles([]);
+    setDisplayedFiles([]);
+
+    // Restore task type if it was saved
+    if (savedTaskType) {
+      setSelectedTaskType(savedTaskType);
+    }
+  }, [
+    isElectron,
+    setSelectedFolder,
+    setAllFiles,
+    setSelectedFiles,
+    setDisplayedFiles,
+    setSelectedTaskType,
+    setProcessingStatus,
+  ]); // Updated dependencies
 
   /* ============================== EFFECTS ============================== */
 
@@ -380,8 +451,22 @@ const App = (): JSX.Element => {
       if (!arePathsEqual(normalizedFolderPath, selectedFolder)) {
         setSelectedFiles([]);
       }
+
+      // Update current workspace's folder path if a workspace is active
+      if (currentWorkspaceId) {
+        setWorkspaces((prevWorkspaces: Workspace[]) => {
+          const updatedWorkspaces = prevWorkspaces.map((workspace: Workspace) =>
+            workspace.id === currentWorkspaceId
+              ? { ...workspace, folderPath: normalizedFolderPath, lastUsed: Date.now() }
+              : workspace
+          );
+          // Save to localStorage
+          localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+          return updatedWorkspaces;
+        });
+      }
     },
-    [selectedFolder, allFiles, processingStatus]
+    [selectedFolder, allFiles, processingStatus, currentWorkspaceId]
   );
 
   // The handleFileListData function is implemented as stableHandleFileListData below
@@ -925,6 +1010,221 @@ const App = (): JSX.Element => {
     setSelectedTaskType(taskTypeId);
   };
 
+  // Workspace functions
+  const handleOpenWorkspaceManager = () => {
+    // Force reload workspaces from localStorage before opening
+    const storedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
+    if (storedWorkspaces) {
+      try {
+        const parsed = JSON.parse(storedWorkspaces);
+        if (Array.isArray(parsed)) {
+          // Update state with a fresh copy from localStorage
+          setWorkspaces(parsed);
+          console.log('Workspaces refreshed from localStorage before opening manager');
+        }
+      } catch (error) {
+        console.error('Failed to parse workspaces from localStorage:', error);
+      }
+    }
+
+    // Open the workspace manager
+    setIsWorkspaceManagerOpen(true);
+  };
+
+  const handleSelectWorkspace = (workspaceId: string) => {
+    // Find the workspace
+    const workspace = workspaces.find((w: Workspace) => w.id === workspaceId);
+    if (!workspace) return;
+
+    // Save current workspace id
+    localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, workspaceId);
+    setCurrentWorkspaceId(workspaceId);
+
+    // Update last used timestamp using functional state update
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      const updatedWorkspaces = currentWorkspaces.map((w: Workspace) =>
+        w.id === workspaceId ? { ...w, lastUsed: Date.now() } : w
+      );
+
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+
+      return updatedWorkspaces;
+    });
+
+    // If the workspace has a folder associated with it
+    if (workspace.folderPath) {
+      // Only reload if it's different from the current folder
+      if (!arePathsEqual(workspace.folderPath, selectedFolder)) {
+        console.log(`Switching to workspace folder: ${workspace.folderPath}`);
+
+        // First set the selected folder
+        setSelectedFolder(workspace.folderPath);
+        localStorage.setItem(STORAGE_KEYS.SELECTED_FOLDER, workspace.folderPath);
+
+        // Request file data from the main process (if in Electron)
+        if (isElectron && !isSafeMode) {
+          setProcessingStatus({
+            status: 'processing',
+            message: 'Loading files...',
+          });
+
+          // Ensure we're sending the updated folder path to the main process
+          window.electron.ipcRenderer.send('request-file-list', {
+            folderPath: workspace.folderPath,
+            ignoreMode,
+            customIgnores,
+          });
+        }
+      }
+    } else {
+      // Clear current selection if workspace has no folder
+      setSelectedFolder(null);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      setSelectedFiles([]);
+      setAllFiles([]);
+      setProcessingStatus({
+        status: 'idle',
+        message: '',
+      });
+    }
+
+    setIsWorkspaceManagerOpen(false);
+  };
+
+  const handleCreateWorkspace = (name: string) => {
+    console.log('App: Creating new workspace with name:', name);
+
+    // Create a new workspace with a unique id
+    const newWorkspace = {
+      id: `workspace-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name,
+      folderPath: null, // Explicitly set to null to start with blank layout
+      createdAt: Date.now(),
+      lastUsed: Date.now(),
+    };
+
+    // Add to workspaces list - use functional update to ensure we're working with latest state
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      console.log('Updating workspaces state, current count:', currentWorkspaces.length);
+      const updatedWorkspaces = [...currentWorkspaces, newWorkspace];
+
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+      console.log('Saved updated workspaces to localStorage, new count:', updatedWorkspaces.length);
+
+      return updatedWorkspaces;
+    });
+
+    // Set as current workspace
+    localStorage.setItem(STORAGE_KEYS.CURRENT_WORKSPACE, newWorkspace.id);
+    setCurrentWorkspaceId(newWorkspace.id);
+    console.log('Set current workspace ID to:', newWorkspace.id);
+
+    // Clear selected folder to start with blank layout
+    setSelectedFolder(null);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_FILES);
+    setSelectedFiles([]);
+    setAllFiles([]);
+    setProcessingStatus({
+      status: 'idle',
+      message: '',
+    });
+
+    // Close the workspace manager
+    setIsWorkspaceManagerOpen(false);
+
+    // Log final state
+    console.log('Workspace creation complete, manager closed');
+  };
+
+  const handleDeleteWorkspace = (workspaceId: string) => {
+    console.log('App: Deleting workspace with ID:', workspaceId);
+
+    const workspaceBeingDeleted = workspaces.find((w: Workspace) => w.id === workspaceId);
+    console.log('Deleting workspace:', workspaceBeingDeleted?.name);
+
+    // Filter out the deleted workspace, using functional update to prevent stale state
+    setWorkspaces((currentWorkspaces: Workspace[]) => {
+      const filteredWorkspaces = currentWorkspaces.filter((w: Workspace) => w.id !== workspaceId);
+      console.log(
+        `Filtered workspaces: ${currentWorkspaces.length} -> ${filteredWorkspaces.length}`
+      );
+
+      // Save the updated workspaces list to localStorage
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(filteredWorkspaces));
+      console.log('Saved filtered workspaces to localStorage');
+
+      // Ensure empty array is properly saved when deleting the last workspace
+      if (filteredWorkspaces.length === 0) {
+        console.log('No workspaces left, ensuring empty array is saved');
+        localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
+      }
+
+      return filteredWorkspaces;
+    });
+
+    // If deleting current workspace, clear current selection
+    if (currentWorkspaceId === workspaceId) {
+      console.log('Deleted the current workspace, clearing workspace state');
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
+      setCurrentWorkspaceId(null);
+
+      // Also clear folder selection when current workspace is deleted
+      setSelectedFolder(null);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      setSelectedFiles([]);
+      setAllFiles([]);
+      setProcessingStatus({
+        status: 'idle',
+        message: '',
+      });
+    }
+
+    console.log('Workspace deletion complete');
+
+    // Important: Keep the workspace manager open so user can create a new workspace immediately
+    // The visual update with the deleted workspace removed will happen thanks to our useEffect in WorkspaceManager
+  };
+
+  // Handler to update a workspace's folder path
+  const handleUpdateWorkspaceFolder = (workspaceId: string, folderPath: string | null) => {
+    setWorkspaces((prevWorkspaces: Workspace[]) => {
+      const updatedWorkspaces = prevWorkspaces.map((workspace: Workspace) =>
+        workspace.id === workspaceId
+          ? { ...workspace, folderPath, lastUsed: Date.now() }
+          : workspace
+      );
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
+      return updatedWorkspaces;
+    });
+
+    // If updating the current workspace, also update the selected folder
+    if (currentWorkspaceId === workspaceId) {
+      if (folderPath) {
+        // Update local storage and request file list
+        localStorage.setItem(STORAGE_KEYS.SELECTED_FOLDER, folderPath);
+        handleFolderSelected(folderPath);
+      } else {
+        // Clear folder selection in localStorage and state
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+        setSelectedFolder(null);
+        setSelectedFiles([]);
+        setAllFiles([]);
+        setProcessingStatus({
+          status: 'idle',
+          message: '',
+        });
+      }
+    }
+  };
+
+  // Get current workspace name for display
+  const currentWorkspaceName = currentWorkspaceId
+    ? workspaces.find((w: Workspace) => w.id === currentWorkspaceId)?.name || 'Untitled'
+    : null;
+
   // Handle copying content to clipboard
   const handleCopy = async () => {
     if (selectedFiles.length === 0) return;
@@ -958,6 +1258,23 @@ const App = (): JSX.Element => {
       setSelectedTaskType(currentTaskType);
     }, 50);
   };
+
+  // Persist workspaces when they change
+  useEffect(() => {
+    if (workspaces) {
+      localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(workspaces));
+
+      // Log information for debugging purposes
+      console.log(`Workspaces updated: ${workspaces.length} workspaces saved to localStorage`);
+
+      // If we have a current workspace, ensure it still exists in the workspaces array
+      if (currentWorkspaceId && !workspaces.some((w: Workspace) => w.id === currentWorkspaceId)) {
+        console.log('Current workspace no longer exists, clearing currentWorkspaceId');
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
+        setCurrentWorkspaceId(null);
+      }
+    }
+  }, [workspaces, currentWorkspaceId]);
 
   /* ===================================================================== */
   /* ============================== RENDER =============================== */
@@ -1012,6 +1329,18 @@ const App = (): JSX.Element => {
                 Ignore Filters
               </button>
               <button
+                className="workspace-button"
+                title="Workspace Manager"
+                onClick={handleOpenWorkspaceManager}
+              >
+                <FolderKanban size={16} />
+                {currentWorkspaceName ? (
+                  <span className="current-workspace-name">{currentWorkspaceName}</span>
+                ) : (
+                  'Workspaces'
+                )}
+              </button>
+              <button
                 className="header-action-btn check-updates-button"
                 title="Check for application updates"
                 onClick={handleCheckForUpdates}
@@ -1045,8 +1374,10 @@ const App = (): JSX.Element => {
           <div className="error-message">Error: {processingStatus.message}</div>
         )}
 
-        {selectedFolder && (
-          <div className="main-content">
+        {/* Main content area - always rendered regardless of whether a folder is selected */}
+        <div className="main-content">
+          {/* Render Sidebar if folder selected, otherwise show empty sidebar with task type selector */}
+          {selectedFolder ? (
             <Sidebar
               selectedFolder={selectedFolder}
               allFiles={allFiles}
@@ -1063,17 +1394,40 @@ const App = (): JSX.Element => {
               selectedTaskType={selectedTaskType}
               onTaskTypeChange={handleTaskTypeChange}
               onManageCustomTypes={handleManageCustomTaskTypes}
+              currentWorkspaceName={currentWorkspaceName}
             />
-            <div className="content-area">
-              <div className="content-header">
-                <div className="content-title">Selected Files</div>
-                <div className="content-header-actions-group">
-                  {' '}
-                  {/* New wrapper div */}
-                  <div className="stats-info">
-                    {displayedFiles.length} files | ~{totalFormattedContentTokens.toLocaleString()}{' '}
-                    tokens
-                  </div>
+          ) : (
+            <div className="sidebar" style={{ width: '300px' }}>
+              {/* Task Type Selector - always visible */}
+              <TaskTypeSelector
+                selectedTaskType={selectedTaskType}
+                onTaskTypeChange={handleTaskTypeChange}
+                onManageCustomTypes={handleManageCustomTaskTypes}
+              />
+
+              <div className="sidebar-header">
+                <div className="sidebar-title">Files</div>
+              </div>
+
+              <div className="tree-empty">
+                No folder selected. Use the "Select Folder" button to choose a project folder.
+              </div>
+
+              <div className="sidebar-resize-handle"></div>
+            </div>
+          )}
+
+          {/* Content area - always visible with appropriate empty states */}
+          <div className="content-area">
+            <div className="content-header">
+              <div className="content-title">Selected Files</div>
+              <div className="content-header-actions-group">
+                <div className="stats-info">
+                  {selectedFolder
+                    ? `${displayedFiles.length} files | ~${totalFormattedContentTokens.toLocaleString()} tokens`
+                    : '0 files | ~0 tokens'}
+                </div>
+                {selectedFolder && (
                   <div className="sort-options">
                     <div className="sort-selector-wrapper">
                       <button
@@ -1089,8 +1443,6 @@ const App = (): JSX.Element => {
                           aria-hidden="true"
                           style={{ display: 'flex', alignItems: 'center' }}
                         >
-                          {/* Lucide React sort icon */}
-                          {/* Import ArrowDownUp from 'lucide-react' at the top */}
                           <ArrowDownUp size={16} />
                         </span>
                         <span id="current-sort-value" className="current-sort">
@@ -1126,58 +1478,69 @@ const App = (): JSX.Element => {
                       )}
                     </div>
                   </div>
-                </div>{' '}
-                {/* This closes content-header-actions-group */}
-              </div>{' '}
-              {/* This closes content-header */}
-              <FileList
-                files={displayedFiles}
-                selectedFiles={selectedFiles}
-                toggleFileSelection={toggleFileSelection}
-              />
-              {/* User instructions section */}
-              <UserInstructions
-                instructions={userInstructions}
-                setInstructions={setUserInstructions}
-                selectedTaskType={selectedTaskType}
-              />
-              {/* Options for content format */}
-              <div className="copy-options">
-                <div className="option">
-                  <input
-                    type="checkbox"
-                    id="includeFileTree"
-                    checked={includeFileTree}
-                    onChange={(e) => setIncludeFileTree(e.target.checked)}
-                  />
-                  <label htmlFor="includeFileTree">Include File Tree</label>
-                </div>
-
-                <div className="option">
-                  <input
-                    type="checkbox"
-                    id="includeBinaryPaths"
-                    checked={includeBinaryPaths}
-                    onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
-                  />
-                  <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
-                </div>
-              </div>
-              {/* Copy button */}
-              <div className="copy-button-container">
-                <button
-                  className="primary copy-button-main"
-                  onClick={handleCopy}
-                  disabled={selectedFiles.length === 0}
-                >
-                  <span className="copy-button-text">
-                    COPY ALL SELECTED ({selectedFiles.length} files)
-                  </span>
-                </button>
+                )}
               </div>
             </div>
+
+            {/* File List - show appropriate message when no folder is selected */}
+            <div className="file-list-container">
+              {selectedFolder ? (
+                <FileList
+                  files={displayedFiles}
+                  selectedFiles={selectedFiles}
+                  toggleFileSelection={toggleFileSelection}
+                />
+              ) : (
+                <div className="file-list-empty">
+                  No folder selected. Use the "Select Folder" button to choose a project folder.
+                </div>
+              )}
+            </div>
+
+            {/* User instructions section - always visible */}
+            <UserInstructions
+              instructions={userInstructions}
+              setInstructions={setUserInstructions}
+              selectedTaskType={selectedTaskType}
+            />
+
+            {/* Options for content format - always visible */}
+            <div className="copy-options">
+              <div className="option">
+                <input
+                  type="checkbox"
+                  id="includeFileTree"
+                  checked={includeFileTree}
+                  onChange={(e) => setIncludeFileTree(e.target.checked)}
+                />
+                <label htmlFor="includeFileTree">Include File Tree</label>
+              </div>
+
+              <div className="option">
+                <input
+                  type="checkbox"
+                  id="includeBinaryPaths"
+                  checked={includeBinaryPaths}
+                  onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
+                />
+                <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
+              </div>
+            </div>
+
+            {/* Copy button - always visible but disabled when no files selected */}
+            <div className="copy-button-container">
+              <button
+                className="primary copy-button-main"
+                onClick={handleCopy}
+                disabled={selectedFiles.length === 0}
+              >
+                <span className="copy-button-text">
+                  COPY ALL SELECTED ({selectedFiles.length} files)
+                </span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Ignore Patterns Viewer Modal */}
         <IgnoreListModal
@@ -1201,6 +1564,16 @@ const App = (): JSX.Element => {
             onTaskTypesUpdated={handleCustomTaskTypesUpdated}
           />
         )}
+        <WorkspaceManager
+          isOpen={isWorkspaceManagerOpen}
+          onClose={() => setIsWorkspaceManagerOpen(false)}
+          currentWorkspace={currentWorkspaceId}
+          onSelectWorkspace={handleSelectWorkspace}
+          onCreateWorkspace={handleCreateWorkspace}
+          onDeleteWorkspace={handleDeleteWorkspace}
+          onUpdateWorkspaceFolder={handleUpdateWorkspaceFolder}
+          selectedFolder={selectedFolder}
+        />
       </div>
     </ThemeProvider>
   );
