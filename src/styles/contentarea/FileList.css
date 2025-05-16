@@ -4,7 +4,6 @@
 
 .file-list-container {
   flex: 1; /* Allow list container to grow */
-  margin-bottom: var(--space-xl);
   overflow: hidden; /* Manage internal scrolling */
   display: flex;
   flex-direction: column;

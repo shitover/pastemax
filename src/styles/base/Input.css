@@ -112,11 +112,11 @@ input[type='checkbox'][disabled] {
   outline: none;
   box-shadow: var(--focus-ring);
 }
-.dark-mode input[type="text"],
-.dark-mode input[type="search"] {
+.dark-mode input[type='text'],
+.dark-mode input[type='search'] {
   border-color: var(--border-color);
 }
-.dark-mode input[type="checkbox"] {
+.dark-mode input[type='checkbox'] {
   border-color: var(--border-color);
 }
 .dark-mode input[type='text']:focus,

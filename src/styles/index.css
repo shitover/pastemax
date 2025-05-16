@@ -181,11 +181,21 @@ body {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  transition:    background-color 0.3s ease,    color 0.3s ease;
-  -webkit-transition:    background-color 0.3s ease,    color 0.3s ease;
-  -moz-transition:    background-color 0.3s ease,    color 0.3s ease;
-  -ms-transition:    background-color 0.3s ease,    color 0.3s ease;
-  -o-transition:    background-color 0.3s ease,    color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -moz-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -ms-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -o-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* -------------------- Main Content Area -------------------- */
@@ -591,6 +601,8 @@ svg.lucide-lg {
   stroke-width: 2.5;
   color: var(--text-on-primary);
 }
+
+/* List Removed Styles Separated from index.css */
 
 /* ==========================================================================
    Base Element Styling (Buttons, Inputs)
