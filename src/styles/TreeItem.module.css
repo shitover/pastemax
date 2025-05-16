@@ -1,0 +1,155 @@
+/* -------------------- File Tree (in Sidebar) -------------------- */
+.file-tree {
+  flex: 1; /* Allow tree to grow and fill sidebar space */
+  overflow-y: auto; /* Enable vertical scrolling */
+  padding: 8px 0;
+  background-color: var(--background-secondary);
+}
+
+.tree-empty,
+.tree-loading {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.tree-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 12px;
+}
+
+.tree-loading .spinner {
+  /* Spinner defined later */
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md); /* More horizontal padding */
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  color: var(--text-primary);
+}
+
+.tree-item:hover {
+  background-color: var(--hover-color);
+}
+
+.tree-item.selected {
+  background-color: var(--background-selected);
+}
+
+.tree-item.disabled-item {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.tree-item-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0; /* Prevent overflow issues */
+  overflow: hidden;
+}
+
+.tree-item-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  cursor: pointer;
+  color: var(--icon-color);
+  z-index: 2; /* Ensure toggle is clickable */
+  flex-shrink: 0;
+}
+
+.tree-item-toggle svg {
+  transition: transform 0.2s var(--animation-curve);
+  transform: rotate(0deg);
+}
+
+.tree-item-toggle.expanded svg {
+  transform: rotate(90deg);
+}
+
+.tree-item-icon {
+  margin-right: 8px;
+  flex-shrink: 0;
+  color: var(--icon-color);
+}
+
+.tree-item-indent {
+  width: 16px; /* Controls indentation level */
+  flex-shrink: 0;
+}
+
+.tree-item-checkbox {
+  margin-right: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tree-item-checkbox svg.lucide {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+  color: var(--text-on-primary);
+}
+
+.tree-item-name {
+  font-size: var(--font-size-md);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.tree-item-tokens {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* -------------------- File Tree (in Sidebar - File badges (For Binary Files) -------------------- */
+
+/* Base Badge Style */
+.tree-item-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background-color: var(--hover-color); /* Default background */
+  color: var(--text-secondary); /* Default text color */
+  margin-left: 6px; /* Keep consistent margin */
+  white-space: nowrap;
+}
+
+/* Specific style for individual binary file badges */
+.tree-item-badge-binary-file {
+  background-color: rgba(139, 0, 0, 0.6); /* Dark Red with reduced opacity */
+  color: #ffffff; /* White text */
+}
+
+/* Specific style for folder badges */
+.tree-item-badge-folder {
+  font-style: italic;
+  /* Inherits default background/text color from .tree-item-badge */
+}

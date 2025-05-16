@@ -1,0 +1,83 @@
+/* -------------------- Search Bar (in Sidebar) -------------------- */
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: var(--background-primary); /* Match input background */
+  border: var(--standard-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.search-bar.focused {
+  /* Class added via JS */
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color);
+  display: flex; /* Use flex for centering if needed */
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Icon doesn't block input */
+  z-index: 2;
+  width: 16px; /* Explicit size */
+  height: 16px;
+}
+
+/* Target the input specifically within .search-bar */
+.search-bar .search-input,
+input[type="search"].search-input, /* Also style direct input if used */
+input[type="text"].search-input {
+  width: 100%;
+  padding: 8px 32px 8px 36px !important; /* LTRB: Space for icon and clear button */
+  border: none; /* Border is on the parent .search-bar */
+  border-radius: 4px; /* Match parent */
+  font-size: 14px;
+  outline: none;
+  background-color: transparent; /* Let parent background show */
+  color: var(--text-primary);
+}
+
+/* Remove redundant focus styles on input, handled by parent */
+.search-bar .search-input:focus,
+input[type='search'].search-input:focus,
+input[type='text'].search-input:focus {
+  box-shadow: none; /* Focus is on .search-bar */
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; /* Circular button */
+  cursor: pointer;
+  z-index: 2;
+  opacity: 0.7;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.search-clear-btn:hover {
+  background-color: var(--hover-color);
+  opacity: 1;
+  transform: translateY(-50%); /* Keep the same transform as the non-hover state */
+}

@@ -1,0 +1,40 @@
+/* -------------------- User Instructions (in Content Area) -------------------- */
+.user-instructions-container {
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--background-primary);
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.user-instructions {
+  position: relative;
+  max-width: 100%;
+}
+
+.user-instructions textarea {
+  width: 100%;
+  min-height: 126px; /* Minimum height, can grow */
+  padding: 12px;
+  border: var(--standard-border);
+  border-radius: 4px;
+  background-color: var(--background-secondary); /* Slightly different background */
+  color: var(--text-primary);
+  font-family: var(--font-family-ui); /* Use UI font */
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical; /* Allow vertical resize */
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+
+.user-instructions textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+  outline: none;
+  background-color: var(--background-primary); /* Change background on focus */
+}
+
+.user-instructions textarea::placeholder {
+  color: var(--text-secondary);
+}

@@ -1,0 +1,157 @@
+/* ==========================================================================
+   File Preview Modal Styles
+   ========================================================================== */
+.file-preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* High z-index to be on top */
+  animation: fadeIn 0.2s ease-out; /* Fade in animation */
+  backdrop-filter: blur(2px); /* Slight blur effect for depth */
+  transition: opacity 0.2s ease; /* Smooth transition when closing */
+}
+
+.file-preview-modal {
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  /*Adjustasneeded*/
+  max-width: 1000px;
+  /*Maxwidth*/
+  max-height: 80vh;
+  /*Maxheight,viewportrelative*/
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.25s ease-out;
+  /*Scaleinanimation*/
+  transform-origin: center;
+  /*Scalefromcenter*/
+  will-change: transform, opacity;
+  /*Optimizationforanimations*/
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
+}
+
+.file-preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-preview-tabs {
+  display: flex;
+  overflow-x: auto; /* Allow horizontal scrolling for tabs */
+  padding-bottom: 4px; /* Add some space for the scrollbar */
+}
+
+.file-preview-tab {
+  padding: 8px 12px;
+  margin-right: 4px; /* Add some space */
+  border: 1px solid var(--border-color);
+  border-radius: 4px 4px 0 0;
+  background-color: var(--background-secondary);
+  cursor: pointer;
+  white-space: nowrap; /* Prevent tab text from wrapping */
+  font-size: 13px; /* Use consistent font size */
+}
+
+.file-preview-tab.active {
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--color-primary); /* Highlight active tab */
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px 4px 0 0;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.file-preview-tab.active:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-color);
+  transform: none;
+  box-shadow: none;
+}
+
+.file-preview-close-btn {
+  background: none;
+  border: 1px var(--border-color) solid;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-preview-close-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+  background-color: var(--hover-color);
+}
+
+.file-preview-modal-content {
+  padding: 16px;
+  overflow: hidden; /* Hide overflow, let child handle scrolling */
+  flex: 1; /* Grow to fill available space */
+}
+
+.file-preview-code-container {
+  overflow: auto; /* Enable both horizontal and vertical scrolling */
+  max-height: calc(80vh - 120px); /* Reduced height to ensure space at bottom */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  position: relative; /* For padding pseudo-element */
+}
+
+.file-preview-code-spacer {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.file-preview-code {
+  margin: 0;
+  padding: 20px; /* Increased padding on all sides */
+  white-space: pre; /* Preserve spacing and line breaks */
+  font-family: var(--font-family-code); /* Use monospace font */
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 4; /* Set tab size to 4 spaces */
+  -moz-tab-size: 4; /* Firefox support */
+  display: inline-block; /* Change to inline-block to contain content */
+  min-width: 100%; /* Ensure it takes full width */
+  box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+/* Ensure monospace utility class is defined */
+.monospace {
+  font-family: var(--font-family-code);
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 4; /* Set tab size to 4 spaces */
+  -moz-tab-size: 4; /* Firefox support */
+  overflow: hidden;
+}

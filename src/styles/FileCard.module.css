@@ -1,0 +1,154 @@
+/* ===========================================================================
+    File Card Styles
+   ========================================================================== */
+
+/* File card styles for binary files */
+.file-card.binary-card {
+  background-color: var(--background-tertiary);
+  border-left: 3px solid var(--error-color);
+}
+
+.file-card.binary-card .file-card-icon svg {
+  color: var(--error-color);
+}
+
+.file-card-binary-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  margin-left: var(--space-md); /* Move to the right by using auto margin */
+  border-radius: 4px;
+  background-color: rgba(139, 0, 0, 0.6); /* Dark Red with reduced opacity */
+  color: #ffffff; /* White text */
+}
+
+/* -------------------- File Card (in File List) -------------------- */
+.file-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: var(--standard-border);
+  border-radius: 6px;
+  position: relative;
+  /*Forabsolutepositioningofactions*/
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+  height: 80px;
+  /*Fixedheightforconsistency*/
+  background-color: var(--background-primary);
+  overflow: hidden;
+  /*Preventcontentspillover*/
+  animation: scaleIn 0.3s ease-out;
+  -webkit-border-radius: 6px;
+  -moz-border-radius: 6px;
+  -ms-border-radius: 6px;
+  -o-border-radius: 6px;
+}
+
+.file-card:hover {
+  background-color: var(--hover-color);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  /* Optional: Slightly raise the card */
+  /* transform: translateY(-2px); */
+}
+
+.file-card.selected {
+  border: 2px solid var(--color-primary); /* Use primary color for selection */
+  background-color: var(--background-selected);
+  padding: 9px; /* Adjust padding to account for thicker border */
+}
+
+.file-card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.file-card-icon {
+  margin-right: 8px;
+  color: var(--icon-color);
+  flex-shrink: 0;
+}
+
+.file-card-name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-family: var(--font-family-code); /* Use code font for filenames */
+}
+
+.file-card-info {
+  display: flex;
+  flex-direction: column;
+  /* Removed margin-bottom: 0; as it wasn't necessary */
+  flex-grow: 1; /* Allow info to take space if needed */
+  justify-content: center; /* Center info vertically */
+}
+
+.file-card-tokens {
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 var(--space-xs); /* Add horizontal padding */
+}
+
+.file-card-file-size {
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 var(--space-xs); /* Add horizontal padding */
+}
+
+.file-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0; /* Hidden by default, show on hover */
+  transition: opacity 0.2s ease;
+  z-index: 5; /* Ensure actions are above card content */
+}
+
+.file-card:hover .file-card-actions {
+  opacity: 1;
+}
+
+.file-card-action {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--background-primary);
+  border: var(--standard-border);
+  border-radius: 4px;
+  color: var(--icon-color);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.file-card-action:hover {
+  background-color: var(--hover-color);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  transform: translateY(-1px); /* Subtle lift effect */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.file-card-action:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
