@@ -27,7 +27,7 @@
   font-weight: var(--font-weight-medium);
   text-transform: uppercase;
   color: var(--text-primary);
-  margin-left: var(--space-md); /* Add left margin to move it right */
+  margin-left: var(--space-lg); /* Add left margin to move it right */
   margin-bottom: var(--space-sm); /* Add bottom margin for spacing */
   margin-top: var(--space-sm); /* Reduced top margin from --space-md to --space-xs */
   margin-right: var(--space-xs);

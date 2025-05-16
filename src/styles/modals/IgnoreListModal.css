@@ -51,6 +51,7 @@
   margin-top: 10px;
   padding: var(--standard-padding);
   border-bottom: var(--standard-border);
+  border-color: var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -145,6 +146,12 @@
 
 .ignore-patterns-sections .ignore-patterns-section:hover {
   border-color: var(--color-primary-light);
+}
+
+/* --- Section Header Flex Layout for Pattern Count --- */
+.section-header {
+  display: flex;
+  gap: 12px;
 }
 
 .ignore-patterns-section h3 {

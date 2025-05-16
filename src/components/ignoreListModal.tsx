@@ -223,7 +223,7 @@ export const IgnoreListModal = ({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
                   style={{
-                    border: '2px solid #0e6098', // Changed to black color
+                    border: '2px solid #0e6098',
                     borderRadius: '8px',
                     transition: 'all 0.3s ease',
                   }}

@@ -168,6 +168,7 @@
 }
 .dark-mode .file-card-action {
   border-color: var(--border-color);
+  background-color: var(--border-color);
 }
 .dark-mode .file-card-action:hover {
   color: var(--color-primary-light);

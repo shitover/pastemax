@@ -206,6 +206,12 @@ body {
   height: calc(100% - 73px); /* Adjust based on actual header height */
 }
 
+/* Fix label alignment if needed */
+label {
+  display: flex;
+  align-items: center;
+}
+
 /* ==========================================================================
    Scrollbar Styling
    ========================================================================== */
@@ -246,7 +252,6 @@ body {
 /* Apply scrollbar styles globally or to specific scrollable elements */
 * {
   scrollbar-width: auto; /* Or 'auto' or 'none' */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* thumb track */
 }
 
 /* -------------------- Thin Scrollbars for Specific Areas -------------------- */
@@ -266,11 +271,9 @@ textarea::-webkit-scrollbar-thumb {
    Dark Mode Overrides
    ========================================================================== */
 
+/* NOTE: Other dark mode overrides are now moved to within each related corresponding .css */
+
 /* Apply dark mode variables (already defined in .dark-mode selector) */
-
-/* Specific element overrides for better contrast/appearance in dark mode */
-
-/* Dark mode badge overrides */
 
 /* Scrollbar overrides for dark mode (Webkit) */
 .dark-mode ::-webkit-scrollbar-track {
@@ -293,17 +296,6 @@ textarea::-webkit-scrollbar-thumb {
 .dark-mode ::-webkit-scrollbar-corner {
   background: var(--scrollbar-track);
 }
-
-/* Fix label alignment if needed */
-label {
-  display: flex;
-  align-items: center;
-}
-
-/* Remove potentially problematic global border override */
-/* .dark-mode * {
-  border-color: #333333; /* This was too broad, removed */
-/* } */
 
 /* ==========================================================================
    Animations and Transitions
@@ -505,13 +497,13 @@ body {
 }
 
 /* ==========================================================================
-   Additional Responsive Adjustments
+   Responsive Adjustments
    ========================================================================== */
 
-/* Small screens (mobile) */
+/* Small screens */
 @media (max-width: 768px) {
   .sidebar {
-    width: 250px; /* Narrower sidebar on small screens */
+    width: 250px;
   }
 
   .file-list {
@@ -602,7 +594,7 @@ svg.lucide-lg {
   color: var(--text-on-primary);
 }
 
-/* List Removed Styles Separated from index.css */
+/* List Of Removed Styles Separated from index.css */
 
 /* ==========================================================================
    Base Element Styling (Buttons, Inputs)

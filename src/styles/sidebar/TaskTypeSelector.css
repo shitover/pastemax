@@ -136,7 +136,7 @@
   -moz-transition: all 0.2s var(--animation-curve);
   -ms-transition: all 0.2s var(--animation-curve);
   -o-transition: all 0.2s var(--animation-curve);
-  border-color: var(--primary-color);
+  border-color: var(--color-primary);
 }
 
 .sidebar-task-type-label {

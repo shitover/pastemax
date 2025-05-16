@@ -291,13 +291,11 @@
   font-weight: 500;
 }
 
-/* Header workspace button */
 .workspace-button {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
   background-color: #f5f5f5;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
@@ -307,13 +305,4 @@
 .dark-mode .workspace-button {
   background-color: #333;
   border-color: #444;
-  color: #fff;
-}
-
-.workspace-button:hover {
-  background-color: #e6e6e6;
-}
-
-.dark-mode .workspace-button:hover {
-  background-color: #444;
 }
