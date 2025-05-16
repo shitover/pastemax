@@ -75,3 +75,6 @@
   opacity: 0.4;
   transition: 0s;
 }
+.dark-mode .processing-indicator {
+  border-color: var(--border-color);
+}

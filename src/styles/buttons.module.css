@@ -1,3 +1,7 @@
+/* ===========================================================================
+    Button Styles
+   ========================================================================== */
+
 button {
   cursor: pointer;
   font-family: var(--font-family-ui);
@@ -118,4 +122,7 @@ button:disabled:hover {
   transform: none;
   box-shadow: none;
   background-color: var(--background-primary);
+}
+.dark-mode button {
+  border-color: var(--border-color);
 }

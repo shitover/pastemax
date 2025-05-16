@@ -81,3 +81,6 @@ input[type='text'].search-input:focus {
   opacity: 1;
   transform: translateY(-50%); /* Keep the same transform as the non-hover state */
 }
+.dark-mode .search-bar {
+  border-color: var(--border-color);
+}

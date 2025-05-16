@@ -1,0 +1,16 @@
+.monospace {
+  font-family: var(--font-family-code);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error-message {
+  background-color: var(--error-color);
+  color: white;
+  padding: var(--standard-padding);
+  border-radius: 4px;
+  margin: 24px; /* Example margin */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

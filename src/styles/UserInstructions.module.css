@@ -38,3 +38,20 @@
 .user-instructions textarea::placeholder {
   color: var(--text-secondary);
 }
+.dark-mode .user-instructions-container {
+  border-color: var(--border-color);
+}
+.dark-mode .user-instructions textarea {
+  border-color: var(--border-color);
+}
+.dark-mode textarea::placeholder {
+  color: var(--text-disabled); /* Use disabled text color for placeholder */
+}
+.dark-mode .user-instructions-container {
+  background-color: var(--background-primary);
+  border-radius: 0; /* Remove if causing issues */
+}
+
+.dark-mode .user-instructions textarea {
+  background-color: var(--background-secondary);
+}

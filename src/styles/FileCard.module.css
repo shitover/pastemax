@@ -152,3 +152,37 @@
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+.dark-mode .file-card {
+  border-color: var(--border-color); /* Use dark mode border color */
+  background-color: var(--background-secondary);
+}
+
+.dark-mode .file-card:hover {
+  background-color: var(--hover-color); /* Use dark mode hover color */
+  border-color: #444444; /* Slightly lighter border on hover */
+}
+
+.dark-mode .file-card.selected {
+  border-color: var(--color-primary); /* Keep selection color consistent */
+  background-color: var(--background-selected);
+}
+.dark-mode .file-card-action {
+  border-color: var(--border-color);
+}
+.dark-mode .file-card-action:hover {
+  color: var(--color-primary-light);
+  background-color: var(--hover-color);
+  border-color: var(--color-primary);
+  transform: translateY(-1px); /* Subtle lift effect */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode .file-card-action:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/*
+.dark-mode .file-card-action {
+  background-color: var(--hover-color);
+} */

@@ -102,3 +102,90 @@
   transition: background-color var(--transition-fast);
   border-radius: var(--border-radius-md);
 }
+
+.dark-mode .copy-button-container {
+  border-color: var(--border-color);
+}
+
+.dark-mode .copy-button-container label {
+  color: var(--text-secondary); /* Use secondary text color */
+}
+
+.copy-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* Reduced gap from 12px to 10px */
+  width: 100%;
+  max-width: 380px; /* Reduced from 400px */
+}
+
+.file-tree-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px; /* Slightly smaller font */
+}
+
+.copy-button-main {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 10px 18px; /* Reduced padding from 12px 20px */
+  height: auto;
+  min-height: 44px; /* Reduced from 48px */
+}
+
+.copy-button-text {
+  font-size: 13px; /* Reduced from 14px */
+  letter-spacing: 0.3px; /* Reduced letter spacing */
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 330px; /* Reduced from 350px */
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 280px; /* Reduced from 300px */
+  }
+
+  .copy-button-text {
+    font-size: 12px; /* Reduced from 13px */
+  }
+}
+
+.copy-button-main {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 12px 20px;
+  height: auto;
+  /* min-height: 10px; */
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 300px;
+  }
+
+  .copy-button-text {
+    font-size: 13px;
+  }
+}

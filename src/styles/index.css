@@ -140,21 +140,6 @@
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #424242;
   --scrollbar-thumb-hover: #4f4f4f;
-
-  /* Custom modal and input variables for dark mode */
-  --bg-color: #232326;
-  --bg-color-lighter: #29292c;
-  --bg-color-lightest: #2d2d30;
-  --text-color: #e8e8e8;
-  --text-muted: #bbbbbb;
-  --input-bg: #232326;
-  --hover-bg: #29292c;
-  --primary-color: #0e639c;
-  --error-color-light: #3d2323;
-  --error-color-dark: #a94442;
-
-  /* Set color scheme for browser UI elements */
-  color-scheme: dark;
 }
 
 /* ==========================================================================
@@ -188,12 +173,6 @@ body {
 }
 
 /* ==========================================================================
-   Base Element Styling (Buttons, Inputs)
-   ========================================================================== */
-
-/* -------------------- Theme Toggle (in Header) -------------------- */
-
-/* ==========================================================================
    Layout Structure (App Container, Header, Main Content, Sidebar, Content Area)
    ========================================================================== */
 
@@ -209,222 +188,12 @@ body {
   -o-transition:    background-color 0.3s ease,    color 0.3s ease;
 }
 
-/* -------------------- Header -------------------- */
-.header {
-  padding: calc(var(--space-md) + 2px) var(--space-lg);
-  border-bottom: var(--standard-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: var(--background-primary);
-  flex-shrink: 0; /* Prevent header from shrinking */
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
-}
-
-.header h1 {
-  font-size: 24px;
-  font-weight: 660;
-  margin: 0;
-  color: var(--text-primary);
-  padding: var(--space-xs) var(--space-sm);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding-right: var(--space-sm);
-}
-
-.select-folder-btn,
-.clear-data-btn,
-.refresh-list-btn {
-  /* Added refresh-list-btn here */
-  padding: var(--space-sm) var(--space-md);
-  font-size: var(--font-size-sm);
-  /* Add any other shared styles for these buttons */
-}
-
-.folder-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.selected-folder {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background-color: var(--hover-color);
-  max-width: 500px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center; /* Center content vertically */
-  justify-content: center; /* Center content horizontally */
-  text-align: center; /* Center text */
-  -webkit-border-radius: 8px;
-  -moz-border-radius: 8px;
-  -ms-border-radius: 8px;
-  -o-border-radius: 8px;
-}
-
 /* -------------------- Main Content Area -------------------- */
 .main-content {
   display: flex;
   flex: 1; /* Take remaining vertical space */
   overflow: hidden; /* Crucial for child scrolling */
   height: calc(100% - 73px); /* Adjust based on actual header height */
-}
-
-/* -------------------- Sidebar -------------------- */
-
-
-/* -------------------- Content Area (Right Pane) -------------------- */
-.content-area {
-  flex: 1; /* Take remaining horizontal space */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Manage internal scrolling */
-  background-color: var(--background-primary);
-  min-width: 0; /* Prevent content from pushing layout */
-  margin-right: var(--space-xs);
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--standard-padding);
-  border-bottom: var(--standard-border);
-  background-color: var(--background-primary);
-  flex-shrink: 0;
-}
-
-.content-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  color: var(--text-primary);
-  margin-left: var(--space-md); /* Add left margin to move it right */
-  margin-bottom: var(--space-sm); /* Add bottom margin for spacing */
-  margin-top: var(--space-sm); /* Reduced top margin from --space-md to --space-xs */
-  margin-right: var(--space-xs);
-}
-
-/* Remove the red underline from content titles (if it existed) */
-.content-title::after {
-  content: none;
-}
-
-.content-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.content-header-actions-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg); /* Adjust gap as needed, using a larger gap for separation */
-}
-
-/* Match stats-info to content-title styling */
-.stats-info {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  text-transform: capitalize;
-  color: var(--text-primary);
-  margin-left: var(--space-md);
-  margin-bottom: var(--space-sm);
-  margin-top: var(--space-sm);
-  margin-right: var(--space-xs);
-}
-
-/* ==========================================================================
-   Component Styles
-   ========================================================================== */
-
-/* -------------------- Sidebar Resize Handle -------------------- */
-
-
-/* -------------------- File Tree (in Sidebar) -------------------- */
-
-/* -------------------- File Tree (in Sidebar - File badges (For Binary Files) -------------------- */
-
-/* ==========================================================================
-   Ignore List Modal
-   ========================================================================== */
-
-/* -------------------- File List (in Content Area) -------------------- */
-.file-list-container {
-  flex: 1; /* Allow list container to grow */
-  margin-bottom: var(--space-xl);
-  overflow: hidden; /* Manage internal scrolling */
-  display: flex;
-  flex-direction: column;
-}
-
-.file-list {
-  flex: 1; /* Allow list itself to grow */
-  overflow-y: auto; /* Enable vertical scrolling */
-  padding: 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Responsive grid */
-  grid-auto-rows: max-content; /* Adjust row height to content */
-  align-content: start; /* Align items to the top */
-  gap: 12px;
-  background-color: var(--background-primary);
-}
-
-.file-list-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary);
-  font-size: 16px;
-  padding: 32px;
-  text-align: center;
-  font-style: italic;
-}
-
-/* -------------------- File Card (in File List) -------------------- */
-
-/* -------------------- Search Bar (in Sidebar) -------------------- */
-
-/* -------------------- Sort Dropdown (in Content Header) -------------------- */
-
-/* -------------------- User Instructions (in Content Area) -------------------- */
-
-/* -------------------- Copy Button Area (in Content Area) -------------------- */
-
-/* -------------------- Processing Indicator -------------------- */
-
-/* ==========================================================================
-   Utility Classes
-   ========================================================================== */
-
-.monospace {
-  font-family: var(--font-family-code);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.error-message {
-  background-color: var(--error-color);
-  color: white;
-  padding: var(--standard-padding);
-  border-radius: 4px;
-  margin: 24px; /* Example margin */
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* ==========================================================================
@@ -467,7 +236,7 @@ body {
 /* Apply scrollbar styles globally or to specific scrollable elements */
 * {
   scrollbar-width: auto; /* Or 'auto' or 'none' */
-  scrollbar-color: var(--scrollbar-thumb) var (--scrollbar-track); /* thumb track */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* thumb track */
 }
 
 /* -------------------- Thin Scrollbars for Specific Areas -------------------- */
@@ -490,116 +259,8 @@ textarea::-webkit-scrollbar-thumb {
 /* Apply dark mode variables (already defined in .dark-mode selector) */
 
 /* Specific element overrides for better contrast/appearance in dark mode */
-.dark-mode .file-card {
-  border-color: var(--border-color); /* Use dark mode border color */
-  background-color: var(--background-secondary);
-}
-
-.dark-mode .file-card:hover {
-  background-color: var(--hover-color); /* Use dark mode hover color */
-  border-color: #444444; /* Slightly lighter border on hover */
-}
-
-.dark-mode .file-card.selected {
-  border-color: var(--color-primary); /* Keep selection color consistent */
-  background-color: var(--background-selected);
-}
-
-/* Ensure borders use the dark mode variable */
-.dark-mode .content-header,
-.dark-mode .user-instructions-container,
-.dark-mode .copy-button-container,
-.dark-mode .header,
-.dark-mode .sidebar,
-.dark-mode .sidebar-header,
-.dark-mode .sidebar-search,
-.dark-mode .sidebar-actions,
-.dark-mode button,
-.dark-mode input[type="text"],
-.dark-mode input[type="search"],
-.dark-mode .search-bar,
-.dark-mode .user-instructions textarea,
-.dark-mode .sort-options,
-.dark-mode .processing-indicator,
-.dark-mode .file-card-action,
-.dark-mode .sort-dropdown-button,
-.dark-mode input[type="checkbox"], /* Style checkboxes if needed */
-.dark-mode .theme-segmented-control {
-  border-color: var(--border-color);
-}
-
-/* Specific background/color adjustments */
-.dark-mode .selected-folder {
-  background-color: #2d2d2d; /* Slightly different shade */
-}
-
-.dark-mode .tree-item:hover {
-  background-color: #2c2c2c; /* Darker hover for tree items */
-}
 
 /* Dark mode badge overrides */
-.dark-mode .tree-item-badge {
-  background-color: #333333; /* Default dark background */
-  color: #bbbbbb; /* Default dark text */
-}
-
-.dark-mode .tree-item-badge-binary-file {
-  background-color: rgba(
-    165,
-    42,
-    42,
-    0.6
-  ); /* Slightly lighter red with reduced opacity for dark mode */
-  color: #ffffff; /* White text */
-}
-
-/* Folder badge inherits default dark mode colors but keeps italic */
-.dark-mode .tree-item-badge-folder {
-  font-style: italic;
-}
-
-.dark-mode .file-card-action {
-  background-color: var(--hover-color); /* Darker action button background */
-}
-
-.dark-mode .file-card-action:hover {
-  color: var(--color-primary-light);
-  background-color: var(--hover-color);
-  border-color: var(--color-primary);
-  transform: translateY(-1px); /* Subtle lift effect */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.dark-mode .file-card-action:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Input/Textarea focus states */
-.dark-mode input[type='text']:focus,
-.dark-mode input[type='search']:focus,
-.dark-mode .user-instructions textarea:focus {
-  border-color: var(--color-primary); /* Use primary color for focus */
-  background-color: #252526; /* Slightly darker background on focus */
-  box-shadow: var(--focus-ring);
-}
-
-/* Input text and caret color */
-.dark-mode textarea,
-.dark-mode input[type='text'],
-.dark-mode input[type='search'] {
-  color: var(--text-primary);
-  caret-color: var(--text-primary); /* Ensure caret is visible */
-}
-
-.dark-mode textarea::placeholder {
-  color: var(--text-disabled); /* Use disabled text color for placeholder */
-}
-
-/* Theme toggle active state */
-.dark-mode .theme-segment.active {
-  background-color: #3e3e42; /* Darker active background */
-}
 
 /* Scrollbar overrides for dark mode (Webkit) */
 .dark-mode ::-webkit-scrollbar-track {
@@ -633,28 +294,6 @@ label {
 /* .dark-mode * {
   border-color: #333333; /* This was too broad, removed */
 /* } */
-
-/* Ensure specific container borders are correct */
-.dark-mode .content-header,
-.dark-mode .user-instructions-container,
-.dark-mode .copy-button-container {
-  border-color: var(--border-color);
-}
-
-/* Ensure container backgrounds are correct */
-.dark-mode .user-instructions-container {
-  background-color: var(--background-primary);
-  border-radius: 0; /* Remove if causing issues */
-}
-
-.dark-mode .user-instructions textarea {
-  background-color: var(--background-secondary);
-}
-
-/* Final check on copy button label color */
-.dark-mode .copy-button-container label {
-  color: var(--text-secondary); /* Use secondary text color */
-}
 
 /* ==========================================================================
    Animations and Transitions
@@ -698,11 +337,9 @@ label {
 @keyframes scaleIn {
   from {
     transform: scale(0.95);
-    opacity: 0;
   }
   to {
     transform: scale(1);
-    opacity: 1;
   }
 }
 
@@ -955,90 +592,53 @@ svg.lucide-lg {
   color: var(--text-on-primary);
 }
 
-/* -------------------- Fix Ignore Filter Button Spacing -------------------- */
-.view-ignores-button {
-  margin-right: var(--space-lg); /* Add right margin */
-  padding: var(--space-sm) var(--space-md);
-}
+/* ==========================================================================
+   Base Element Styling (Buttons, Inputs)
+   ========================================================================== */
 
-.copy-button-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px; /* Reduced gap from 12px to 10px */
-  width: 100%;
-  max-width: 380px; /* Reduced from 400px */
-}
+/* ==========================================================================
+   Layout Structure (App Container, Header, Main Content, Sidebar, Content Area)
+   ========================================================================== */
 
-.file-tree-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 13px; /* Slightly smaller font */
-}
+/* -------------------- Header -------------------- */
 
-.copy-button-main {
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 10px 18px; /* Reduced padding from 12px 20px */
-  height: auto;
-  min-height: 44px; /* Reduced from 48px */
-}
+/* -------------------- Theme Toggle (in Header) -------------------- */
 
-.copy-button-text {
-  font-size: 13px; /* Reduced from 14px */
-  letter-spacing: 0.3px; /* Reduced letter spacing */
-}
+/* -------------------- Sidebar -------------------- */
 
-/* Add responsive adjustments for the copy button on different screen sizes */
-@media (max-width: 1200px) {
-  .copy-button-wrapper {
-    max-width: 330px; /* Reduced from 350px */
-  }
-}
+/* -------------------- Content Area (Right Pane) -------------------- */
 
-@media (max-width: 768px) {
-  .copy-button-wrapper {
-    max-width: 280px; /* Reduced from 300px */
-  }
+/* ==========================================================================
+   Component Styles
+   ========================================================================== */
 
-  .copy-button-text {
-    font-size: 12px; /* Reduced from 13px */
-  }
-}
+/* -------------------- Sidebar Resize Handle -------------------- */
 
-.copy-button-main {
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 12px 20px;
-  height: auto;
-  /* min-height: 10px; */
-}
+/* -------------------- File Tree (in Sidebar) -------------------- */
 
-/* Add responsive adjustments for the copy button on different screen sizes */
-@media (max-width: 1200px) {
-  .copy-button-wrapper {
-    max-width: 350px;
-  }
-}
+/* -------------------- File Tree (in Sidebar - File badges (For Binary Files) -------------------- */
 
-@media (max-width: 768px) {
-  .copy-button-wrapper {
-    max-width: 300px;
-  }
+/* ==========================================================================
+   Ignore List Modal
+   ========================================================================== */
 
-  .copy-button-text {
-    font-size: 13px;
-  }
-}
+/* -------------------- File List (in Content Area) -------------------- */
+
+/* -------------------- File Card (in File List) -------------------- */
+
+/* -------------------- Search Bar (in Sidebar) -------------------- */
+
+/* -------------------- Sort Dropdown (in Content Header) -------------------- */
+
+/* -------------------- User Instructions (in Content Area) -------------------- */
+
+/* -------------------- Copy Button Area (in Content Area) -------------------- */
+
+/* -------------------- Processing Indicator -------------------- */
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
 
 /* ==========================================================================
    File Preview Modal Styles

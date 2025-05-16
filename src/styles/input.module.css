@@ -112,3 +112,26 @@ input[type='checkbox'][disabled] {
   outline: none;
   box-shadow: var(--focus-ring);
 }
+.dark-mode input[type="text"],
+.dark-mode input[type="search"] {
+  border-color: var(--border-color);
+}
+.dark-mode input[type="checkbox"] {
+  border-color: var(--border-color);
+}
+.dark-mode input[type='text']:focus,
+.dark-mode input[type='search']:focus,
+.dark-mode .user-instructions textarea:focus {
+  border-color: var(--color-primary); /* Use primary color for focus */
+  background-color: #252526; /* Slightly darker background on focus */
+  box-shadow: var(--focus-ring);
+}
+.dark-mode textarea,
+.dark-mode input[type='text'],
+.dark-mode input[type='search'] {
+  color: var(--text-primary);
+  caret-color: var(--text-primary); /* Ensure caret is visible */
+}
+.dark-mode textarea::placeholder {
+  color: var(--text-disabled); /* Use disabled text color for placeholder */
+}

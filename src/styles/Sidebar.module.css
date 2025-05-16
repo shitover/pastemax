@@ -95,3 +95,9 @@
   background-color: var(--color-primary);
   opacity: 0.2;
 }
+.dark-mode .sidebar,
+.dark-mode .sidebar-header,
+.dark-mode .sidebar-search,
+.dark-mode .sidebar-actions {
+  border-color: var(--border-color);
+}

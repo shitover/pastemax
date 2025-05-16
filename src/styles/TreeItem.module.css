@@ -153,3 +153,25 @@
   font-style: italic;
   /* Inherits default background/text color from .tree-item-badge */
 }
+.dark-mode .tree-item:hover {
+  background-color: #2c2c2c; /* Darker hover for tree items */
+}
+.dark-mode .tree-item-badge {
+  background-color: #333333; /* Default dark background */
+  color: #bbbbbb; /* Default dark text */
+}
+
+.dark-mode .tree-item-badge-binary-file {
+  background-color: rgba(
+    165,
+    42,
+    42,
+    0.6
+  ); /* Slightly lighter red with reduced opacity for dark mode */
+  color: #ffffff; /* White text */
+}
+
+/* Folder badge inherits default dark mode colors but keeps italic */
+.dark-mode .tree-item-badge-folder {
+  font-style: italic;
+}

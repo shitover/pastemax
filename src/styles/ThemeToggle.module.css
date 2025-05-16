@@ -34,3 +34,9 @@
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
 }
+.dark-mode .theme-segmented-control {
+  border-color: var(--border-color);
+}
+.dark-mode .theme-segment.active {
+  background-color: #3e3e42; /* Darker active background */
+}
