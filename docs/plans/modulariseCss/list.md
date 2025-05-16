@@ -1,87 +1,27 @@
-Below is the full list of CSS module files per logical section of `index.css`.
+# CSS File Renaming Plan
 
-```text
-src/styles/
-├── variables.module.css
-├── base.module.css
-├── buttons.module.css
-├── inputs.module.css
-├── theme-toggle.module.css
-├── header.module.css
-├── sidebar.module.css
-├── main-content.module.css
-├── content-area.module.css
-├── file-card.module.css
-├── sidebar-resize.module.css
-├── file-tree.module.css
-├── tree-badges.module.css
-├── ignore-patterns-modal.module.css
-├── custom-global-ignores.module.css
-├── search-bar.module.css
-├── sort-dropdown.module.css
-├── user-instructions.module.css
-├── copy-button.module.css
-├── processing-indicator.module.css
-├── utilities.module.css
-├── scrollbar.module.css
-├── animations.module.css
-├── responsive.module.css
-├── high-contrast.module.css
-├── icons.module.css
-├── view-ignores-button.module.css
-├── copy-button-wrapper.module.css
-├── workspace-manager.module.css
-├── task-type-selector.module.css
-├── file-preview-modal.module.css
-├── update-modal.module.css
-├── custom-task-type-modal.module.css
-└── task-type-list.module.css
-```
+The following `.module.css` files in `src/styles` and subdirectories should be renamed to `.css` to restore global CSS behavior:
 
-**Mapping of content**
+- src/styles/base/Buttons.module.css → src/styles/base/Buttons.css
+- src/styles/base/Input.module.css → src/styles/base/Input.css
+- src/styles/base/Utilities.module.css → src/styles/base/Utilities.css
+- src/styles/contentarea/ContentArea.module.css → src/styles/contentarea/ContentArea.css
+- src/styles/contentarea/CopyButton.module.css → src/styles/contentarea/CopyButton.css
+- src/styles/contentarea/FileCard.module.css → src/styles/contentarea/FileCard.css
+- src/styles/contentarea/FileList.module.css → src/styles/contentarea/FileList.css
+- src/styles/contentarea/ProcessingIndicator.module.css → src/styles/contentarea/ProcessingIndicator.css
+- src/styles/contentarea/SortDropDown.module.css → src/styles/contentarea/SortDropDown.css
+- src/styles/contentarea/UserInstructions.module.css → src/styles/contentarea/UserInstructions.css
+- src/styles/header/Header.module.css → src/styles/header/Header.css
+- src/styles/header/ThemeToggle.module.css → src/styles/header/ThemeToggle.css
+- src/styles/modals/CustomTaskTypeModal.module.css → src/styles/modals/CustomTaskTypeModal.css
+- src/styles/modals/FilePreviewModal.module.css → src/styles/modals/FilePreviewModal.css
+- src/styles/modals/IgnoreListModal.module.css → src/styles/modals/IgnoreListModal.css
+- src/styles/modals/UpdateModal.module.css → src/styles/modals/UpdateModal.css
+- src/styles/modals/WorkspaceManager.module.css → src/styles/modals/WorkspaceManager.css
+- src/styles/sidebar/Searchbar.module.css → src/styles/sidebar/Searchbar.css
+- src/styles/sidebar/Sidebar.module.css → src/styles/sidebar/Sidebar.css
+- src/styles/sidebar/TaskTypeSelector.module.css → src/styles/sidebar/TaskTypeSelector.css
+- src/styles/sidebar/TreeItem.module.css → src/styles/sidebar/TreeItem.css
 
-* **`variables.module.css`** — `:root {…}` + `.dark-mode {…}`
-* **`base.module.css`** — global resets (`*`, `body`, `#root`)
-* **`buttons.module.css`** — `button`, its states, variants, ripple effects
-* **`inputs.module.css`** — `input[type=…]`, `textarea`, checkboxes, `:focus-visible`
-* **`theme-toggle.module.css`** — `.theme-toggle-button` styles
-* **`header.module.css`** — `.header`, `.header h1`, `.header-actions`
-* **`sidebar.module.css`** — `.sidebar`, `.sidebar-header`, `.sidebar-title`, workspace badge, folder path, `.sidebar-search`, `.sidebar-actions`, `.sidebar-action-btn`
-* **`main-content.module.css`** — `.app-container` and `.main-content`
-* **`content-area.module.css`** — `.content-area`, `.content-header`, `.content-title`, `.content-actions`, `.stats-info`
-* **`file-card.module.css`** — `.file-card`, `.file-card.binary-card`, badges, icons, hover/selected states
-* **`sidebar-resize.module.css`** — `.sidebar-resize-handle`
-* **`file-tree.module.css`** — `.file-tree`, `.tree-item`, loading states, toggle, icon, indent, etc.
-* **`tree-badges.module.css`** — `.tree-item-badge`, `.tree-item-badge-binary-file`, `.tree-item-badge-folder`
-* **`ignore-patterns-modal.module.css`** — `.ignore-patterns-container`, overlay, modal, header, search, content, error, loading, no-patterns
-* **`custom-global-ignores.module.css`** — `.custom-global-ignores` and its internal sections/buttons/lists
-* **`search-bar.module.css`** — `.search-bar`, `.search-input`, icon, clear button
-* **`sort-dropdown.module.css`** — `.sort-options`, selector button, dropdown list, items, arrow
-* **`user-instructions.module.css`** — `.user-instructions-container`, `.user-instructions textarea`
-* **`copy-button.module.css`** — `.copy-button-container`, `label`, `.copy-button`, `.copy-status`
-* **`processing-indicator.module.css`** — `.processing-indicator`, `.spinner`, `@keyframes spin`, `.cancel-btn`
-* **`utilities.module.css`** — utility classes like `.monospace`, `.error-message`
-* **`scrollbar.module.css`** — all `::-webkit-scrollbar` + Firefox scrollbar rules
-* **`animations.module.css`** — all `@keyframes` (fadeIn, slideIn…, scaleIn, pulse) and global transition helpers
-* **`responsive.module.css`** — your `@media (max-width: …)` rules
-* **`high-contrast.module.css`** — `@media (prefers-contrast: high)` overrides
-* **`icons.module.css`** — `svg.lucide` sizing variants
-* **`view-ignores-button.module.css`** — `.view-ignores-button` fix
-* **`copy-button-wrapper.module.css`** — `.copy-button-wrapper` adjustments
-* **`workspace-manager.module.css`** — overlay, container, header, list, workspace-item styling
-* **`task-type-selector.module.css`** — `.task-type-container`, dropdown, options for task-type selectors in sidebar and content
-* **`file-preview-modal.module.css`** — preview modal overlay, header, tabs, code container, etc.
-* **`update-modal.module.css`** — update-check modal overlay, header, body, buttons
-* **`custom-task-type-modal.module.css`** — custom task-type modal styles (forms, list, actions)
-* **`task-type-list.module.css`** — existing-task-types section, no-task-types, list and item styles
-
----
-
-**Next steps:**
-
-1. **Create** all these `.module.css` files.
-2. **Import** `variables.module.css` and `base.module.css` once at your root (e.g. in `main.tsx`).
-3. **Incrementally** move each block of rules from `index.css` into its module, update the corresponding component to import and use `styles.<className>`, then remove from `index.css`.
-4. **Validate** after each slice with your visual and unit tests.
-
-This structure will keep everything organized and make future maintenance or theming trivial.
+After renaming, update all import statements in `src/main.tsx` to use the new `.css` filenames.
