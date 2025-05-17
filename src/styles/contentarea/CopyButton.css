@@ -10,6 +10,7 @@
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent shrinking */
   gap: var(--space-md); /* Horizontal gap between elements */
+  margin-top: var(--space-md);
 }
 
 /* Optional: Add a label for the copy button */
@@ -76,7 +77,7 @@
 .copy-status {
   opacity: 0;
   transition: opacity 0.3s ease;
-  color: var (--success-color);
+  color: var(--success-color);
   font-weight: 500;
   font-size: 14px;
   margin-left: 16px; /* Space from button */
@@ -85,13 +86,6 @@
 .copy-status.visible {
   /* Class added via JS */
   opacity: 1;
-}
-
-/* Copy Button */
-.copy-button-container {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--space-md);
 }
 
 .dark-mode .copy-button-container {
@@ -142,7 +136,7 @@
 /* Add responsive adjustments for the copy button on different screen sizes */
 @media (max-width: 1200px) {
   .copy-button-wrapper {
-    max-width: 330px; /* Reduced from 350px */
+    max-width: 350px; /* Reduced from 350px */
   }
 }
 

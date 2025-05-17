@@ -156,6 +156,3 @@
 .dark-mode .sort-options {
   border-color: var(--border-color);
 }
-.dark-mode .sort-dropdown-button {
-  border-color: var(--border-color);
-}
