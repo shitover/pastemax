@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 
 export interface UpdateCheckResultFromMain {
   isUpdateAvailable: boolean;
@@ -20,100 +20,12 @@ interface UpdateModalProps {
   updateStatus: UpdateDisplayState | null;
 }
 
-const checkForUpdates = async (): Promise<UpdateDisplayState> => {
-  if (!window.electron?.ipcRenderer?.invoke) {
-    return {
-      isLoading: false,
-      isUpdateAvailable: false,
-      currentVersion: '',
-      error: 'Electron IPC not available',
-    };
-  }
-  try {
-    const result = await window.electron.ipcRenderer.invoke('check-for-updates');
-    return {
-      ...result,
-      isLoading: false,
-    };
-  } catch (error: any) {
-    return {
-      isLoading: false,
-      isUpdateAvailable: false,
-      currentVersion: '',
-      error: error?.message || 'Unknown error during IPC invoke',
-      debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
-    };
-  }
-};
-
-const UpdateModal = ({ isOpen, onClose, updateStatus: externalUpdateStatus }: UpdateModalProps) => {
-  const [updateStatus, setUpdateStatus] = useState(
-    externalUpdateStatus as UpdateDisplayState | null
-  );
-  const [isRetryOnCooldown, setIsRetryOnCooldown] = useState(false);
-  const [sessionRetryAttempts, setSessionRetryAttempts] = useState(0);
-  const MAX_BUTTON_CLICKS_PER_MODAL_SESSION = 2;
-
-  // Sync with external updateStatus prop
-  React.useEffect(() => {
-    setUpdateStatus(externalUpdateStatus);
-    if (externalUpdateStatus && !externalUpdateStatus.isLoading) {
-      if (
-        !externalUpdateStatus.error ||
-        externalUpdateStatus.error?.includes('Maximum update check attempts')
-      ) {
-        setSessionRetryAttempts(0);
-      }
-    }
-  }, [externalUpdateStatus]);
-
+const UpdateModal = ({ isOpen, onClose, updateStatus }: UpdateModalProps) => {
   const handleDownloadUpdate = useCallback(() => {
     if (updateStatus?.releaseUrl) {
       window.open(updateStatus.releaseUrl, '_blank');
     }
   }, [updateStatus]);
-
-  const handleRecheck = useCallback(async () => {
-    if (isRetryOnCooldown || (updateStatus?.isLoading ?? false)) return;
-    if (
-      sessionRetryAttempts >= MAX_BUTTON_CLICKS_PER_MODAL_SESSION &&
-      updateStatus?.error &&
-      !updateStatus.error.includes('Maximum update check attempts')
-    ) {
-      return;
-    }
-
-    setIsRetryOnCooldown(true);
-    setSessionRetryAttempts((prev: number) => prev + 1);
-
-    setUpdateStatus(
-      (prev: UpdateDisplayState | null): UpdateDisplayState => ({
-        ...(prev || { currentVersion: '', isUpdateAvailable: false }),
-        isLoading: true,
-        error: undefined,
-      })
-    );
-
-    const result = await checkForUpdates();
-    setUpdateStatus(result);
-
-    const cooldownDuration = result.error?.includes('403') ? 60000 : result.error ? 10000 : 1000;
-    setTimeout(() => {
-      setIsRetryOnCooldown(false);
-    }, cooldownDuration);
-  }, [isRetryOnCooldown, updateStatus, sessionRetryAttempts]);
-
-  const retryButtonDisabled =
-    (updateStatus?.isLoading ?? false) ||
-    isRetryOnCooldown ||
-    updateStatus?.error?.includes('Maximum update check attempts reached');
-
-  const retryButtonText = updateStatus?.error?.includes('Maximum update check attempts reached')
-    ? 'Restart to Check'
-    : 'Retry';
-  const recheckButtonText = updateStatus?.error?.includes('Maximum update check attempts reached')
-    ? 'Restart to Check'
-    : 'Re-check';
 
   if (!isOpen) {
     return null;
