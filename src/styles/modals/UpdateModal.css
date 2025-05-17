@@ -174,3 +174,17 @@
     all 0.2s var(--animation-curve),
     background-color 0.3s ease;
 }
+
+/* Styles for the Check for Updates button in the main app header */
+.header-action-btn.check-updates-button {
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Highlighted state when update is available */
+.header-action-btn.check-updates-button.update-available {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+}

@@ -1366,27 +1366,9 @@ const App = (): JSX.Element => {
                 }}
               >
                 <button
-                  className="header-action-btn check-updates-button"
+                  className={`header-action-btn check-updates-button${initialAutoUpdateResult?.isUpdateAvailable && !isUpdateModalOpen ? ' update-available' : ''}`}
                   title="Check for application updates"
                   onClick={handleCheckForUpdates}
-                  style={
-                    // When the update is available, change the button color
-                    initialAutoUpdateResult?.isUpdateAvailable && !isUpdateModalOpen
-                      ? {
-                          backgroundColor: 'var(--color-accent, #0e639c)',
-                          color: 'var(--color-accent, #ffffff)',
-                          padding: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }
-                      : {
-                          padding: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }
-                  }
                 >
                   <DownloadCloud size={16} />
                 </button>
