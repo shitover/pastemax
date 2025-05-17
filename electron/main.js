@@ -540,17 +540,27 @@ function createWindow() {
     mainWindow.webContents.send('startup-mode', {
       safeMode: isSafeMode,
     });
-    // Automatic update check on app launch
-    try {
-      const { getUpdateStatus } = require('./update-manager');
-      const updateStatus = await getUpdateStatus();
-      mainWindow.webContents.send('initial-update-status', updateStatus);
-    } catch (err) {
+    // Automatic update check on app launch (skip in development mode)
+    if (process.env.NODE_ENV !== 'development') {
+      try {
+        const { getUpdateStatus } = require('./update-manager');
+        const updateStatus = await getUpdateStatus();
+        mainWindow.webContents.send('initial-update-status', updateStatus);
+      } catch (err) {
+        mainWindow.webContents.send('initial-update-status', {
+          isUpdateAvailable: false,
+          currentVersion: app.getVersion(),
+          error: err?.message || 'Failed to check for updates on launch',
+          isLoading: false,
+        });
+      }
+    } else {
+      // In development mode, just send a "no update" status immediately
       mainWindow.webContents.send('initial-update-status', {
         isUpdateAvailable: false,
         currentVersion: app.getVersion(),
-        error: err?.message || 'Failed to check for updates on launch',
         isLoading: false,
+        error: undefined,
       });
     }
   });
