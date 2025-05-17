@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Clock, X, Maximize2 } from 'lucide-react';
+import { Copy, Clock, X} from 'lucide-react';
 
 export interface CopyHistoryItem {
   content: string;
@@ -33,24 +33,57 @@ const CopyHistoryModal = ({
     return new Date(timestamp).toLocaleString();
   };
 
-  // Get preview of content (first 100 characters)
-  const getContentPreview = (content: string) => {
-    if (content.length <= 100) return content;
-    return content.substring(0, 97) + '...';
+  // Extract folder path from content
+  const extractFolderPath = (content: string) => {
+    // Look for a folder path in different formats
+    const folderPathMatch = content.match(/(\/[\w/.-]+)/);
+    if (folderPathMatch) {
+      return folderPathMatch[0];
+    }
+    return '';
+  };
+
+  // Get a simple preview of the content without technical tags
+  const getSimplePreview = (content: string) => {
+    // Remove XML-like tags
+    let simplified = content.replace(/<\/?[^>]+(>|$)/g, '');
+
+    // Remove file paths and technical formatting
+    simplified = simplified.replace(/\/[\w/.-]+\s+├──/g, '');
+
+    // Extract user instructions if available
+    const instructionsMatch = content.match(/user_instructions>\s*([^<]+)/);
+    if (instructionsMatch && instructionsMatch[1]) {
+      return (
+        instructionsMatch[1].trim().substring(0, 100) +
+        (instructionsMatch[1].length > 100 ? '...' : '')
+      );
+    }
+
+    // Fall back to first 100 chars of simplified content
+    return simplified.trim().substring(0, 100) + (simplified.length > 100 ? '...' : '');
   };
 
   const handleItemClick = (index: number) => {
     setSelectedItem(index);
-  };
-
-  const handleShowDetailView = () => {
-    if (selectedItem !== null) {
-      setShowDetailView(true);
-    }
+    // Immediately show detail view when an item is clicked
+    setShowDetailView(true);
   };
 
   const handleCloseDetailView = () => {
     setShowDetailView(false);
+  };
+
+  // Process content to make it more readable
+  const processContentForDisplay = (content: string) => {
+    // Remove XML-like tags but preserve content
+    const processedContent = content.replace(
+      /<file_map>|<\/file_map>|<file_contents>|<\/file_contents>|<binary_files>|<\/binary_files>|<user_instructions>|<\/user_instructions>/g,
+      ''
+    );
+
+    // Keep code blocks intact but remove extra formatting
+    return processedContent.trim();
   };
 
   return (
@@ -87,18 +120,6 @@ const CopyHistoryModal = ({
                       <div className="copy-history-item-header">
                         <span className="copy-history-item-date">{formatDate(item.timestamp)}</span>
                         <div className="copy-history-item-actions">
-                          {selectedItem === index && (
-                            <button
-                              className="copy-history-item-expand-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShowDetailView();
-                              }}
-                              title="View full content"
-                            >
-                              <Maximize2 size={14} />
-                            </button>
-                          )}
                           <button
                             className="copy-history-item-copy-button"
                             onClick={(e) => {
@@ -112,29 +133,15 @@ const CopyHistoryModal = ({
                         </div>
                       </div>
                       <div className="copy-history-item-preview">
-                        {getContentPreview(item.content)}
+                        {extractFolderPath(item.content)}
+                        <br />
+                        <span className="copy-history-item-content-preview">
+                          {getSimplePreview(item.content)}
+                        </span>
                       </div>
                     </div>
                   ))}
                 </div>
-
-                {selectedItem !== null && (
-                  <div className="copy-history-detail">
-                    <h4>Content</h4>
-                    <pre className="copy-history-detail-content">
-                      {copyHistory[selectedItem].content}
-                    </pre>
-                    <div className="copy-history-detail-actions">
-                      <button
-                        className="copy-history-copy-button"
-                        onClick={() => onCopyItem(copyHistory[selectedItem].content)}
-                      >
-                        <Copy size={14} />
-                        <span>Copy</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="copy-history-footer">
                   <button className="copy-history-clear-button" onClick={onClearHistory}>
@@ -166,7 +173,9 @@ const CopyHistoryModal = ({
               <div className="copy-detail-date">
                 Copied on {formatDate(copyHistory[selectedItem].timestamp)}
               </div>
-              <pre className="copy-detail-content">{copyHistory[selectedItem].content}</pre>
+              <pre className="copy-detail-content">
+                {processContentForDisplay(copyHistory[selectedItem].content)}
+              </pre>
               <div className="copy-detail-footer">
                 <button
                   className="copy-detail-copy-button"

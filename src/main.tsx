@@ -19,7 +19,7 @@ import './styles/contentarea/UserInstructions.css';
 import './styles/contentarea/CopyButton.css';
 import './styles/contentarea/SortDropDown.css';
 import './styles/contentarea/ProcessingIndicator.css';
-import './styles/contentarea/SettingsButton.css';
+import './styles/contentarea/CopyHistoryButton.css';
 import './styles/modals/IgnoreListModal.css';
 import './styles/modals/FilePreviewModal.css';
 import './styles/modals/UpdateModal.css';

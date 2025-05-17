@@ -3,9 +3,9 @@ import React, {
   useState,
   useCallback,
   useRef,
-  MouseEvent as ReactMouseEvent,
+  //MouseEvent as ReactMouseEvent,
 } from 'react';
-import { DEFAULT_TASK_TYPES, STORAGE_KEY_CUSTOM_TASK_TYPES, TaskType } from '../types/TaskTypes';
+import { DEFAULT_TASK_TYPES, STORAGE_KEY_CUSTOM_TASK_TYPES } from '../types/TaskTypes';
 
 /**
  * Props interface for the UserInstructions component
@@ -50,7 +50,7 @@ const UserInstructions = ({
   // Initial mouse position for resize tracking
   const initialMousePosRef = useRef({ x: 0, y: 0 });
   // Container ref for width calculation
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef(null as HTMLDivElement | null);
 
   // Min/max constraints
   const MIN_HEIGHT = 80;

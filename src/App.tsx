@@ -16,7 +16,7 @@ import TaskTypeSelector from './components/TaskTypeSelector';
 import WorkspaceManager from './components/WorkspaceManager';
 import { Workspace } from './types/WorkspaceTypes';
 import CopyHistoryModal, { CopyHistoryItem } from './components/CopyHistoryModal';
-import SettingsButton from './components/SettingsButton';
+import CopyHistoryButton from './components/CopyHistoryButton';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -1588,9 +1588,9 @@ const App = (): JSX.Element => {
                   COPY ALL SELECTED ({selectedFiles.length} files)
                 </span>
               </button>
-              <SettingsButton
+              <CopyHistoryButton
                 onClick={() => setIsCopyHistoryModalOpen(true)}
-                className="copy-history-settings-button"
+                className="copy-history-button-position"
               />
             </div>
           </div>
