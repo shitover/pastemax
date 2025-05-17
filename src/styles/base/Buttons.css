@@ -1,0 +1,128 @@
+/* ===========================================================================
+    Button Styles
+   ========================================================================== */
+
+button {
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  border: var(--standard-border);
+  background-color: var(--background-primary);
+  font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--border-radius-md);
+  transition: all 0.2s var(--animation-curve);
+  white-space: nowrap;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Button states */
+button:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Button variants */
+button.primary {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border-color: var(--color-primary);
+}
+
+button.primary:hover {
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  border-color: var(--color-primary-light);
+}
+
+button.primary:active {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+button.text-button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-secondary);
+}
+
+button.text-button:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-color);
+  transform: none;
+  box-shadow: none;
+}
+
+button.icon-button {
+  padding: var(--space-xs);
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+button.icon-button:hover {
+  background-color: var(--hover-color);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Button animation effects */
+button::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scale(10, 10);
+  opacity: 0;
+  transition:
+    transform 0.3s,
+    opacity 0.5s;
+}
+
+button:not(.text-button):active::after {
+  transform: scale(0);
+  opacity: 0.2;
+  transition: 0s;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: var(--background-primary);
+}
+.dark-mode button {
+  border-color: var(--border-color);
+}

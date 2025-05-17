@@ -1,0 +1,168 @@
+/* -------------------- Copy Button Area (in Content Area) -------------------- */
+.copy-button-container {
+  padding: var(--space-xl);
+  padding-bottom: var(--space-xl); /* Increased bottom padding */
+  border-top: var(--standard-border);
+  display: flex;
+  flex-direction: row; /* Changed from column to row */
+  align-items: center; /* Center items vertically */
+  justify-content: center; /* Center horizontally */
+  background-color: var(--background-primary);
+  flex-shrink: 0; /* Prevent shrinking */
+  gap: var(--space-md); /* Horizontal gap between elements */
+  margin-top: var(--space-md);
+}
+
+/* Optional: Add a label for the copy button */
+.copy-button-container label {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-right: var(--space-sm); /* Add some spacing to the right */
+}
+
+.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-weight: 600;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  gap: 8px;
+  border: none; /* Primary button style often has no border */
+  cursor: pointer;
+  color: var(--primary-button-text);
+  background-color: var(--primary-button-background);
+  /* Removed .primary class duplication */
+}
+
+.copy-button:hover:not(:disabled) {
+  /* Slightly darken or lighten based on theme */
+  filter: brightness(1.1); /* Example */
+}
+
+.copy-button.full-width {
+  /* Modified for side-by-side layout */
+  width: auto; /* Changed from 100% to auto */
+  max-width: none; /* Remove max-width limitation */
+}
+
+.copy-button.copied {
+  /* Class added via JS */
+  transition: all 0.2s ease;
+  animation: flash-success 0.3s ease-out;
+}
+
+@keyframes flash-success {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+.copy-button-text {
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+/* Status message (optional, shown via JS) */
+.copy-status {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: var(--success-color);
+  font-weight: 500;
+  font-size: 14px;
+  margin-left: 16px; /* Space from button */
+}
+
+.copy-status.visible {
+  /* Class added via JS */
+  opacity: 1;
+}
+
+.dark-mode .copy-button-container {
+  border-color: var(--border-color);
+}
+
+.dark-mode .copy-button-container label {
+  color: var(--text-secondary); /* Use secondary text color */
+}
+
+.copy-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* Reduced gap from 12px to 10px */
+  width: 100%;
+  max-width: 380px; /* Reduced from 400px */
+}
+
+.file-tree-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px; /* Slightly smaller font */
+}
+
+.copy-button-main {
+  width: 100%;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: auto;
+  margin: auto;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-md) var(--space-md);
+  border-radius: var(--border-radius-md);
+  min-height: 10px;
+}
+
+.copy-button-text {
+  font-size: 13px; /* Reduced from 14px */
+  letter-spacing: 0.3px; /* Reduced letter spacing */
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 350px; /* Reduced from 350px */
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 280px; /* Reduced from 300px */
+  }
+
+  .copy-button-text {
+    font-size: 12px; /* Reduced from 13px */
+  }
+}
+
+/* Add responsive adjustments for the copy button on different screen sizes */
+@media (max-width: 1200px) {
+  .copy-button-wrapper {
+    max-width: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-button-wrapper {
+    max-width: 300px;
+  }
+
+  .copy-button-text {
+    font-size: 13px;
+  }
+}

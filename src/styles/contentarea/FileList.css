@@ -1,0 +1,34 @@
+/* ===========================================================================
+    File List Styles
+   ========================================================================== */
+
+.file-list-container {
+  flex: 1; /* Allow list container to grow */
+  overflow: hidden; /* Manage internal scrolling */
+  display: flex;
+  flex-direction: column;
+}
+
+.file-list {
+  flex: 1; /* Allow list itself to grow */
+  overflow-y: auto; /* Enable vertical scrolling */
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Responsive grid */
+  grid-auto-rows: max-content; /* Adjust row height to content */
+  align-content: start; /* Align items to the top */
+  gap: 12px;
+  background-color: var(--background-primary);
+}
+
+.file-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 16px;
+  padding: 32px;
+  text-align: center;
+  font-style: italic;
+}

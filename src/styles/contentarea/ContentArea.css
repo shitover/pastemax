@@ -1,0 +1,66 @@
+/* ===========================================================================
+    Content Area
+   ========================================================================== */
+
+.content-area {
+  flex: 1; /* Take remaining horizontal space */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Manage internal scrolling */
+  background-color: var(--background-primary);
+  min-width: 0; /* Prevent content from pushing layout */
+  margin-right: var(--space-xs);
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--standard-padding);
+  border-bottom: var(--standard-border);
+  background-color: var(--background-primary);
+  flex-shrink: 0;
+}
+
+.content-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-left: var(--space-lg); /* Add left margin to move it right */
+  margin-bottom: var(--space-sm); /* Add bottom margin for spacing */
+  margin-top: var(--space-sm); /* Reduced top margin from --space-md to --space-xs */
+  margin-right: var(--space-xs);
+}
+
+/* Remove the red underline from content titles (if it existed) */
+.content-title::after {
+  content: none;
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.content-header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg); /* Adjust gap as needed, using a larger gap for separation */
+}
+
+/* Match stats-info to content-title styling */
+.stats-info {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-transform: capitalize;
+  color: var(--text-primary);
+  margin-left: var(--space-md);
+  margin-bottom: var(--space-sm);
+  margin-top: var(--space-sm);
+  margin-right: var(--space-xs);
+}
+.dark-mode .content-header {
+  border-color: var(--border-color);
+}

@@ -1,3 +1,64 @@
+## [1.0.8] - 2025-05-17
+
+### Changed
+
+- **CSS Modularization:**
+  - Broke down the large `src/styles/index.css` into smaller, component-specific and layout-specific `.css` files organized in subdirectories (`header`, `sidebar`, `contentarea`, `modals`, `base`).
+  - `index.css` now primarily contains CSS variables (Design System), global resets, and base styles.
+  - Legacy styles remain in their respective files; future CSS work should use modular files for new components and features.
+  - All `.css` files are imported in `src/main.tsx` for global availability.
+  - A backup of the original `index.css` is stored at `src/styles/backup/index.css.bak`.
+  - Guidance for future contributions and modularization strategy documented in `src/styles/README.md`.
+
+## [1.0.7] - 2025-05-16
+
+### Added
+
+- `WorkspaceManager.tsx` feature:
+  - Allows users to create and manage multiple workspaces
+  - Each workspace can have its own set of folders and files
+  - Users can switch between workspaces easily
+  - Workspace data is persisted between sessions
+
+### Improved
+
+- **UI Improvements**:
+  - Enhanced workspace manager modal with clear visual hierarchy
+  - Improved action buttons with distinct colors for better visibility
+  - Fixed styling issues with workspace item display
+
+## [1.0.6] - 2025-05-13
+
+### Added:
+
+- `TaskTypeSelector.tsx` feature:
+
+  - Allows users to select and manage task types
+  - Users can create custom task types with specific prompts
+  - Task types are stored in localStorage for persistence
+  - UI improvements for better user experience
+
+- `CustomTaskTypeModal.tsx` feature:
+
+  - Modal for creating and editing custom task types
+  - Users can define task type names and associated prompts
+  - Improved error handling for invalid inputs
+
+- Task type selection dropdown in the sidebar
+- Default task types (None, Feature, Refactor, Question, Debug)
+- Custom task type creation and management
+- Persistent storage of task types in localStorage
+- Task-specific prompts that automatically populate the instructions area
+- UI improvements and error handling for the task type system
+
+### Technical Details:
+
+- Added `TaskTypeSelector` component to manage task type selection
+- Created `CustomTaskTypeModal` for adding/editing custom task types
+- Implemented proper state management for task types
+- Fixed error handling to prevent undefined object references
+- Added localStorage integration for persistence across sessions
+
 ## [1.0.5] - 2025-05-10
 
 ### Improved

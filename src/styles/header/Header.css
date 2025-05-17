@@ -1,0 +1,73 @@
+/* ===========================================================================
+    Header
+   ========================================================================== */
+
+.header {
+  padding: calc(var(--space-md) + 2px) var(--space-lg);
+  border-bottom: var(--standard-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--background-primary);
+  flex-shrink: 0; /* Prevent header from shrinking */
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 660;
+  margin: 0;
+  color: var(--text-primary);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding-right: var(--space-sm);
+}
+
+.select-folder-btn,
+.clear-data-btn,
+.refresh-list-btn {
+  /* Added refresh-list-btn here */
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  /* Add any other shared styles for these buttons */
+}
+
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.selected-folder {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--hover-color);
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center; /* Center content vertically */
+  justify-content: center; /* Center content horizontally */
+  text-align: center; /* Center text */
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
+}
+.dark-mode .header {
+  border-color: var(--border-color);
+}
+.dark-mode .selected-folder {
+  background-color: #2d2d2d; /* Slightly different shade */
+}

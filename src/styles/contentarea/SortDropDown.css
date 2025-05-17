@@ -1,0 +1,158 @@
+/* ==========================================================================
+   Sort Dropdown
+   ========================================================================== */
+
+.sort-options {
+  position: relative; /* For absolute positioning of the dropdown */
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-right: var(--space-lg);
+}
+
+.sort-selector-wrapper {
+  position: relative; /* Anchor for the dropdown */
+}
+
+.sort-selector-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  min-width: 200px;
+  text-align: left;
+  gap: var(--space-sm);
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+}
+
+.sort-selector-button:hover {
+  border-color: var(--border-color-focus);
+  background-color: var(--hover-color);
+  transform: none !important;
+  box-shadow: var(--shadow-md);
+}
+
+.sort-selector-button:focus-visible {
+  outline: none;
+  border-color: var(--border-color-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.current-sort {
+  flex-grow: 1; /* Allows text to take available space */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-arrow {
+  font-size: 12px; /* Adjust as needed */
+  transition: transform var(--transition-fast);
+}
+
+.sort-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-xs));
+  left: 0;
+  background-color: var(--background-primary);
+  border: none;
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-dropdown);
+  min-width: 100%;
+  padding: var(--space-xs) 0;
+  list-style: none;
+  margin: 0;
+  max-height: 250px;
+  overflow-y: auto;
+  -webkit-border-radius: var(--border-radius-md);
+  -moz-border-radius: var(--border-radius-md);
+  -ms-border-radius: var(--border-radius-md);
+  -o-border-radius: var(--border-radius-md);
+}
+
+.sort-option-item {
+  margin: 0;
+  padding: 0;
+}
+
+.sort-option-button {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 0; /* Buttons inside list items shouldn't have individual radius */
+  box-shadow: none; /* Remove default button shadow */
+}
+
+.sort-option-button:hover {
+  background-color: var(--hover-color);
+  color: var(--text-primary);
+  transform: none; /* Override default button hover transform */
+  box-shadow: none;
+}
+
+.sort-option-item.selected .sort-option-button {
+  background-color: var(--background-selected);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.sort-option-button:focus-visible {
+  outline: none;
+  background-color: var(--hover-color); /* Or a specific focus color */
+  box-shadow: inset 0 0 0 2px var(--border-color-focus); /* Inner focus ring */
+}
+
+/* Dark mode adjustments for sort dropdown */
+.dark-mode .sort-selector-button {
+  background-color: var(--background-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.dark-mode .sort-selector-button:hover {
+  border-color: var(--border-color-focus);
+  background-color: var(--hover-color);
+}
+
+.dark-mode .sort-dropdown {
+  background-color: var(--background-secondary); /* Slightly different from primary for depth */
+  border-color: var(--border-color);
+}
+
+.dark-mode .sort-option-button {
+  color: var(--text-primary);
+}
+
+.dark-mode .sort-option-button:hover {
+  background-color: var(--hover-color);
+}
+
+.dark-mode .sort-option-item.selected .sort-option-button {
+  background-color: var(--background-selected);
+  color: var(--color-primary-light); /* Lighter primary for dark mode selected text */
+}
+
+.dark-mode .sort-option-button:focus-visible {
+  background-color: var(--hover-color);
+  box-shadow: inset 0 0 0 2px var(--border-color-focus);
+}
+.dark-mode .sort-options {
+  border-color: var(--border-color);
+}
