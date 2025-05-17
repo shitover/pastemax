@@ -138,6 +138,7 @@
     "ignore": "^7.0.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.477.0",
+    "node-fetch": "^2.7.0",
     "p-queue": "^8.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

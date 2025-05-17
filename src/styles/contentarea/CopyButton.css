@@ -1,177 +1,205 @@
-/* -------------------- Copy Button Area (in Content Area) -------------------- */
-.copy-button-container {
-  padding: var(--space-xl);
-  padding-bottom: var(--space-xl); /* Increased bottom padding */
-  border-top: var(--standard-border);
-  display: flex;
-  flex-direction: row; /* Changed from column to row */
-  align-items: center; /* Center items vertically */
-  justify-content: center; /* Center horizontally */
-  background-color: var(--background-primary);
-  flex-shrink: 0; /* Prevent shrinking */
-  gap: var(--space-md); /* Horizontal gap between elements */
-  margin-top: var(--space-md);
-  position: relative; /* Add position relative for absolute positioning of settings button */
-}
+/* ==========================================================================
+   Copy Button & Related Components
+   ========================================================================== */
 
-/* Optional: Add a label for the copy button */
-.copy-button-container label {
+.copy-button-container {
   display: flex;
   align-items: center;
+  margin: var(--space-md) 0;
+  position: relative;
+}
+
+.copy-button-container label {
   color: var(--text-secondary);
-  font-size: 14px;
-  margin-right: var(--space-sm); /* Add some spacing to the right */
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-sm);
+  display: block;
 }
 
 .copy-button {
-  display: flex;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  font-weight: 600;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  gap: 8px;
-  border: none; /* Primary button style often has no border */
-  cursor: pointer;
-  color: var(--primary-button-text);
-  background-color: var(--primary-button-background);
-  /* Removed .primary class duplication */
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+  min-width: 200px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5;
+  width: auto;
+  position: relative;
 }
 
 .copy-button:hover:not(:disabled) {
-  /* Slightly darken or lighten based on theme */
-  filter: brightness(1.1); /* Example */
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
 .copy-button.full-width {
-  /* Modified for side-by-side layout */
-  width: auto; /* Changed from 100% to auto */
-  max-width: none; /* Remove max-width limitation */
+  width: 100%;
+  margin-right: var(--space-md);
 }
 
 .copy-button.copied {
-  /* Class added via JS */
-  transition: all 0.2s ease;
-  animation: flash-success 0.3s ease-out;
+  background-color: var(--color-success);
+  animation: flash-success 1s;
 }
 
 @keyframes flash-success {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
+  0% {
+    background-color: var(--color-primary);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.02);
+    background-color: var(--color-success);
+  }
+  100% {
+    background-color: var(--color-primary);
   }
 }
 
 .copy-button-text {
-  font-size: 14px;
-  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
-/* Status message (optional, shown via JS) */
 .copy-status {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-success);
+  font-size: var(--font-size-sm);
   opacity: 0;
-  transition: opacity 0.3s ease;
-  color: var(--success-color);
-  font-weight: 500;
-  font-size: 14px;
-  margin-left: 16px; /* Space from button */
+  transition: opacity var(--transition-fast);
 }
 
 .copy-status.visible {
-  /* Class added via JS */
   opacity: 1;
 }
 
 .dark-mode .copy-button-container {
-  border-color: var(--border-color);
+  color: var(--text-primary-dark);
 }
 
 .dark-mode .copy-button-container label {
-  color: var(--text-secondary); /* Use secondary text color */
+  color: var(--text-secondary-dark);
 }
 
 .copy-button-wrapper {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px; /* Reduced gap from 12px to 10px */
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
   width: 100%;
-  max-width: 380px; /* Reduced from 400px */
 }
 
 .file-tree-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 13px; /* Slightly smaller font */
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }
 
 .copy-button-main {
-  width: 100%;
-  max-width: 40%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  height: auto;
-  margin: auto;
-  font-weight: var(--font-weight-medium);
-  padding: var(--space-md) var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
   border-radius: var(--border-radius-md);
-  min-height: 10px;
+  cursor: pointer;
+  flex-grow: 1;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.5px;
 }
 
 .copy-button-text {
-  font-size: 13px; /* Reduced from 14px */
-  letter-spacing: 0.3px; /* Reduced letter spacing */
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
-/* Add responsive adjustments for the copy button on different screen sizes */
 @media (max-width: 1200px) {
   .copy-button-wrapper {
-    max-width: 350px; /* Reduced from 350px */
+    flex-direction: column;
+  }
+
+  @media (max-width: 768px) {
+    .copy-button-wrapper {
+      flex-direction: column;
+    }
+
+    .copy-button-text {
+      font-size: var(--font-size-sm);
+    }
   }
 }
 
-@media (max-width: 768px) {
-  .copy-button-wrapper {
-    max-width: 280px; /* Reduced from 300px */
-  }
-
-  .copy-button-text {
-    font-size: 12px; /* Reduced from 13px */
-  }
-}
-
-/* Add responsive adjustments for the copy button on different screen sizes */
 @media (max-width: 1200px) {
   .copy-button-wrapper {
-    max-width: 350px;
+    flex-direction: column;
+  }
+
+  @media (max-width: 768px) {
+    .copy-button-wrapper {
+      flex-direction: column;
+    }
+
+    .copy-button-text {
+      font-size: var(--font-size-sm);
+    }
   }
 }
 
-@media (max-width: 768px) {
-  .copy-button-wrapper {
-    max-width: 300px;
-  }
-
-  .copy-button-text {
-    font-size: 13px;
-  }
-}
-
-/* Settings button positioning in copy button container */
 .copy-history-settings-button {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+/* Copy Options */
+.copy-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  align-items: flex-start;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.model-selection {
+  flex-basis: 100%;
+  margin-top: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .model-selection {
+    flex-basis: 300px;
+  }
 }

@@ -20,6 +20,7 @@ import './styles/contentarea/CopyButton.css';
 import './styles/contentarea/SortDropDown.css';
 import './styles/contentarea/ProcessingIndicator.css';
 import './styles/contentarea/CopyHistoryButton.css';
+import './styles/contentarea/ModelDropdown.css';
 import './styles/modals/IgnoreListModal.css';
 import './styles/modals/FilePreviewModal.css';
 import './styles/modals/UpdateModal.css';
@@ -42,6 +43,8 @@ window.addEventListener('beforeunload', () => {
     'pastemax-expanded-nodes',
     'pastemax-workspaces',
     'pastemax-current-workspace',
+    'llm-models-cache',
+    'llm-models-fetch-time',
   ];
 
   // Read each key to ensure writes are flushed

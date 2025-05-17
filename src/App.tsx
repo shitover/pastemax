@@ -17,6 +17,7 @@ import WorkspaceManager from './components/WorkspaceManager';
 import { Workspace } from './types/WorkspaceTypes';
 import CopyHistoryModal, { CopyHistoryItem } from './components/CopyHistoryModal';
 import CopyHistoryButton from './components/CopyHistoryButton';
+import ModelDropdown from './components/ModelDropdown';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -186,6 +187,11 @@ const App = (): JSX.Element => {
     return [] as CopyHistoryItem[];
   });
   const [isCopyHistoryModalOpen, setIsCopyHistoryModalOpen] = useState(false);
+
+  const [selectedModelId, setSelectedModelId] = useState(() => {
+    const savedModelId = localStorage.getItem('pastemax-selected-model');
+    return savedModelId || '';
+  });
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
@@ -1329,6 +1335,12 @@ const App = (): JSX.Element => {
     }, 50);
   };
 
+  // Handle model selection
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+    localStorage.setItem('pastemax-selected-model', modelId);
+  };
+
   // Persist workspaces when they change
   useEffect(() => {
     if (workspaces) {
@@ -1611,6 +1623,15 @@ const App = (): JSX.Element => {
                 />
                 <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
               </div>
+            </div>
+
+            {/* Model selection dropdown */}
+            <div className="model-selection">
+              <ModelDropdown
+                externalSelectedModelId={selectedModelId}
+                onModelSelect={handleModelSelect}
+                currentTokenCount={totalFormattedContentTokens}
+              />
             </div>
 
             {/* Copy button - always visible but disabled when no files selected */}

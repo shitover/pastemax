@@ -468,6 +468,48 @@ ipcMain.on('request-file-list', async (event, payload) => {
   }
 });
 
+// Handle fetch-models request from renderer
+/* Commented out for direct API fetch implementation
+ipcMain.handle('fetch-models', async () => {
+  try {
+    const fetch = require('node-fetch');
+    console.log('Fetching models from OpenRouter API in main process...');
+    const response = await fetch('https://openrouter.ai/api/v1/models');
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const apiResponse = await response.json();
+
+    if (apiResponse && Array.isArray(apiResponse.data)) {
+      console.log(`Successfully fetched ${apiResponse.data.length} models from main process.`);
+
+      // Map API response to expected ModelInfo structure
+      const models = apiResponse.data.map((apiModel) => ({
+        id: apiModel.id,
+        name: apiModel.name || apiModel.id,
+        description: apiModel.description || '',
+        context_length: apiModel.context_length || 0,
+        pricing: apiModel.pricing || '',
+        available: apiModel.available !== false,
+      }));
+
+      return models;
+    } else {
+      console.error(
+        "Error fetching models: Invalid response format. Expected object with 'data' array.",
+        apiResponse
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching models in main process:', error);
+    return null;
+  }
+});
+*/
+
 // ======================
 // ELECTRON WINDOW SETUP
 // ======================
@@ -482,7 +524,7 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* ws://localhost:*; object-src 'none';",
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* ws://localhost:* https://openrouter.ai/*; object-src 'none';",
         ],
       },
     });
