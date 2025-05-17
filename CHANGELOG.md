@@ -1,3 +1,30 @@
+## [1.0.9] - 2025-05-17
+
+### Added
+
+- **Automatic Update Checker:**
+
+  - Automatically check for new updates from the latest GitHub release.
+  - The update checker is fired up on app launch and can be triggered manually from the header.
+  - The update status is displayed in a modal with clear download links for the latest release.
+
+- **Update Checker UI Enhancements:**
+  - The update check button in the header now uses the same base styles as the modal's `.check-updates-button` (from `UpdateModal.css`) when no update is available.
+  - When an update is available, the button's background and text color are overridden to use `backgroundColor: var(--color-accent, #0e639c)` and `color: var(--color-accent, #ffffff)`.
+  - The "Update Available!" label is now positioned directly below the update button and styled for visibility.
+
+### Changed
+
+- **Update Checker Behavior:**
+  - The automatic update check on app launch is now disabled in development mode (`process.env.NODE_ENV === 'development'`). In dev, the renderer receives a "no update" status immediately.
+  - The update check button's style logic in `src/App.tsx` was refactored to conditionally apply override styles only when an update is available.
+
+### Fixed
+
+- **UI Consistency:**
+  - Ensured the update check button in the header matches the modal's button style when no update is available.
+  - Fixed the position of the "Update Available!" label so it always appears directly below the update button.
+
 ## [1.0.8] - 2025-05-17
 
 ### Changed
