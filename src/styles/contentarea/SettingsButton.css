@@ -1,0 +1,28 @@
+/* ==========================================================================
+   Settings Button Styles
+   ========================================================================== */
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: var(--standard-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.settings-button:hover {
+  background-color: var(--hover-color);
+  color: var(--text-primary);
+}
+
+.settings-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
