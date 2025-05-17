@@ -145,9 +145,45 @@ ipcMain.on('clear-ignore-cache', () => {
   clearIgnoreCaches();
 });
 
-ipcMain.on('open-folder', async (event) => {
+// --- WSL-aware folder picker ---
+const { exec } = require('child_process');
+const { isWSLPath } = require('./utils.js');
+ipcMain.on('open-folder', async (event, arg) => {
+  let defaultPath = undefined;
+  let lastSelectedFolder = arg && arg.lastSelectedFolder ? arg.lastSelectedFolder : undefined;
+
+  // Only attempt WSL detection on Windows
+  if (process.platform === 'win32') {
+    try {
+      // List WSL distributions
+      const wslList = await new Promise((resolve) => {
+        exec('wsl.exe --list --quiet', { timeout: 2000 }, (err, stdout) => {
+          if (err || !stdout) return resolve([]);
+          const distros = stdout
+            .split('\n')
+            .map((d) => d.trim())
+            .filter((d) => d.length > 0);
+          resolve(distros);
+        });
+      });
+
+      // Only set defaultPath to \\wsl$\ if last selected folder was a WSL path
+      if (
+        Array.isArray(wslList) &&
+        wslList.length > 0 &&
+        lastSelectedFolder &&
+        isWSLPath(lastSelectedFolder)
+      ) {
+        defaultPath = '\\\\wsl$\\';
+      }
+    } catch (e) {
+      // Ignore errors, fallback to default dialog
+    }
+  }
+
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory'],
+    defaultPath,
   });
 
   if (!result.canceled && result.filePaths && result.filePaths.length > 0) {

@@ -619,7 +619,10 @@ const App = (): JSX.Element => {
     if (isElectron) {
       console.log('Opening folder dialog');
       setProcessingStatus({ status: 'idle', message: 'Select a folder...' });
-      window.electron.ipcRenderer.send('open-folder');
+      // Send the last selected folder to the main process for smarter defaultPath logic
+      window.electron.ipcRenderer.send('open-folder', {
+        lastSelectedFolder: selectedFolder,
+      });
     } else {
       console.warn('Folder selection not available in browser');
     }

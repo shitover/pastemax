@@ -9,8 +9,6 @@ let cachedOS: 'windows' | 'mac' | 'linux' | 'unknown' | null = null;
 
 /**
  * Detects the operating system
- *
- * @returns The detected operating system ('windows', 'mac', 'linux', or 'unknown')
  */
 export function detectOS(): 'windows' | 'mac' | 'linux' | 'unknown' {
   if (cachedOS !== null) {
@@ -45,25 +43,36 @@ export function isWindows(): boolean {
 }
 
 /**
+ * Checks if a path is a WSL path (starts with \\wsl.localhost\ or \\wsl$\)
+ */
+export function isWSLPath(filePath: string | null | undefined): boolean {
+  if (!filePath) return false;
+  const normalized = normalizePath(filePath);
+  return normalized.startsWith('//wsl.localhost/') || normalized.startsWith('//wsl$/');
+}
+
+/**
  * Normalizes a file path to use forward slashes regardless of operating system
  * This helps with path comparison across different platforms
- *
- * @param filePath The file path to normalize
- * @returns The normalized path with forward slashes, or an empty string if input is falsy.
  */
 export function normalizePath(filePath: string | null | undefined): string {
   if (!filePath) return ''; // Return empty string for null/undefined/empty input
 
-  // Replace backslashes with forward slashes
-  return String(filePath).replace(/\\/g, '/'); // Ensure filePath is treated as string
+  let normalized = String(filePath).replace(/\\/g, '/'); // Ensure filePath is treated as string
+
+  // Consistently prefix WSL paths with //
+  // Check if it looks like a WSL path but doesn't yet have the // prefix
+  if (
+    (normalized.startsWith('wsl.localhost/') || normalized.startsWith('wsl$/')) &&
+    !(normalized.startsWith('//wsl.localhost/') || normalized.startsWith('//wsl$/'))
+  ) {
+    normalized = '//' + normalized;
+  }
+  return normalized;
 }
 
 /**
  * Compares two paths for equality, handling different OS path separators and case sensitivity
- *
- * @param path1 First path to compare
- * @param path2 Second path to compare
- * @returns True if the paths are equivalent, false otherwise
  */
 export function arePathsEqual(
   path1: string | null | undefined,
@@ -85,6 +94,14 @@ export function arePathsEqual(
   if (!normalized1 && !normalized2) return true;
   if (!normalized1 || !normalized2) return false;
 
+  // For WSL paths, use case-insensitive comparison (like Windows)
+  if (isWSLPath(normalized1) || isWSLPath(normalized2)) {
+    if (isWSLPath(normalized1) !== isWSLPath(normalized2)) {
+      return false; // One is WSL path, the other isn't
+    }
+    return normalized1.toLowerCase() === normalized2.toLowerCase();
+  }
+
   // On Windows, paths are case-insensitive
   if (isWindows()) {
     return normalized1.toLowerCase() === normalized2.toLowerCase();
@@ -95,24 +112,16 @@ export function arePathsEqual(
 }
 
 /**
- * Combines multiple path segments into a single path, handling any OS differences.
- * For example: join('folder', 'subfolder', 'file.txt') -> 'folder/subfolder/file.txt'
- */
-export function join(...segments: (string | null | undefined)[]): string {
-  const normalizedSegments = segments
-    .filter(Boolean)
-    .map((seg) => normalizePath(String(seg)))
-    .map((seg) => seg.replace(/^\/+|\/+$/g, '')); // Clean up extra slashes
-
-  return normalizedSegments.join('/');
-}
-
-/**
  * Checks if a path is absolute (starts from the root) rather than relative.
  * Handles both Windows paths (C:/, D:/) and Unix-style paths (/usr/local).
  */
 export function isAbsolute(path: string): boolean {
   const normalized = normalizePath(path);
+
+  // Check for WSL paths
+  if (isWSLPath(normalized)) {
+    return true;
+  }
 
   // Check for Windows drive letters
   if (/^[a-z]:/i.test(normalized)) {
@@ -125,13 +134,18 @@ export function isAbsolute(path: string): boolean {
 
 /**
  * Checks if one path is a subpath of another
- * @param parent The potential parent path
- * @param child The potential child path
- * @returns True if child is a subpath of parent
  */
 export function isSubPath(parent: string, child: string): boolean {
   const normalizedParent = normalizePath(parent);
   const normalizedChild = normalizePath(child);
+
+  // For WSL paths, use case-insensitive comparison (like Windows)
+  if (isWSLPath(normalizedParent) || isWSLPath(normalizedChild)) {
+    if (isWSLPath(normalizedParent) !== isWSLPath(normalizedChild)) {
+      return false; // One is WSL path, the other isn't
+    }
+    return normalizedChild.toLowerCase().startsWith(normalizedParent.toLowerCase() + '/');
+  }
 
   if (isWindows()) {
     return normalizedChild.toLowerCase().startsWith(normalizedParent.toLowerCase() + '/');
@@ -142,8 +156,6 @@ export function isSubPath(parent: string, child: string): boolean {
 
 /**
  * Extract the basename from a path string
- * @param path The path to extract the basename from
- * @returns The basename (last part of the path)
  */
 export function basename(path: string | null | undefined): string {
   if (!path) return '';
@@ -270,4 +282,17 @@ export function generateAsciiFileTree(files: { path: string }[], rootPath: strin
   };
 
   return generateAscii(root);
+}
+
+/**
+ * Combines multiple path segments into a single path, handling any OS differences.
+ * For example: join('folder', 'subfolder', 'file.txt') -> 'folder/subfolder/file.txt'
+ */
+export function join(...segments: (string | null | undefined)[]): string {
+  const normalizedSegments = segments
+    .filter(Boolean)
+    .map((seg) => normalizePath(String(seg)))
+    .map((seg) => seg.replace(/^\/+|\/+$/g, '')); // Clean up extra slashes
+
+  return normalizedSegments.join('/');
 }
