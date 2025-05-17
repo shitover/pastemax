@@ -636,7 +636,10 @@ const App = (): JSX.Element => {
     if (isElectron) {
       console.log('Opening folder dialog');
       setProcessingStatus({ status: 'idle', message: 'Select a folder...' });
-      window.electron.ipcRenderer.send('open-folder');
+      // Send the last selected folder to the main process for smarter defaultPath logic
+      window.electron.ipcRenderer.send('open-folder', {
+        lastSelectedFolder: selectedFolder,
+      });
     } else {
       console.warn('Folder selection not available in browser');
     }
@@ -943,10 +946,10 @@ const App = (): JSX.Element => {
       if (contentToTokenize && isElectron) {
         try {
           // Invoke IPC to get token count from the main process
-          const result = await window.electron.ipcRenderer.invoke(
+          const result = (await window.electron.ipcRenderer.invoke(
             'get-token-count',
             contentToTokenize
-          );
+          )) as any;
           if (result && result.tokenCount !== undefined) {
             setTotalFormattedContentTokens(result.tokenCount);
           } else if (result && result.error) {
@@ -987,6 +990,23 @@ const App = (): JSX.Element => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null as UpdateDisplayState | null);
   const initialUpdateCheckAttemptedRef = useRef(false);
+
+  // Store the result of the initial auto update check from main process
+  const [initialAutoUpdateResult, setInitialAutoUpdateResult] = useState(
+    null as UpdateDisplayState | null
+  );
+
+  // Listen for initial-update-status from main process
+  useEffect(() => {
+    if (!isElectron) return;
+    const handler = (result: any) => {
+      setInitialAutoUpdateResult(result as UpdateDisplayState);
+    };
+    window.electron.ipcRenderer.on('initial-update-status', handler);
+    return () => {
+      window.electron.ipcRenderer.removeListener('initial-update-status', handler);
+    };
+  }, [isElectron]);
 
   // Handler for checking updates
   const handleCheckForUpdates = useCallback(async () => {
@@ -1390,20 +1410,36 @@ const App = (): JSX.Element => {
                   'Workspaces'
                 )}
               </button>
-              <button
-                className="header-action-btn check-updates-button"
-                title="Check for application updates"
-                onClick={handleCheckForUpdates}
+              <div
                 style={{
-                  marginLeft: 8,
-                  padding: 4,
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  marginLeft: 8,
                 }}
               >
-                <DownloadCloud size={16} />
-              </button>
+                <button
+                  className={`header-action-btn check-updates-button${initialAutoUpdateResult?.isUpdateAvailable && !isUpdateModalOpen ? ' update-available' : ''}`}
+                  title="Check for application updates"
+                  onClick={handleCheckForUpdates}
+                >
+                  <DownloadCloud size={16} />
+                </button>
+                {/* Show update available indicator if auto check found an update and modal is not open */}
+                {initialAutoUpdateResult?.isUpdateAvailable && !isUpdateModalOpen && (
+                  <div
+                    style={{
+                      color: 'var(--color-accent, #2da6fc)',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      marginTop: 4,
+                    }}
+                    data-testid="update-available-indicator"
+                  >
+                    Update Available!
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>

@@ -1,3 +1,57 @@
+## [1.0.10] - 2025-05-18
+
+### Improved
+
+- **WSL Path Handling and Folder Picker Experience:**
+  - Fixed all path normalization and comparison logic for WSL folders, ensuring consistent selection, deselection, and file tree operations for WSL paths.
+  - Updated `src/utils/pathUtils.ts` and `electron/utils.js` to always normalize WSL paths to a consistent `//wsl.localhost/` or `//wsl$/` prefix.
+  - Improved folder picker dialog logic:
+    - On Windows, the folder picker now only defaults to the WSL root (`\\wsl$\`) if the last selected folder was a WSL path. Otherwise, it opens to the standard Windows location.
+    - Users can now browse and select WSL folders directly from the dialog, but Windows users who primarily use local folders are not forced into the WSL view.
+    - The renderer now sends the last selected folder to the main process for context-aware dialog behavior.
+  - Refactored `open-folder` IPC handler in `electron/main.js` to support this smarter logic and use the new `isWSLPath` utility.
+
+### Fixed
+
+- **WSL File Selection:**
+  - Resolved an issue where selecting or deselecting files/folders in WSL directories would fail with "No selectable files found in folder" due to inconsistent path normalization.
+  - Fixed edge cases where WSL paths with different slashes or UNC prefixes were not recognized as equivalent.
+
+### Technical
+
+- Added/updated utility functions in both frontend and backend for robust cross-platform path handling.
+- Improved code comments and maintainability for all path-related logic.
+- Updated CHANGELOG.md to reflect all improvements and fixes.
+
+---
+
+## [1.0.9] - 2025-05-17
+
+### Added
+
+- **Automatic Update Checker:**
+
+  - Automatically check for new updates from the latest GitHub release.
+  - The update checker is fired up on app launch and can be triggered manually from the header.
+  - The update status is displayed in a modal with clear download links for the latest release.
+
+- **Update Checker UI Enhancements:**
+  - The update check button in the header now uses the same base styles as the modal's `.check-updates-button` (from `UpdateModal.css`) when no update is available.
+  - When an update is available, the button's background and text color are overridden to use `backgroundColor: var(--color-accent, #0e639c)` and `color: var(--color-accent, #ffffff)`.
+  - The "Update Available!" label is now positioned directly below the update button and styled for visibility.
+
+### Changed
+
+- **Update Checker Behavior:**
+  - The automatic update check on app launch is now disabled in development mode (`process.env.NODE_ENV === 'development'`). In dev, the renderer receives a "no update" status immediately.
+  - The update check button's style logic in `src/App.tsx` was refactored to conditionally apply override styles only when an update is available.
+
+### Fixed
+
+- **UI Consistency:**
+  - Ensured the update check button in the header matches the modal's button style when no update is available.
+  - Fixed the position of the "Update Available!" label so it always appears directly below the update button.
+
 ## [1.0.8] - 2025-05-17
 
 ### Changed
