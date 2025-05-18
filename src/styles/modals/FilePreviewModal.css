@@ -8,12 +8,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000; /* High z-index to be on top */
   animation: fadeIn 0.2s ease-out; /* Fade in animation */
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
   backdrop-filter: blur(2px); /* Slight blur effect for depth */
   transition: opacity 0.2s ease; /* Smooth transition when closing */
 }
@@ -22,7 +22,7 @@
   background-color: var(--background-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   width: 80%;
   /*Adjustasneeded*/
   max-width: 1000px;

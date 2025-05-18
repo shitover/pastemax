@@ -3533,7 +3533,7 @@ button:hover svg.lucide {
   align-items: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease-in-out;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(2px);
 }
 
 .custom-task-type-modal {
