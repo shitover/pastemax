@@ -39,7 +39,7 @@
   justify-content: space-between;
   padding: 16px 24px;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--background-secondary);
+  background-color: var(--background-primary);
 }
 
 .custom-task-type-modal-header h2 {
@@ -269,10 +269,6 @@
 .dark-mode .custom-task-type-modal {
   background-color: var(--bg-color);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.dark-mode .custom-task-type-modal-header {
-  background-color: var(--background-secondary);
 }
 
 .dark-mode .custom-task-type-modal-header h2 {

@@ -115,7 +115,7 @@ const WorkspaceManager = ({
         <div className="workspace-manager-header">
           <h2>Workspace Manager</h2>
           <button className="close-button" onClick={onClose}>
-            <X size={18} />
+            &times;
           </button>
         </div>
         <div className="workspace-manager-content">

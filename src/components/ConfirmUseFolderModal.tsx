@@ -27,7 +27,7 @@ const ConfirmUseFolderModal: React.FC<ConfirmUseFolderModalProps> = ({
         <div className="modal-header">
           <h3>Use Current Folder?</h3>
           <button className="icon-button close-button" onClick={onClose} aria-label="Close">
-            <X size={20} aria-hidden="true" />
+            &times;
           </button>
         </div>
         <div className="modal-content">

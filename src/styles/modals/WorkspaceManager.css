@@ -37,7 +37,7 @@
 }
 
 .workspace-manager-header {
-  padding: 16px;
+  padding: var(--space-md) var(--space-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -50,12 +50,28 @@
 
 .workspace-manager-header h2 {
   margin: 0;
-  font-size: 1.2rem;
-  color: #333;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
 }
 
-.dark-mode .workspace-manager-header h2 {
-  color: #fff;
+.workspace-manager-header .close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-manager-header .close-button:hover,
+.workspace-manager-header .close-button:focus-visible {
+  color: var(--text-primary);
+  background: none;
+  box-shadow: none;
 }
 
 .workspace-manager-content {
@@ -87,7 +103,7 @@
 
 .new-workspace-button {
   padding: 8px 12px;
-  background-color: #2563eb;
+  background-color: var(--color-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -97,10 +113,11 @@
 }
 
 .new-workspace-button:hover {
-  background-color: #1d4ed8;
+  background-color: var(--color-primary);
 }
 
 .new-workspace-button:disabled {
+  color: var(--text-primary);
   background-color: #93c5fd;
   cursor: not-allowed;
 }
@@ -140,8 +157,7 @@
 }
 
 .workspace-item.active {
-  border-left: 3px solid #2563eb;
-  background-color: #f0f7ff;
+  background-color: #c1d8f2;
 }
 
 .dark-mode .workspace-item.active {
@@ -203,7 +219,7 @@
 .set-folder-button {
   background-color: #e6f7ff;
   border-color: #91d5ff;
-  color: #1890ff;
+  color: var(--color-primary);
 }
 
 .clear-folder-button {
@@ -219,7 +235,7 @@
 }
 
 .set-folder-button:hover {
-  background-color: #bae7ff;
+  background-color: var(--color-primary);
   border-color: #1890ff;
   color: #0050b3;
 }
