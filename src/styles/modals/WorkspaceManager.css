@@ -149,7 +149,7 @@
 }
 
 .workspace-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f3f4f6;
 }
 
 .dark-mode .workspace-item:hover {
@@ -157,7 +157,7 @@
 }
 
 .workspace-item.active {
-  background-color: #c1d8f2;
+  background-color: #bfdbfe;
 }
 
 .dark-mode .workspace-item.active {
@@ -217,9 +217,9 @@
 }
 
 .set-folder-button {
-  background-color: #e6f7ff;
-  border-color: #91d5ff;
-  color: var(--color-primary);
+  background-color: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0c4a6e;
 }
 
 .clear-folder-button {
@@ -235,9 +235,9 @@
 }
 
 .set-folder-button:hover {
-  background-color: var(--color-primary);
-  border-color: #1890ff;
-  color: #0050b3;
+  background-color: #bfdbfe;
+  border-color: #93c5fd;
+  color: #073352;
 }
 
 .clear-folder-button:hover {

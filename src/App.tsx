@@ -1716,7 +1716,10 @@ const App = (): JSX.Element => {
             {/* Copy bar: options left, buttons right */}
             <div className="copy-settings-container">
               <div className="copy-settings-options">
-                <div className="toggle-option-item">
+                <div
+                  className="toggle-option-item"
+                  title="Include File Tree in the Copyable Content"
+                >
                   <ToggleSwitch
                     id="includeFileTree"
                     checked={includeFileTree}
@@ -1724,7 +1727,10 @@ const App = (): JSX.Element => {
                   />
                   <label htmlFor="includeFileTree">Include File Tree</label>
                 </div>
-                <div className="toggle-option-item">
+                <div
+                  className="toggle-option-item"
+                  title="Include Binary As Paths in the Copyable Content"
+                >
                   <ToggleSwitch
                     id="includeBinaryPaths"
                     checked={includeBinaryPaths}

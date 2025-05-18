@@ -69,7 +69,7 @@
 .copy-history-modal-header .copy-history-modal-close-button,
 .copy-detail-modal-header .copy-detail-modal-close-button {
   background: none;
-  border: none;
+  border: 1px solid var(--background-primary);
   font-size: 1.5rem;
   cursor: pointer;
   color: var(--text-muted);
@@ -84,6 +84,7 @@
 .copy-history-modal-header .copy-history-modal-close-button:focus-visible,
 .copy-detail-modal-header .copy-detail-modal-close-button:hover,
 .copy-detail-modal-header .copy-detail-modal-close-button:focus-visible {
+  border-color: var(--background-primary);
   color: var(--text-primary);
   background: none;
   box-shadow: none;
@@ -259,7 +260,6 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: var(--font-size-sm);
-  transition: background-color 0.2s ease;
 }
 
 .copy-history-copy-button:hover,
