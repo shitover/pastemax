@@ -9,6 +9,7 @@ export interface Workspace {
 export interface WorkspaceManagerProps {
   isOpen: boolean;
   onClose: () => void;
+  workspaces: Workspace[]; // Added workspaces prop
   currentWorkspace: string | null;
   onSelectWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (name: string) => void;

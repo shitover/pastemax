@@ -1307,6 +1307,8 @@ const App = (): JSX.Element => {
       return filteredWorkspaces;
     });
 
+    // (Removed workspaceManagerVersion increment)
+
     // If deleting current workspace, clear current selection
     if (currentWorkspaceId === workspaceId) {
       console.log('Deleted the current workspace, clearing workspace state');
@@ -1777,6 +1779,7 @@ const App = (): JSX.Element => {
         <WorkspaceManager
           isOpen={isWorkspaceManagerOpen}
           onClose={() => setIsWorkspaceManagerOpen(false)}
+          workspaces={workspaces}
           currentWorkspace={currentWorkspaceId}
           onSelectWorkspace={handleSelectWorkspace}
           onCreateWorkspace={handleCreateWorkspace}
