@@ -42,7 +42,7 @@
   position: relative;
   z-index: 1002;
   animation: scaleIn 0.25s ease-out;
-  /*Scaleinanimation*/
+  /* Scale-in animation */
   transform-origin: center;
   /*Scalefromcenter*/
   will-change: transform, opacity;
