@@ -7,22 +7,28 @@
 }
 
 .user-instructions {
-  position: relative;
+  position: absolute;
+  left: var(--space-lg);
+  right: var(--space-lg);
+  bottom: var(--space-md);
   max-width: 100%;
 }
 
 .user-instructions textarea {
   width: 100%;
-  min-height: 126px; /* Minimum height, can grow */
+  height: 100%;
   padding: 12px;
   border: var(--standard-border);
   border-radius: 4px;
-  background-color: var(--background-secondary); /* Slightly different background */
+  background-color: var(--background-secondary);
+  /*Slightlydifferentbackground*/
   color: var(--text-primary);
-  font-family: var(--font-family-ui); /* Use UI font */
+  font-family: var(--font-family-ui);
+  /*UseUIfont*/
   font-size: 14px;
   line-height: 1.5;
-  resize: none; /* Disable browser's default resize, we're adding custom handles */
+  resize: none;
+  /*Disablebrowser's default resize, we'readdingcustomhandles*/
   transition:
     border-color 0.2s,
     box-shadow 0.2s,
@@ -45,12 +51,12 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: 6px; /* Increased from 4px */
+  top: 0;
+  height: 6px;
   cursor: ns-resize;
   z-index: 10;
   background-color: transparent;
-  will-change: transform; /* Optimize for performance */
+  will-change: transform;
 }
 
 .instructions-resize-handle-horizontal {
@@ -68,11 +74,11 @@
 .instructions-resize-handle-corner {
   position: absolute;
   right: 0;
-  bottom: 0;
-  width: 14px; /* Increased from 12px */
-  height: 14px; /* Increased from 12px */
-  cursor: nwse-resize;
-  z-index: 11; /* Above other handles */
+  top: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+  z-index: 11;
   background-color: transparent;
 }
 
