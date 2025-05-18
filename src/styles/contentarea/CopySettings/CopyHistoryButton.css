@@ -6,13 +6,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 10px;
+  padding: var(--space-sm) var(--space-md);
   background-color: var(--background-primary);
   color: var(--text-secondary);
   border-color: var(--border-color);
   border-radius: var(--space-sm);
   cursor: pointer;
-  height: 36px;
+  height: 50px;
 }
 
 .copy-history-button:hover {
@@ -23,7 +23,6 @@
 
 /* Position next to the copy button */
 .copy-history-button-position {
-  margin-left: var(--space-md);
   display: flex;
   align-items: center;
   justify-content: center;

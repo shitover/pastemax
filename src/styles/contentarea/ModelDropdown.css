@@ -4,7 +4,6 @@
 
 .model-dropdown-container {
   position: relative;
-  margin-bottom: var(--space-md);
   width: 100%;
   border: var(--border-color-dark);
   border-radius: var(--border-radius-md);
@@ -315,6 +314,8 @@
 
 .model-selection {
   margin-bottom: var(--space-md);
+  margin-left: var(--space-md);
+  margin-right: var(--space-md);
 }
 
 /* Minimal Dropdown Styles */
@@ -325,18 +326,18 @@
 
 .model-dropdown-button-minimal {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: var(--space-xs) var(--space-sm);
   background-color: var(--background-secondary);
-  border: var(--border-color-dark);
+  border: 1px solid var(--border-color);
   border-radius: var(--border-radius-sm);
+  border-color: var(--border-color);
   color: var(--text-primary);
   font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
   transition: all var(--transition-fast);
+  margin-bottom: var(--space-xs);
 }
 
 .model-dropdown-button-minimal:hover {
@@ -354,7 +355,7 @@
 
 .model-dropdown-button-minimal.critical {
   border-color: var(--color-error);
-  background-color: rgba(221, 17, 17, 0.1);
+  background-color: rgba(198, 46, 46, 0.355);
 }
 
 .model-name-minimal {

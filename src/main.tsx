@@ -16,10 +16,8 @@ import './styles/contentarea/ContentArea.css';
 import './styles/contentarea/FileList.css';
 import './styles/contentarea/FileCard.css';
 import './styles/contentarea/UserInstructions.css';
-import './styles/contentarea/CopyButton.css';
 import './styles/contentarea/SortDropDown.css';
 import './styles/contentarea/ProcessingIndicator.css';
-import './styles/contentarea/CopyHistoryButton.css';
 import './styles/contentarea/ModelDropdown.css';
 import './styles/modals/IgnoreListModal.css';
 import './styles/modals/FilePreviewModal.css';
@@ -30,6 +28,8 @@ import './styles/modals/CopyHistoryModal.css';
 import './styles/base/Buttons.css';
 import './styles/base/Input.css';
 import './styles/base/Utilities.css';
+import './styles/contentarea/CopySettings/CopySettings.css';
+import './styles/contentarea/CopySettings/CopyHistoryButton.css';
 
 // Add an event listener to ensure state is saved properly before a page refresh
 window.addEventListener('beforeunload', () => {
