@@ -77,6 +77,8 @@ const GlobalModeExclusion = [
   '*.egg-info/**',
   'pip-log.txt',
   'pip-delete-this-directory.txt',
+  'lugi-venv/**',
+  'lugi-venv-*/**',
 
   // Go related
   'go.sum',
