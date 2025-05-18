@@ -581,7 +581,8 @@ const App = (): JSX.Element => {
       stableHandleFileListDataRef.current(files);
     };
 
-    const handleProcessingStatusIPC = (payload: FileProcessingStatusIPCPayload) => {
+    type ProcessingStatusIPCHandler = (payload: FileProcessingStatusIPCPayload) => void;
+    const handleProcessingStatusIPC: ProcessingStatusIPCHandler = (payload) => {
       console.log('[IPC] Received file-processing-status:', payload);
 
       if (VALID_APP_STATUSES.includes(payload.status as AppProcessingStatusType)) {
@@ -613,10 +614,7 @@ const App = (): JSX.Element => {
 
     window.electron.ipcRenderer.on('folder-selected', handleFolderSelectedIPC);
     window.electron.ipcRenderer.on('file-list-data', handleFileListDataIPC);
-    window.electron.ipcRenderer.on(
-      'file-processing-status',
-      handleProcessingStatusIPC as (...args: any[]) => void
-    );
+    window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatusIPC);
     window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdateIPC);
 
     return () => {
@@ -624,7 +622,7 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.removeListener('file-list-data', handleFileListDataIPC);
       window.electron.ipcRenderer.removeListener(
         'file-processing-status',
-        handleProcessingStatusIPC as (...args: any[]) => void
+        handleProcessingStatusIPC
       );
       window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdateIPC);
     };
