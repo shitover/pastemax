@@ -30,23 +30,10 @@ import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
  * The contentFormatUtils module handles content assembly and applies language detection
  * via the languageUtils module internally.
  */
-import { formatContentForCopying } from './utils/contentFormatUtils';
+import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
 /* ============================== GLOBAL DECLARATIONS ============================== */
-// Access the electron API from the window object
-declare global {
-  interface Window {
-    electron: {
-      ipcRenderer: {
-        send: (channel: string, data?: any) => void;
-        on: (channel: string, func: (...args: any[]) => void) => void;
-        removeListener: (channel: string, func: (...args: any[]) => void) => void;
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-      };
-    };
-  }
-}
 
 /* ============================== CONSTANTS ============================== */
 /**
@@ -164,7 +151,9 @@ const App = (): JSX.Element => {
 
   /* ============================== STATE: User Instructions ============================== */
   const [userInstructions, setUserInstructions] = useState('');
-  const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0); // New state for accurate token count
+  const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0);
+  const [cachedBaseContentString, setCachedBaseContentString] = useState('');
+  const [cachedBaseContentTokens, setCachedBaseContentTokens] = useState(0);
   /**
    * State variable used to trigger data re-fetching when its value changes.
    * The `reloadTrigger` is incremented whenever a refresh of the file list or
@@ -557,43 +546,87 @@ const App = (): JSX.Element => {
     handleProcessingStatus,
   ]);
 
-  // Improved IPC listener setup with proper cleanup
+  // Improved IPC listener setup with proper cleanup (now only runs once, uses refs for handlers)
+  // --- Types for IPC status ---
+  type AppProcessingStatusType = 'idle' | 'processing' | 'complete' | 'error';
+  const VALID_APP_STATUSES: AppProcessingStatusType[] = ['idle', 'processing', 'complete', 'error'];
+  type IPCFileProcessingStatus = AppProcessingStatusType | 'cancelled' | 'busy';
+  type FileProcessingStatusIPCPayload = { status: IPCFileProcessingStatus; message: string };
+
+  // Refs to always point to latest handler logic
+  const stableHandleFolderSelectedRef = useRef(stableHandleFolderSelected);
+  const stableHandleFileListDataRef = useRef(stableHandleFileListData);
+  const stableHandleProcessingStatusRef = useRef(stableHandleProcessingStatus);
+
+  useEffect(() => {
+    stableHandleFolderSelectedRef.current = stableHandleFolderSelected;
+  }, [stableHandleFolderSelected]);
+  useEffect(() => {
+    stableHandleFileListDataRef.current = stableHandleFileListData;
+  }, [stableHandleFileListData]);
+  useEffect(() => {
+    stableHandleProcessingStatusRef.current = stableHandleProcessingStatus;
+  }, [stableHandleProcessingStatus]);
+
   useEffect(() => {
     if (!isElectron) return;
 
-    const handleFolderSelected = (folderPath: string) => {
+    const handleFolderSelectedIPC = (folderPath: string) => {
       console.log('[IPC] Received folder-selected:', folderPath);
-      stableHandleFolderSelected(folderPath);
+      stableHandleFolderSelectedRef.current(folderPath);
     };
 
-    const handleFileListData = (files: FileData[]) => {
+    const handleFileListDataIPC = (files: FileData[]) => {
       console.log('[IPC] Received file-list-data:', files.length, 'files');
-      stableHandleFileListData(files);
+      stableHandleFileListDataRef.current(files);
     };
 
-    const handleProcessingStatus = (status: { status: string; message: string }) => {
-      console.log('[IPC] Received file-processing-status:', status);
-      stableHandleProcessingStatus(status);
+    type ProcessingStatusIPCHandler = (payload: FileProcessingStatusIPCPayload) => void;
+    const handleProcessingStatusIPC: ProcessingStatusIPCHandler = (payload) => {
+      console.log('[IPC] Received file-processing-status:', payload);
+
+      if (VALID_APP_STATUSES.includes(payload.status as AppProcessingStatusType)) {
+        stableHandleProcessingStatusRef.current(
+          payload as { status: AppProcessingStatusType; message: string }
+        );
+      } else if (payload.status === 'cancelled') {
+        stableHandleProcessingStatusRef.current({
+          status: 'idle',
+          message: payload.message || 'Operation cancelled',
+        });
+      } else if (payload.status === 'busy') {
+        stableHandleProcessingStatusRef.current({
+          status: 'idle',
+          message: payload.message || 'System is busy',
+        });
+      } else {
+        console.warn('Received unhandled processing status from IPC:', payload);
+        stableHandleProcessingStatusRef.current({
+          status: 'error',
+          message: 'Unknown status from main process',
+        });
+      }
     };
 
-    const handleBackendModeUpdate = (newMode: IgnoreMode) => {
+    const handleBackendModeUpdateIPC = (newMode: IgnoreMode) => {
       console.info('[App] Backend signaled ignore mode update:', newMode);
     };
 
-    // Set up IPC listeners for electron communication
-    window.electron.ipcRenderer.on('folder-selected', handleFolderSelected);
-    window.electron.ipcRenderer.on('file-list-data', handleFileListData);
-    window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatus);
-    window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdate);
+    window.electron.ipcRenderer.on('folder-selected', handleFolderSelectedIPC);
+    window.electron.ipcRenderer.on('file-list-data', handleFileListDataIPC);
+    window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatusIPC);
+    window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdateIPC);
 
     return () => {
-      // Clean up IPC listeners when component unmounts
-      window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelected);
-      window.electron.ipcRenderer.removeListener('file-list-data', handleFileListData);
-      window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
-      window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdate);
+      window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelectedIPC);
+      window.electron.ipcRenderer.removeListener('file-list-data', handleFileListDataIPC);
+      window.electron.ipcRenderer.removeListener(
+        'file-processing-status',
+        handleProcessingStatusIPC
+      );
+      window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdateIPC);
     };
-  }, [isElectron]); // Leave as is
+  }, [isElectron]);
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 
@@ -866,19 +899,15 @@ const App = (): JSX.Element => {
    */
 
   /**
-   * Assembles the final content for copying by using the utility function
+   * Assembles the final content for copying using cached base content
    * @returns {string} The concatenated content ready for copying
    */
   const getSelectedFilesContent = () => {
-    return formatContentForCopying({
-      files: allFiles,
-      selectedFiles,
-      sortOrder,
-      includeFileTree,
-      selectedFolder,
-      userInstructions,
-      includeBinaryPaths,
-    });
+    return (
+      cachedBaseContentString +
+      (cachedBaseContentString && userInstructions.trim() ? '\n\n' : '') +
+      formatUserInstructionsBlock(userInstructions)
+    );
   };
 
   // Handle select all files
@@ -945,52 +974,78 @@ const App = (): JSX.Element => {
     });
   };
 
-  // useEffect for calculating token count of the fully formatted content
+  // Cache base content when file selections or formatting options change
   useEffect(() => {
-    const calculateAndSetTokenCount = async () => {
-      const contentToTokenize = getSelectedFilesContent();
-      if (contentToTokenize && isElectron) {
+    const updateBaseContent = async () => {
+      const baseContent = formatBaseFileContent({
+        files: allFiles,
+        selectedFiles,
+        sortOrder,
+        includeFileTree,
+        includeBinaryPaths,
+        selectedFolder,
+      });
+
+      setCachedBaseContentString(baseContent);
+
+      if (isElectron && baseContent) {
         try {
-          // Invoke IPC to get token count from the main process
-          const result = (await window.electron.ipcRenderer.invoke(
-            'get-token-count',
-            contentToTokenize
-          )) as any;
-          if (result && result.tokenCount !== undefined) {
-            setTotalFormattedContentTokens(result.tokenCount);
-          } else if (result && result.error) {
-            console.error('Error from get-token-count IPC:', result.error);
-            setTotalFormattedContentTokens(0); // Fallback or error state
-          } else {
-            console.error('Unexpected response from get-token-count IPC:', result);
-            setTotalFormattedContentTokens(0); // Fallback
+          const result = await window.electron.ipcRenderer.invoke('get-token-count', baseContent);
+          if (result?.tokenCount !== undefined) {
+            setCachedBaseContentTokens(result.tokenCount);
           }
         } catch (error) {
-          console.error('Failed to invoke get-token-count:', error);
-          setTotalFormattedContentTokens(0); // Fallback on IPC error
+          console.error('Error getting base content token count:', error);
+          setCachedBaseContentTokens(0);
         }
       } else {
-        // If not in Electron or no content, set tokens to 0
-        setTotalFormattedContentTokens(0);
+        setCachedBaseContentTokens(0);
       }
     };
 
-    // Debounce the calculation
-    const debounceTimeout = setTimeout(() => {
-      calculateAndSetTokenCount();
-    }, 150); // Debounce to avoid rapid recalculations
-
-    return () => clearTimeout(debounceTimeout);
+    const debounceTimer = setTimeout(updateBaseContent, 300);
+    return () => clearTimeout(debounceTimer);
   }, [
     allFiles,
     selectedFiles,
     sortOrder,
     includeFileTree,
-    selectedFolder,
-    userInstructions,
     includeBinaryPaths,
-    isElectron, // isElectron is now a necessary dependency
+    selectedFolder,
+    isElectron,
   ]);
+
+  // Calculate total tokens when user instructions change
+  useEffect(() => {
+    const calculateAndSetTokenCount = async () => {
+      const instructionsBlock = formatUserInstructionsBlock(userInstructions);
+
+      if (isElectron) {
+        try {
+          let totalTokens = cachedBaseContentTokens;
+
+          // Only calculate instruction tokens if there are instructions
+          if (instructionsBlock) {
+            const instructionResult = await window.electron.ipcRenderer.invoke(
+              'get-token-count',
+              instructionsBlock
+            );
+            totalTokens += instructionResult?.tokenCount || 0;
+          }
+
+          setTotalFormattedContentTokens(totalTokens);
+        } catch (error) {
+          console.error('Error getting token count:', error);
+          setTotalFormattedContentTokens(0);
+        }
+      } else {
+        setTotalFormattedContentTokens(0);
+      }
+    };
+
+    const debounceTimer = setTimeout(calculateAndSetTokenCount, 150);
+    return () => clearTimeout(debounceTimer);
+  }, [userInstructions, cachedBaseContentTokens, isElectron]);
 
   // ============================== Update Modal State ==============================
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -1042,7 +1097,7 @@ const App = (): JSX.Element => {
         isUpdateAvailable: false,
         currentVersion: '',
         error: error?.message || 'Unknown error during IPC invoke',
-        debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
+        // debugLogs removed: not part of UpdateDisplayState
       });
       initialUpdateCheckAttemptedRef.current = true;
     }
@@ -1657,8 +1712,8 @@ const App = (): JSX.Element => {
         <IgnoreListModal
           isOpen={isIgnoreViewerOpen}
           onClose={handleIgnoreViewerClose}
-          patterns={ignorePatterns}
-          error={ignorePatternsError}
+          patterns={ignorePatterns ?? undefined}
+          error={ignorePatternsError ?? undefined}
           selectedFolder={selectedFolder}
           isElectron={isElectron}
           ignoreSettingsModified={ignoreSettingsModified}

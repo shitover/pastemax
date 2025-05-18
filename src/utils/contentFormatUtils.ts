@@ -32,6 +32,81 @@ interface FormatContentParams {
  * @param {FormatContentParams} params - Parameters for formatting content
  * @returns {string} The concatenated content ready for copying
  */
+export const formatBaseFileContent = ({
+  files,
+  selectedFiles,
+  sortOrder,
+  includeFileTree,
+  includeBinaryPaths,
+  selectedFolder,
+}: Omit<FormatContentParams, 'userInstructions'>): string => {
+  // Sort files according to current sort settings
+  const sortedSelected = files
+    .filter((file: FileData) => selectedFiles.includes(file.path))
+    .sort((a: FileData, b: FileData) => {
+      let comparison = 0;
+      const [sortKey, sortDir] = sortOrder.split('-');
+
+      if (sortKey === 'name') {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortKey === 'tokens') {
+        comparison = a.tokenCount - b.tokenCount;
+      } else if (sortKey === 'size') {
+        comparison = a.size - b.size;
+      }
+
+      return sortDir === 'asc' ? comparison : -comparison;
+    });
+
+  if (sortedSelected.length === 0) {
+    return '';
+  }
+
+  // Separate files into text and binary
+  const normalFiles = sortedSelected.filter((file) => !file.isBinary);
+  const binaryFiles = sortedSelected.filter((file) => file.isBinary);
+
+  let concatenatedString = '';
+
+  // Add ASCII file tree if enabled within <file_map> tags
+  if (includeFileTree && selectedFolder) {
+    const normalizedFolder = normalizePath(selectedFolder);
+    const asciiTree = generateAsciiFileTree(sortedSelected, selectedFolder);
+    concatenatedString += `<file_map>\n${normalizedFolder}\n${asciiTree}\n</file_map>\n\n`;
+  }
+
+  // Add file contents section with consistent spacing
+  concatenatedString += `<file_contents>\n`;
+
+  // Add each text file with its path and language-specific syntax highlighting
+  normalFiles.forEach((file: FileData) => {
+    const language = getLanguageFromFilename(file.name);
+    const normalizedPath = normalizePath(file.path);
+    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
+  });
+
+  // Add binary files section if enabled and files exist
+  if (includeBinaryPaths && binaryFiles.length > 0) {
+    concatenatedString += `<binary_files>\n`;
+    binaryFiles.forEach((file: FileData) => {
+      const normalizedPath = normalizePath(file.path);
+      const fileType = getLanguageFromFilename(file.name);
+      concatenatedString += `File: ${normalizedPath}\nThis is a file of the type: ${fileType.charAt(0).toUpperCase() + fileType.slice(1)}\n\n`;
+    });
+    concatenatedString += `</binary_files>\n\n`;
+  }
+
+  // Consistent closing of file_contents section
+  concatenatedString += `</file_contents>\n`;
+
+  return concatenatedString;
+};
+
+export const formatUserInstructionsBlock = (userInstructions: string): string => {
+  if (!userInstructions.trim()) return '';
+  return `<user_instructions>\n${userInstructions.trim()}\n</user_instructions>\n`;
+};
+
 export const formatContentForCopying = ({
   files,
   selectedFiles,
