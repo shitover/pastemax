@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Copy, Clock, X } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, Clock } from 'lucide-react';
 
 export interface CopyHistoryItem {
   content: string;
@@ -22,7 +22,7 @@ const CopyHistoryModal = ({
   onCopyItem,
   onClearHistory,
 }: CopyHistoryModalProps) => {
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [showDetailView, setShowDetailView] = useState(false);
 
   if (!isOpen) {
@@ -98,7 +98,7 @@ const CopyHistoryModal = ({
               aria-label="Close copy history modal"
               title="Close"
             >
-              <X size={16} />
+              &times;
             </button>
           </div>
 
@@ -166,7 +166,7 @@ const CopyHistoryModal = ({
                 aria-label="Close detail view"
                 title="Close"
               >
-                <X size={16} />
+                &times;
               </button>
             </div>
             <div className="copy-detail-modal-content">

@@ -19,10 +19,10 @@ type ThemeProviderProps = { children: JSX.Element | JSX.Element[] };
 
 export const ThemeProvider = ({ children }: ThemeProviderProps): JSX.Element => {
   // Initialize theme from localStorage or detect system preference
-  const [theme, setThemeState] = useState(() => {
+  const [theme, setThemeState] = useState<ThemeType>(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light' || savedTheme === 'dark') {
-      return savedTheme;
+      return savedTheme as ThemeType;
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });

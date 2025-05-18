@@ -234,14 +234,6 @@
   display: none;
 }
 
-.copy-options {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-md);
-  margin: var(--space-md) auto;
-  flex-wrap: wrap;
-}
-
 .option {
   display: flex;
   align-items: center;

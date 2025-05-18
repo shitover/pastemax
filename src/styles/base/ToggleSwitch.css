@@ -1,0 +1,99 @@
+/* src/styles/base/ToggleSwitch.css */
+
+/* Container for the switch */
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: auto;
+  height: auto;
+  border-radius: 9px;
+  box-sizing: border-box;
+  /* No gap or label styling here */
+}
+
+/* Hide the default checkbox */
+.toggle-switch-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+/* The slider (track) */
+.toggle-switch-slider {
+  display: block;
+  width: 28px;
+  height: 16px;
+  background-color: var(--color-gray-medium, #ccc);
+  border-radius: 8px;
+  position: relative;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+/* The knob */
+.toggle-switch-slider::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Checked state */
+.toggle-switch-checkbox:checked + .toggle-switch-slider {
+  background-color: var(--color-primary, #2da6fc);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-slider::before {
+  transform: translateX(12px);
+}
+
+/* Focus state */
+.toggle-switch-checkbox:focus-visible + .toggle-switch-slider {
+  outline: 2px solid var(--color-primary-focus, #2da6fc);
+  outline-offset: 1px;
+}
+
+/* Disabled state */
+.toggle-switch-checkbox:disabled + .toggle-switch-slider {
+  background-color: var(--color-gray-light, #eee);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.toggle-switch-checkbox:disabled + .toggle-switch-slider::before {
+  background-color: var(--color-gray-medium, #ccc);
+}
+
+.dark-mode .toggle-switch-slider {
+  background-color: var(--color-gray-dark, #444);
+}
+
+.dark-mode .toggle-switch-slider::before {
+  background-color: var(--color-gray-light, #eee);
+}
+
+.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-slider {
+  background-color: var(--color-primary-dark, #1a6fb3);
+}
+
+.dark-mode .toggle-switch-checkbox:focus-visible + .toggle-switch-slider {
+  outline-color: var(--color-primary-dark-focus, #1a6fb3);
+}
+
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-slider {
+  background-color: var(--color-gray-darker, #222);
+  opacity: 0.5;
+}
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-slider::before {
+  background-color: var(--color-gray-dark, #444);
+}

@@ -485,7 +485,7 @@ export const getLanguageFromFilename = (filename: string): string => {
   }
 
   // Extract full extension including dots (e.g., ".eslint.js")
-  const fullExtension = lowercaseFilename.substring(lowercaseFilename.indexOf('.'));
+  // const fullExtension = lowercaseFilename.substring(lowercaseFilename.indexOf('.'));
 
   // Check if the filename has a special compound extension
   for (const [ext, lang] of Object.entries(COMPOUND_EXT_MAP)) {

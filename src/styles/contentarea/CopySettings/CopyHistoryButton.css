@@ -6,46 +6,41 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 10px;
-  background-color: var(--bg-light);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--background-primary);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color-dark);
-  border-radius: var(--border-radius-md);
+  border-color: var(--border-color);
+  border-radius: var(--space-sm);
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
-  height: 36px;
+  height: 50px;
 }
 
 .copy-history-button:hover {
-  background-color: var(--bg-dark-hover);
+  background-color: var(--background-secondary);
+  border-color: var(--color-primary);
   color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.copy-history-button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
 }
 
 /* Position next to the copy button */
 .copy-history-button-position {
-  margin-left: var(--space-md);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.copy-history-button-position:hover {
+  background-color: var(--background-secondary);
+  color: var(--text-primary-dark);
+}
+
 /* Dark mode styles */
 .dark-mode .copy-history-button {
-  background-color: var(--bg-dark);
-  color: var(--text-secondary-dark);
-  border-color: var(--border-color-dark);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
 .dark-mode .copy-history-button:hover {
-  background-color: var(--bg-dark-hover);
+  border-color: var(--color-primary);
+  background-color: var(--background-secondary);
   color: var(--text-primary-dark);
 }

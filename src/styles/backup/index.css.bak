@@ -2019,7 +2019,7 @@ input[type='text'].search-input:focus {
 }
 
 /* -------------------- Copy Button Area (in Content Area) -------------------- */
-.copy-button-container {
+.copy-settings-container {
   padding: var(--space-xl);
   padding-bottom: var(--space-xl); /* Increased bottom padding */
   border-top: var(--standard-border);
@@ -2033,7 +2033,7 @@ input[type='text'].search-input:focus {
 }
 
 /* Optional: Add a label for the copy button */
-.copy-button-container label {
+.copy-settings-container label {
   display: flex;
   align-items: center;
   color: var(--text-secondary);
@@ -2289,7 +2289,7 @@ textarea::-webkit-scrollbar-thumb {
 /* Ensure borders use the dark mode variable */
 .dark-mode .content-header,
 .dark-mode .user-instructions-container,
-.dark-mode .copy-button-container,
+.dark-mode .copy-settings-container,
 .dark-mode .header,
 .dark-mode .sidebar,
 .dark-mode .sidebar-header,
@@ -2418,7 +2418,7 @@ label {
 /* Ensure specific container borders are correct */
 .dark-mode .content-header,
 .dark-mode .user-instructions-container,
-.dark-mode .copy-button-container {
+.dark-mode .copy-settings-container {
   border-color: var(--border-color);
 }
 
@@ -2433,7 +2433,7 @@ label {
 }
 
 /* Final check on copy button label color */
-.dark-mode .copy-button-container label {
+.dark-mode .copy-settings-container label {
   color: var(--text-secondary); /* Use secondary text color */
 }
 
@@ -3459,7 +3459,7 @@ button:hover svg.lucide {
 }
 
 /* Copy Button */
-.copy-button-container {
+.copy-settings-container {
   display: flex;
   justify-content: center;
   margin-top: var(--space-md);

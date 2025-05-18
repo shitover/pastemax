@@ -19,6 +19,7 @@ import { Workspace } from './types/WorkspaceTypes';
 import CopyHistoryModal, { CopyHistoryItem } from './components/CopyHistoryModal';
 import CopyHistoryButton from './components/CopyHistoryButton';
 import ModelDropdown from './components/ModelDropdown';
+import ToggleSwitch from './components/base/ToggleSwitch';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -1703,29 +1704,6 @@ const App = (): JSX.Element => {
               selectedTaskType={selectedTaskType}
             />
 
-            {/* Options for content format - always visible */}
-            <div className="copy-options">
-              <div className="option">
-                <input
-                  type="checkbox"
-                  id="includeFileTree"
-                  checked={includeFileTree}
-                  onChange={(e) => setIncludeFileTree(e.target.checked)}
-                />
-                <label htmlFor="includeFileTree">Include File Tree</label>
-              </div>
-
-              <div className="option">
-                <input
-                  type="checkbox"
-                  id="includeBinaryPaths"
-                  checked={includeBinaryPaths}
-                  onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
-                />
-                <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
-              </div>
-            </div>
-
             {/* Model selection dropdown */}
             <div className="model-selection">
               <ModelDropdown
@@ -1735,21 +1713,47 @@ const App = (): JSX.Element => {
               />
             </div>
 
-            {/* Copy button - always visible but disabled when no files selected */}
-            <div className="copy-button-container">
-              <button
-                className="primary copy-button-main"
-                onClick={handleCopy}
-                disabled={selectedFiles.length === 0}
-              >
-                <span className="copy-button-text">
-                  COPY ALL SELECTED ({selectedFiles.length} files)
-                </span>
-              </button>
-              <CopyHistoryButton
-                onClick={() => setIsCopyHistoryModalOpen(true)}
-                className="copy-history-button-position"
-              />
+            {/* Copy bar: options left, buttons right */}
+            <div className="copy-settings-container">
+              <div className="copy-settings-options">
+                <div
+                  className="toggle-option-item"
+                  title="Include File Tree in the Copyable Content"
+                >
+                  <ToggleSwitch
+                    id="includeFileTree"
+                    checked={includeFileTree}
+                    onChange={(e) => setIncludeFileTree(e.target.checked)}
+                  />
+                  <label htmlFor="includeFileTree">Include File Tree</label>
+                </div>
+                <div
+                  className="toggle-option-item"
+                  title="Include Binary As Paths in the Copyable Content"
+                >
+                  <ToggleSwitch
+                    id="includeBinaryPaths"
+                    checked={includeBinaryPaths}
+                    onChange={(e) => setIncludeBinaryPaths(e.target.checked)}
+                  />
+                  <label htmlFor="includeBinaryPaths">Include Binary As Paths</label>
+                </div>
+              </div>
+              <div className="copy-buttons-group">
+                <CopyHistoryButton
+                  onClick={() => setIsCopyHistoryModalOpen(true)}
+                  className="copy-history-button-position"
+                />
+                <button
+                  className="primary copy-button-main"
+                  onClick={handleCopy}
+                  disabled={selectedFiles.length === 0}
+                >
+                  <span className="copy-button-text">
+                    COPY ALL SELECTED ({selectedFiles.length} files)
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

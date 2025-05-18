@@ -43,12 +43,15 @@ const UserInstructions = ({
   // State for resizing
   const [instructionsHeight, setInstructionsHeight] = useState(126); // Default height
   const [instructionsWidth, setInstructionsWidth] = useState(100); // Default width percentage
+  const [containerHeight, setContainerHeight] = useState<number | null>(null); // Dynamic container height
+  const [containerVPadding, setContainerVPadding] = useState(0); // Sum of top+bottom padding
   const [isResizingVertical, setIsResizingVertical] = useState(false);
   const [isResizingHorizontal, setIsResizingHorizontal] = useState(false);
   const [isResizingCorner, setIsResizingCorner] = useState(false);
 
   // Initial mouse position for resize tracking
   const initialMousePosRef = useRef({ x: 0, y: 0 });
+  const initialContainerHeightRef = useRef<number>(0);
   // Container ref for width calculation
   const containerRef = useRef(null as HTMLDivElement | null);
 
@@ -132,11 +135,15 @@ const UserInstructions = ({
   }, [selectedTaskType, setInstructions, allTaskTypes]);
 
   // Resize handlers
-  const handleVerticalResizeStart = useCallback((e: any) => {
-    e.preventDefault();
-    setIsResizingVertical(true);
-    initialMousePosRef.current.y = e.clientY;
-  }, []);
+  const handleVerticalResizeStart = useCallback(
+    (e: any) => {
+      e.preventDefault();
+      setIsResizingVertical(true);
+      initialMousePosRef.current.y = e.clientY;
+      initialContainerHeightRef.current = containerHeight ?? instructionsHeight + containerVPadding;
+    },
+    [containerHeight, instructionsHeight, containerVPadding]
+  );
 
   const handleHorizontalResizeStart = useCallback((e: any) => {
     e.preventDefault();
@@ -157,24 +164,21 @@ const UserInstructions = ({
     const handleResize = (e: MouseEvent) => {
       if (!isResizingVertical && !isResizingHorizontal && !isResizingCorner) return;
 
-      // Use requestAnimationFrame for smoother updates
       cancelAnimationFrame(animationFrameId);
       animationFrameId = requestAnimationFrame(() => {
-        // Handle vertical resizing
+        // Handle vertical resizing from the top (resize container and instructionsHeight)
         if (isResizingVertical || isResizingCorner) {
           const deltaY = e.clientY - initialMousePosRef.current.y;
-
-          // For corner resize, use standard direction (add deltaY)
-          // For vertical-only resize, use reversed direction (subtract deltaY)
-          const newHeight = Math.max(
-            MIN_HEIGHT,
-            Math.min(
-              isResizingCorner ? instructionsHeight + deltaY : instructionsHeight - deltaY,
-              MAX_HEIGHT
-            )
+          let newContainerHeight =
+            (containerHeight ?? instructionsHeight + containerVPadding) - deltaY;
+          const minContainerHeight = MIN_HEIGHT + containerVPadding;
+          const maxContainerHeight = MAX_HEIGHT + containerVPadding;
+          newContainerHeight = Math.max(
+            minContainerHeight,
+            Math.min(newContainerHeight, maxContainerHeight)
           );
-
-          setInstructionsHeight(newHeight);
+          setContainerHeight(newContainerHeight);
+          setInstructionsHeight(newContainerHeight - containerVPadding);
           initialMousePosRef.current.y = e.clientY;
         }
 
@@ -184,11 +188,7 @@ const UserInstructions = ({
           const containerWidth = containerRect.width;
           const deltaX = e.clientX - initialMousePosRef.current.x;
 
-          // Calculate percentage change
           const percentageDelta = (deltaX / containerWidth) * 100;
-
-          // For corner resize, use standard direction (add percentageDelta)
-          // For horizontal-only resize, use reversed direction (add percentageDelta)
           const newWidthPercent = Math.max(
             MIN_WIDTH_PERCENT,
             Math.min(instructionsWidth + percentageDelta, MAX_WIDTH_PERCENT)
@@ -230,19 +230,42 @@ const UserInstructions = ({
   useEffect(() => {
     localStorage.setItem('pastemax-instructions-height', instructionsHeight.toString());
     localStorage.setItem('pastemax-instructions-width', instructionsWidth.toString());
-  }, [instructionsHeight, instructionsWidth]);
+    if (containerHeight !== null) {
+      localStorage.setItem('pastemax-instructions-container-height', containerHeight.toString());
+    }
+  }, [instructionsHeight, instructionsWidth, containerHeight]);
 
-  // Load saved dimensions on mount
+  // Load saved dimensions and calculate container padding on mount
   useEffect(() => {
     const savedHeight = localStorage.getItem('pastemax-instructions-height');
     const savedWidth = localStorage.getItem('pastemax-instructions-width');
+    const savedContainerHeight = localStorage.getItem('pastemax-instructions-container-height');
 
+    let initialHeight = 126;
     if (savedHeight) {
-      setInstructionsHeight(parseInt(savedHeight, 10));
+      initialHeight = parseInt(savedHeight, 10);
+      setInstructionsHeight(initialHeight);
     }
 
     if (savedWidth) {
       setInstructionsWidth(parseInt(savedWidth, 10));
+    }
+
+    // Calculate container vertical padding
+    if (containerRef.current) {
+      const styles = getComputedStyle(containerRef.current);
+      const paddingTop = parseFloat(styles.paddingTop) || 0;
+      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+      const vPad = paddingTop + paddingBottom;
+      setContainerVPadding(vPad);
+
+      // Set initial container height
+      if (savedContainerHeight) {
+        setContainerHeight(parseInt(savedContainerHeight, 10));
+        setInstructionsHeight(parseInt(savedContainerHeight, 10) - vPad);
+      } else {
+        setContainerHeight(initialHeight + vPad);
+      }
     }
   }, []);
 
@@ -254,15 +277,25 @@ const UserInstructions = ({
       </div>
 
       {/* Instructions input container */}
-      <div className="user-instructions-container" ref={containerRef}>
-        <div className="user-instructions" style={{ width: `${instructionsWidth}%` }}>
+      <div
+        className="user-instructions-container"
+        ref={containerRef}
+        style={containerHeight !== null ? { height: `${containerHeight}px` } : undefined}
+      >
+        <div
+          className="user-instructions"
+          style={{
+            width: `${instructionsWidth}%`,
+            height: `${instructionsHeight}px`,
+          }}
+        >
           <textarea
             id="userInstructionsInput"
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             placeholder="Enter your instructions here..."
             style={{
-              height: `${instructionsHeight}px`,
+              height: '100%',
             }}
           />
 

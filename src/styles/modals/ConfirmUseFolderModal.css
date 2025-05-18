@@ -19,11 +19,11 @@
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   background-color: var(--background-secondary);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
   width: 500px;
   max-width: 90%;
   padding: var(--space-lg) var(--space-lg);
   border: var(--standard-border);
+  border-color: var(--color-primary);
   color: var(--text-primary);
 }
 
@@ -62,17 +62,28 @@ button.primary.decline-button:hover {
 }
 
 button.icon-button.close-button {
-  background: var(--background-secondary);
+  background: none;
   border: none;
+  font-size: 1.5rem;
   cursor: pointer;
-  padding: var(--space-sm) var(--space-sm);
-  font-size: var(--font-size-lg);
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--animation-curve);
+  -webkit-transition: all 0.2s var(--animation-curve);
+  -moz-transition: all 0.2s var(--animation-curve);
+  -ms-transition: all 0.2s var(--animation-curve);
+  -o-transition: all 0.2s var(--animation-curve);
 }
 
-button.icon-button.close-button:hover {
-  color: var(--color-primary);
-  background-color: var(--background-secondary);
+button.icon-button.close-button:hover,
+button.icon-button.close-button:focus-visible {
+  color: var(--text-primary);
+  background: none;
+  box-shadow: none;
 }
 
 .modal-content {

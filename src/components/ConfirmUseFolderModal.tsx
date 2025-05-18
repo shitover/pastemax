@@ -1,5 +1,4 @@
 import React from 'react';
-import { X } from 'lucide-react';
 import '../styles/modals/ConfirmUseFolderModal.css';
 
 interface ConfirmUseFolderModalProps {
@@ -16,7 +15,6 @@ const ConfirmUseFolderModal: React.FC<ConfirmUseFolderModalProps> = ({
   onClose,
   onConfirm,
   onDecline,
-  workspaceName,
   folderPath,
 }) => {
   if (!isOpen) return null;
@@ -27,7 +25,7 @@ const ConfirmUseFolderModal: React.FC<ConfirmUseFolderModalProps> = ({
         <div className="modal-header">
           <h3>Use Current Folder?</h3>
           <button className="icon-button close-button" onClick={onClose} aria-label="Close">
-            <X size={20} aria-hidden="true" />
+            &times;
           </button>
         </div>
         <div className="modal-content">

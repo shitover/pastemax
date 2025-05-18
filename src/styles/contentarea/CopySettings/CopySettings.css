@@ -1,25 +1,22 @@
+/* src/styles/contentarea/CopySettings/CopySettings.css */
 /* -------------------- Copy Button Area (in Content Area) -------------------- */
-.copy-button-container {
+.copy-settings-container {
   padding: var(--space-xl);
   padding-bottom: var(--space-xl); /* Increased bottom padding */
   border-top: var(--standard-border);
   display: flex;
   flex-direction: row; /* Changed from column to row */
   align-items: center; /* Center items vertically */
-  justify-content: center; /* Center horizontally */
+  justify-content: space-between; /* Options left, buttons right */
   background-color: var(--background-primary);
   flex-shrink: 0; /* Prevent shrinking */
-  gap: var(--space-md); /* Horizontal gap between elements */
-  margin-top: var(--space-md);
 }
 
 /* Optional: Add a label for the copy button */
-.copy-button-container label {
+.copy-settings-container label {
   display: flex;
   align-items: center;
   color: var(--text-secondary);
-  font-size: 14px;
-  margin-right: var(--space-sm); /* Add some spacing to the right */
 }
 
 .copy-button {
@@ -88,11 +85,11 @@
   opacity: 1;
 }
 
-.dark-mode .copy-button-container {
+.dark-mode .copy-settings-container {
   border-color: var(--border-color);
 }
 
-.dark-mode .copy-button-container label {
+.dark-mode .copy-settings-container label {
   color: var(--text-secondary); /* Use secondary text color */
 }
 
@@ -115,17 +112,51 @@
 }
 
 .copy-button-main {
-  width: 100%;
-  max-width: 40%;
+  width: 350px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  height: auto;
-  margin: auto;
+  order: 2;
   font-weight: var(--font-weight-medium);
-  padding: var(--space-md) var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   border-radius: var(--border-radius-md);
-  min-height: 10px;
+  flex-grow: 1;
+}
+
+.copy-settings-container .copy-history-button {
+  order: 1;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.copy-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.copy-settings-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.toggle-option-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 24px;
+}
+
+.toggle-option-item label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.copy-settings-container > .copy-settings-options {
+  flex-shrink: 0;
 }
 
 .copy-button-text {
@@ -160,9 +191,5 @@
 @media (max-width: 768px) {
   .copy-button-wrapper {
     max-width: 300px;
-  }
-
-  .copy-button-text {
-    font-size: 13px;
   }
 }
