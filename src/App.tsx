@@ -34,19 +34,6 @@ import { formatContentForCopying } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
 /* ============================== GLOBAL DECLARATIONS ============================== */
-// Access the electron API from the window object
-declare global {
-  interface Window {
-    electron: {
-      ipcRenderer: {
-        send: (channel: string, data?: any) => void;
-        on: (channel: string, func: (...args: any[]) => void) => void;
-        removeListener: (channel: string, func: (...args: any[]) => void) => void;
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-      };
-    };
-  }
-}
 
 /* ============================== CONSTANTS ============================== */
 /**
@@ -557,43 +544,89 @@ const App = (): JSX.Element => {
     handleProcessingStatus,
   ]);
 
-  // Improved IPC listener setup with proper cleanup
+  // Improved IPC listener setup with proper cleanup (now only runs once, uses refs for handlers)
+  // --- Types for IPC status ---
+  type AppProcessingStatusType = 'idle' | 'processing' | 'complete' | 'error';
+  const VALID_APP_STATUSES: AppProcessingStatusType[] = ['idle', 'processing', 'complete', 'error'];
+  type IPCFileProcessingStatus = AppProcessingStatusType | 'cancelled' | 'busy';
+  type FileProcessingStatusIPCPayload = { status: IPCFileProcessingStatus; message: string };
+
+  // Refs to always point to latest handler logic
+  const stableHandleFolderSelectedRef = useRef(stableHandleFolderSelected);
+  const stableHandleFileListDataRef = useRef(stableHandleFileListData);
+  const stableHandleProcessingStatusRef = useRef(stableHandleProcessingStatus);
+
+  useEffect(() => {
+    stableHandleFolderSelectedRef.current = stableHandleFolderSelected;
+  }, [stableHandleFolderSelected]);
+  useEffect(() => {
+    stableHandleFileListDataRef.current = stableHandleFileListData;
+  }, [stableHandleFileListData]);
+  useEffect(() => {
+    stableHandleProcessingStatusRef.current = stableHandleProcessingStatus;
+  }, [stableHandleProcessingStatus]);
+
   useEffect(() => {
     if (!isElectron) return;
 
-    const handleFolderSelected = (folderPath: string) => {
+    const handleFolderSelectedIPC = (folderPath: string) => {
       console.log('[IPC] Received folder-selected:', folderPath);
-      stableHandleFolderSelected(folderPath);
+      stableHandleFolderSelectedRef.current(folderPath);
     };
 
-    const handleFileListData = (files: FileData[]) => {
+    const handleFileListDataIPC = (files: FileData[]) => {
       console.log('[IPC] Received file-list-data:', files.length, 'files');
-      stableHandleFileListData(files);
+      stableHandleFileListDataRef.current(files);
     };
 
-    const handleProcessingStatus = (status: { status: string; message: string }) => {
-      console.log('[IPC] Received file-processing-status:', status);
-      stableHandleProcessingStatus(status);
+    const handleProcessingStatusIPC = (payload: FileProcessingStatusIPCPayload) => {
+      console.log('[IPC] Received file-processing-status:', payload);
+
+      if (VALID_APP_STATUSES.includes(payload.status as AppProcessingStatusType)) {
+        stableHandleProcessingStatusRef.current(
+          payload as { status: AppProcessingStatusType; message: string }
+        );
+      } else if (payload.status === 'cancelled') {
+        stableHandleProcessingStatusRef.current({
+          status: 'idle',
+          message: payload.message || 'Operation cancelled',
+        });
+      } else if (payload.status === 'busy') {
+        stableHandleProcessingStatusRef.current({
+          status: 'idle',
+          message: payload.message || 'System is busy',
+        });
+      } else {
+        console.warn('Received unhandled processing status from IPC:', payload);
+        stableHandleProcessingStatusRef.current({
+          status: 'error',
+          message: 'Unknown status from main process',
+        });
+      }
     };
 
-    const handleBackendModeUpdate = (newMode: IgnoreMode) => {
+    const handleBackendModeUpdateIPC = (newMode: IgnoreMode) => {
       console.info('[App] Backend signaled ignore mode update:', newMode);
     };
 
-    // Set up IPC listeners for electron communication
-    window.electron.ipcRenderer.on('folder-selected', handleFolderSelected);
-    window.electron.ipcRenderer.on('file-list-data', handleFileListData);
-    window.electron.ipcRenderer.on('file-processing-status', handleProcessingStatus);
-    window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdate);
+    window.electron.ipcRenderer.on('folder-selected', handleFolderSelectedIPC);
+    window.electron.ipcRenderer.on('file-list-data', handleFileListDataIPC);
+    window.electron.ipcRenderer.on(
+      'file-processing-status',
+      handleProcessingStatusIPC as (...args: any[]) => void
+    );
+    window.electron.ipcRenderer.on('ignore-mode-updated', handleBackendModeUpdateIPC);
 
     return () => {
-      // Clean up IPC listeners when component unmounts
-      window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelected);
-      window.electron.ipcRenderer.removeListener('file-list-data', handleFileListData);
-      window.electron.ipcRenderer.removeListener('file-processing-status', handleProcessingStatus);
-      window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdate);
+      window.electron.ipcRenderer.removeListener('folder-selected', handleFolderSelectedIPC);
+      window.electron.ipcRenderer.removeListener('file-list-data', handleFileListDataIPC);
+      window.electron.ipcRenderer.removeListener(
+        'file-processing-status',
+        handleProcessingStatusIPC as (...args: any[]) => void
+      );
+      window.electron.ipcRenderer.removeListener('ignore-mode-updated', handleBackendModeUpdateIPC);
     };
-  }, [isElectron]); // Leave as is
+  }, [isElectron]);
 
   /* ============================== HANDLERS & UTILITIES ============================== */
 
@@ -1042,7 +1075,7 @@ const App = (): JSX.Element => {
         isUpdateAvailable: false,
         currentVersion: '',
         error: error?.message || 'Unknown error during IPC invoke',
-        debugLogs: error?.stack || (typeof error === 'string' ? error : 'IPC invoke failed'),
+        // debugLogs removed: not part of UpdateDisplayState
       });
       initialUpdateCheckAttemptedRef.current = true;
     }
@@ -1657,8 +1690,8 @@ const App = (): JSX.Element => {
         <IgnoreListModal
           isOpen={isIgnoreViewerOpen}
           onClose={handleIgnoreViewerClose}
-          patterns={ignorePatterns}
-          error={ignorePatternsError}
+          patterns={ignorePatterns ?? undefined}
+          error={ignorePatternsError ?? undefined}
           selectedFolder={selectedFolder}
           isElectron={isElectron}
           ignoreSettingsModified={ignoreSettingsModified}

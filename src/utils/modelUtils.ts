@@ -7,19 +7,6 @@ import {
   STORAGE_KEY_MODELS_FETCH_TIME,
 } from '../types/ModelTypes';
 
-// Define the Electron window interface for TypeScript
-declare global {
-  interface Window {
-    electron: {
-      ipcRenderer: {
-        invoke: (channel: string, data?: any) => Promise<any>;
-        send: (channel: string, data?: any) => void;
-        on: (channel: string, func: (...args: any[]) => void) => void;
-      };
-    };
-  }
-}
-
 // Cache expiration time in milliseconds (1 hour)
 const CACHE_EXPIRATION = 60 * 60 * 1000;
 
