@@ -7,11 +7,9 @@
 }
 
 .user-instructions {
-  position: absolute;
-  left: var(--space-lg);
-  right: var(--space-lg);
-  bottom: var(--space-md);
-  max-width: 100%;
+  position: relative; /* Changed from absolute, for resize handle positioning */
+  max-width: 100%; /* Keep this to ensure it doesn't overflow its container's width */
+  /* width and height are set via inline styles by the component's JS */
 }
 
 .user-instructions textarea {

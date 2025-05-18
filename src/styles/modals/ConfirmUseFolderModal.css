@@ -103,6 +103,7 @@ button.icon-button.close-button:focus-visible {
   font-family: var(--font-family-code);
   font-size: var(--font-size-sm);
   color: var(--text-primary);
+  word-break: break-all;
   -webkit-border-radius: var(--border-radius-md);
   -moz-border-radius: var(--border-radius-md);
   -ms-border-radius: var(--border-radius-md);
