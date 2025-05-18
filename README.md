@@ -19,9 +19,9 @@
 
 PasteMax is a simple desktop app built for developers using AI coding assistants. It makes sharing your code with LLMs easy, thanks to a smart file explorer with token counting, file filtering, quick copy, and a previewer. Select the files you need, skip binaries and junk, and get clean, formatted snippets ready for your LLM.
 
-![PasteMax](https://github.com/user-attachments/assets/d2a2cecc-47aa-4c14-a2b8-db9c2213d8da)
-![IgnoreList](https://github.com/user-attachments/assets/24e44bd2-710c-476e-85d1-26814476e4ba)
-![FilePreview](https://github.com/user-attachments/assets/432661ab-ff05-42b0-85d4-3f9b40fe1fd4)
+![PasteMax](https://github.com/user-attachments/assets/c2eea45f-2696-4bfa-8eaf-a6b07e7ca522)
+![FilePreview](https://github.com/user-attachments/assets/9bb9b6ff-b9cc-4655-b8a8-318f23c2e2b0)
+![ModelList](https://github.com/user-attachments/assets/e045f4f0-1bdd-4a30-8696-b388d598dcc5)
 
 ## Video
 
@@ -29,17 +29,28 @@ PasteMax is a simple desktop app built for developers using AI coding assistants
 
 ## Features
 
-- **File Tree Navigation**: Browse directories and files with an expandable tree view.
-- **Token Counting**: View the approximate token count for each file (useful for LLM context limits).
-- **Search Capabilities**: Quickly find files by name or content.
-- **Selection Management**: Select multiple files and copy their contents together.
-- **Sorting Options**: Sort files by name, size, or token count.
-- **File Previewer**: View file contents in a dedicated preview pane.
-- **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment.
-- **Binary File Detection**: Automatic detection and exclusion of binary files.
-- **Smart File Exclusion**: Automatically excludes common files like package-lock.json, binary files, and more by default.
-- **File Change Watcher**: Automatically updates the files whenever changes are detected.
-- **Automatic Update Checker**: Automatically check for new updates from Latest Github Release.
+### 📁 File Navigation & Management
+- **File Tree Navigation**: Browse directories and files with an expandable tree view
+- **Search Capabilities**: Quickly find files by name or content
+- **Sorting Options**: Sort files by name, size, or token count
+- **File Change Watcher**: Auto-updates when files are modified
+
+### 🤖 AI-Ready Features
+- **Token Counting**: View approximate token count for each file
+- **Model Context Limit**: Select different models (Claude-3.7, GPT-4o, Gemini 2.5, etc.)
+- **Context Limit Warning**: Get alerted when selections exceed the model's context limit
+
+### 🔍 Content & Preview
+- **File Previewer**: View file contents in a dedicated preview pane
+- **Selection Management**: Select multiple files and copy their contents together
+- **Binary File Detection**: Automatic detection and exclusion of binary files
+- **Smart File Exclusion**: Auto-excludes package-lock.json, node_modules, etc.
+
+### 💼 Workflow Enhancements
+- **Workspace Management**: Save and load workspaces for quick directory access
+- **Automatic Update Checker**: Stay current with the latest releases
+- **Dark Mode**: Toggle between light and dark themes for comfortable viewing
+- **Cross-Platform**: Available for Windows, Mac, Linux and WSL
 
 ## Installation
 
