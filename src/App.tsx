@@ -1,5 +1,6 @@
 /* ============================== IMPORTS ============================== */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import ConfirmUseFolderModal from './components/ConfirmUseFolderModal';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
 import { FileData, IgnoreMode } from './types/FileTypes';
@@ -85,6 +86,14 @@ const App = (): JSX.Element => {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
     return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
   });
+  // State for confirm folder modal
+  const [isConfirmUseFolderModalOpen, setIsConfirmUseFolderModalOpen] = useState(false);
+  const [confirmFolderModalDetails, setConfirmFolderModalDetails] = useState<{
+    workspaceId: string | null;
+    workspaceName: string;
+    folderPath: string;
+  }>({ workspaceId: null, workspaceName: '', folderPath: '' });
+
   const [workspaces, setWorkspaces] = useState(() => {
     const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
     if (savedWorkspaces) {
@@ -190,7 +199,6 @@ const App = (): JSX.Element => {
       STORAGE_KEYS.IGNORE_MODE,
       STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
       STORAGE_KEYS.WORKSPACES,
-      STORAGE_KEYS.CURRENT_WORKSPACE,
       STORAGE_KEYS.TASK_TYPE,
     ];
 
@@ -220,7 +228,9 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.send('clear-main-cache');
     }
 
-    // Reset only folder-related state, keep workspaces intact
+    // Clear current workspace but keep workspaces list intact
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
+    setCurrentWorkspaceId(null);
     console.timeEnd('clearSavedState');
 
     // Keep the task type
@@ -1197,20 +1207,17 @@ const App = (): JSX.Element => {
     const newWorkspace = {
       id: `workspace-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name,
-      folderPath: null, // Explicitly set to null to start with blank layout
+      folderPath: null,
       createdAt: Date.now(),
       lastUsed: Date.now(),
     };
 
-    // Add to workspaces list - use functional update to ensure we're working with latest state
+    // Add to workspaces list
     setWorkspaces((currentWorkspaces: Workspace[]) => {
       console.log('Updating workspaces state, current count:', currentWorkspaces.length);
       const updatedWorkspaces = [...currentWorkspaces, newWorkspace];
-
-      // Save to localStorage
       localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify(updatedWorkspaces));
       console.log('Saved updated workspaces to localStorage, new count:', updatedWorkspaces.length);
-
       return updatedWorkspaces;
     });
 
@@ -1219,7 +1226,47 @@ const App = (): JSX.Element => {
     setCurrentWorkspaceId(newWorkspace.id);
     console.log('Set current workspace ID to:', newWorkspace.id);
 
-    // Clear selected folder to start with blank layout
+    if (selectedFolder) {
+      // Show confirmation modal to use current folder
+      setConfirmFolderModalDetails({
+        workspaceId: newWorkspace.id,
+        workspaceName: name,
+        folderPath: selectedFolder,
+      });
+      setIsConfirmUseFolderModalOpen(true);
+    } else {
+      // No folder selected - proceed with folder selection
+      setSelectedFolder(null);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_FILES);
+      setSelectedFiles([]);
+      setAllFiles([]);
+      setProcessingStatus({
+        status: 'idle',
+        message: '',
+      });
+      openFolder();
+    }
+
+    // Close the workspace manager
+    setIsWorkspaceManagerOpen(false);
+    console.log('Workspace creation complete, manager closed');
+  };
+
+  const handleConfirmUseCurrentFolder = () => {
+    if (!confirmFolderModalDetails.workspaceId) return;
+
+    // Update workspace with current folder path
+    handleUpdateWorkspaceFolder(
+      confirmFolderModalDetails.workspaceId,
+      confirmFolderModalDetails.folderPath
+    );
+    setIsConfirmUseFolderModalOpen(false);
+  };
+
+  const handleDeclineUseCurrentFolder = () => {
+    setIsConfirmUseFolderModalOpen(false);
+    // Clear state and open folder selector
     setSelectedFolder(null);
     localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
     localStorage.removeItem(STORAGE_KEYS.SELECTED_FILES);
@@ -1229,16 +1276,13 @@ const App = (): JSX.Element => {
       status: 'idle',
       message: '',
     });
-
-    // Close the workspace manager
-    setIsWorkspaceManagerOpen(false);
-
-    // Log final state
-    console.log('Workspace creation complete, manager closed');
+    openFolder();
   };
 
   const handleDeleteWorkspace = (workspaceId: string) => {
     console.log('App: Deleting workspace with ID:', workspaceId);
+    // Ensure any open modal is closed first
+    setIsConfirmUseFolderModalOpen(false);
 
     const workspaceBeingDeleted = workspaces.find((w: Workspace) => w.id === workspaceId);
     console.log('Deleting workspace:', workspaceBeingDeleted?.name);
@@ -1746,6 +1790,14 @@ const App = (): JSX.Element => {
           copyHistory={copyHistory}
           onCopyItem={handleCopyFromHistory}
           onClearHistory={handleClearCopyHistory}
+        />
+        <ConfirmUseFolderModal
+          isOpen={isConfirmUseFolderModalOpen}
+          onClose={() => setIsConfirmUseFolderModalOpen(false)}
+          onConfirm={handleConfirmUseCurrentFolder}
+          onDecline={handleDeclineUseCurrentFolder}
+          workspaceName={confirmFolderModalDetails.workspaceName}
+          folderPath={confirmFolderModalDetails.folderPath}
         />
       </div>
     </ThemeProvider>
