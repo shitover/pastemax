@@ -47,7 +47,6 @@
 .content-header-actions-group {
   display: flex;
   align-items: center;
-  gap: var(--space-lg); /* Adjust gap as needed, using a larger gap for separation */
 }
 
 /* Match stats-info to content-title styling */
@@ -59,7 +58,7 @@
   margin-left: var(--space-md);
   margin-bottom: var(--space-sm);
   margin-top: var(--space-sm);
-  margin-right: var(--space-xs);
+  margin-right: var(--space-lg);
 }
 .dark-mode .content-header {
   border-color: var(--border-color);

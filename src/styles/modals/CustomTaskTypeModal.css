@@ -9,19 +9,20 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease-in-out;
-  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out; /* Fade in animation */
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  backdrop-filter: blur(2px); /* Slight blur effect for depth */
+  transition: opacity 0.2s ease; /* Smooth transition when closing */
 }
 
 .custom-task-type-modal {
   background-color: var(--bg-color);
   border-radius: 8px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   width: 800px;
   max-width: 90%;
   max-height: 90vh;

@@ -22,16 +22,17 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
   z-index: 1001;
-  transition: opacity 0.2s ease;
+  animation: fadeIn 0.2s ease-out; /* Fade in animation */
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
   backdrop-filter: blur(2px); /* Slight blur effect for depth */
+  transition: opacity 0.2s ease; /* Smooth transition when closing */
 }
 
 .ignore-patterns-modal {
   background-color: var(--background-primary);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   width: 90%;
   max-width: 700px;
   max-height: 90vh;
@@ -40,7 +41,15 @@
   border: var(--standard-border);
   position: relative;
   z-index: 1002;
-  animation: scaleIn 0.3s ease-out;
+  animation: scaleIn 0.25s ease-out;
+  /*Scaleinanimation*/
+  transform-origin: center;
+  /*Scalefromcenter*/
+  will-change: transform, opacity;
+  /*Optimizationforanimations*/
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   -webkit-border-radius: 8px;
   -moz-border-radius: 8px;
   -ms-border-radius: 8px;

@@ -10,22 +10,21 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  animation: fadeIn 0.2s ease-out;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  transition: opacity 0.2s ease;
+  animation: fadeIn 0.2s ease-out; /* Fade in animation */
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  backdrop-filter: blur(2px); /* Slight blur effect for depth */
+  transition: opacity 0.2s ease; /* Smooth transition when closing */
 }
 
 .copy-history-modal,
 .copy-detail-modal {
   background-color: var(--background-primary);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   max-height: 90vh;
   padding: 0;
   outline: none;
@@ -55,7 +54,6 @@
   align-items: center;
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--background-secondary);
   min-height: 48px;
 }
 
