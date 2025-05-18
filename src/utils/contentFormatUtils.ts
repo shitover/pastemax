@@ -38,7 +38,7 @@ export const formatBaseFileContent = ({
   sortOrder,
   includeFileTree,
   includeBinaryPaths,
-  selectedFolder
+  selectedFolder,
 }: Omit<FormatContentParams, 'userInstructions'>): string => {
   // Sort files according to current sort settings
   const sortedSelected = files

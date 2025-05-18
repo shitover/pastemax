@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Clock, X} from 'lucide-react';
+import { Copy, Clock, X } from 'lucide-react';
 
 export interface CopyHistoryItem {
   content: string;

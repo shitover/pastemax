@@ -30,10 +30,7 @@ import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
  * The contentFormatUtils module handles content assembly and applies language detection
  * via the languageUtils module internally.
  */
-import {
-  formatBaseFileContent,
-  formatUserInstructionsBlock
-} from './utils/contentFormatUtils';
+import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
 /* ============================== GLOBAL DECLARATIONS ============================== */
@@ -908,9 +905,11 @@ const App = (): JSX.Element => {
    * @returns {string} The concatenated content ready for copying
    */
   const getSelectedFilesContent = () => {
-    return cachedBaseContentString +
+    return (
+      cachedBaseContentString +
       (cachedBaseContentString && userInstructions.trim() ? '\n\n' : '') +
-      formatUserInstructionsBlock(userInstructions);
+      formatUserInstructionsBlock(userInstructions)
+    );
   };
 
   // Handle select all files
@@ -986,7 +985,7 @@ const App = (): JSX.Element => {
         sortOrder,
         includeFileTree,
         includeBinaryPaths,
-        selectedFolder
+        selectedFolder,
       });
 
       setCachedBaseContentString(baseContent);
@@ -1008,17 +1007,25 @@ const App = (): JSX.Element => {
 
     const debounceTimer = setTimeout(updateBaseContent, 300);
     return () => clearTimeout(debounceTimer);
-  }, [allFiles, selectedFiles, sortOrder, includeFileTree, includeBinaryPaths, selectedFolder, isElectron]);
+  }, [
+    allFiles,
+    selectedFiles,
+    sortOrder,
+    includeFileTree,
+    includeBinaryPaths,
+    selectedFolder,
+    isElectron,
+  ]);
 
   // Calculate total tokens when user instructions change
   useEffect(() => {
     const calculateAndSetTokenCount = async () => {
       const instructionsBlock = formatUserInstructionsBlock(userInstructions);
-      
+
       if (isElectron) {
         try {
           let totalTokens = cachedBaseContentTokens;
-          
+
           // Only calculate instruction tokens if there are instructions
           if (instructionsBlock) {
             const instructionResult = await window.electron.ipcRenderer.invoke(
@@ -1027,7 +1034,7 @@ const App = (): JSX.Element => {
             );
             totalTokens += instructionResult?.tokenCount || 0;
           }
-          
+
           setTotalFormattedContentTokens(totalTokens);
         } catch (error) {
           console.error('Error getting token count:', error);
