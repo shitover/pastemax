@@ -9,7 +9,7 @@
   padding: 8px 10px;
   background-color: var(--bg-light);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-color-dark);
   border-radius: var(--border-radius-md);
   cursor: pointer;
   transition:
@@ -20,7 +20,7 @@
 }
 
 .copy-history-button:hover {
-  background-color: var(--bg-light-hover);
+  background-color: var(--bg-dark-hover);
   color: var(--text-primary);
   transform: translateY(-1px);
 }
