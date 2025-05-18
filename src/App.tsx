@@ -30,7 +30,10 @@ import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
  * The contentFormatUtils module handles content assembly and applies language detection
  * via the languageUtils module internally.
  */
-import { formatContentForCopying } from './utils/contentFormatUtils';
+import {
+  formatBaseFileContent,
+  formatUserInstructionsBlock
+} from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
 /* ============================== GLOBAL DECLARATIONS ============================== */
@@ -151,7 +154,9 @@ const App = (): JSX.Element => {
 
   /* ============================== STATE: User Instructions ============================== */
   const [userInstructions, setUserInstructions] = useState('');
-  const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0); // New state for accurate token count
+  const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0);
+  const [cachedBaseContentString, setCachedBaseContentString] = useState('');
+  const [cachedBaseContentTokens, setCachedBaseContentTokens] = useState(0);
   /**
    * State variable used to trigger data re-fetching when its value changes.
    * The `reloadTrigger` is incremented whenever a refresh of the file list or
@@ -899,19 +904,13 @@ const App = (): JSX.Element => {
    */
 
   /**
-   * Assembles the final content for copying by using the utility function
+   * Assembles the final content for copying using cached base content
    * @returns {string} The concatenated content ready for copying
    */
   const getSelectedFilesContent = () => {
-    return formatContentForCopying({
-      files: allFiles,
-      selectedFiles,
-      sortOrder,
-      includeFileTree,
-      selectedFolder,
-      userInstructions,
-      includeBinaryPaths,
-    });
+    return cachedBaseContentString +
+      (cachedBaseContentString && userInstructions.trim() ? '\n\n' : '') +
+      formatUserInstructionsBlock(userInstructions);
   };
 
   // Handle select all files
@@ -978,52 +977,70 @@ const App = (): JSX.Element => {
     });
   };
 
-  // useEffect for calculating token count of the fully formatted content
+  // Cache base content when file selections or formatting options change
   useEffect(() => {
-    const calculateAndSetTokenCount = async () => {
-      const contentToTokenize = getSelectedFilesContent();
-      if (contentToTokenize && isElectron) {
+    const updateBaseContent = async () => {
+      const baseContent = formatBaseFileContent({
+        files: allFiles,
+        selectedFiles,
+        sortOrder,
+        includeFileTree,
+        includeBinaryPaths,
+        selectedFolder
+      });
+
+      setCachedBaseContentString(baseContent);
+
+      if (isElectron && baseContent) {
         try {
-          // Invoke IPC to get token count from the main process
-          const result = (await window.electron.ipcRenderer.invoke(
-            'get-token-count',
-            contentToTokenize
-          )) as any;
-          if (result && result.tokenCount !== undefined) {
-            setTotalFormattedContentTokens(result.tokenCount);
-          } else if (result && result.error) {
-            console.error('Error from get-token-count IPC:', result.error);
-            setTotalFormattedContentTokens(0); // Fallback or error state
-          } else {
-            console.error('Unexpected response from get-token-count IPC:', result);
-            setTotalFormattedContentTokens(0); // Fallback
+          const result = await window.electron.ipcRenderer.invoke('get-token-count', baseContent);
+          if (result?.tokenCount !== undefined) {
+            setCachedBaseContentTokens(result.tokenCount);
           }
         } catch (error) {
-          console.error('Failed to invoke get-token-count:', error);
-          setTotalFormattedContentTokens(0); // Fallback on IPC error
+          console.error('Error getting base content token count:', error);
+          setCachedBaseContentTokens(0);
         }
       } else {
-        // If not in Electron or no content, set tokens to 0
+        setCachedBaseContentTokens(0);
+      }
+    };
+
+    const debounceTimer = setTimeout(updateBaseContent, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [allFiles, selectedFiles, sortOrder, includeFileTree, includeBinaryPaths, selectedFolder, isElectron]);
+
+  // Calculate total tokens when user instructions change
+  useEffect(() => {
+    const calculateAndSetTokenCount = async () => {
+      const instructionsBlock = formatUserInstructionsBlock(userInstructions);
+      
+      if (isElectron) {
+        try {
+          let totalTokens = cachedBaseContentTokens;
+          
+          // Only calculate instruction tokens if there are instructions
+          if (instructionsBlock) {
+            const instructionResult = await window.electron.ipcRenderer.invoke(
+              'get-token-count',
+              instructionsBlock
+            );
+            totalTokens += instructionResult?.tokenCount || 0;
+          }
+          
+          setTotalFormattedContentTokens(totalTokens);
+        } catch (error) {
+          console.error('Error getting token count:', error);
+          setTotalFormattedContentTokens(0);
+        }
+      } else {
         setTotalFormattedContentTokens(0);
       }
     };
 
-    // Debounce the calculation
-    const debounceTimeout = setTimeout(() => {
-      calculateAndSetTokenCount();
-    }, 150); // Debounce to avoid rapid recalculations
-
-    return () => clearTimeout(debounceTimeout);
-  }, [
-    allFiles,
-    selectedFiles,
-    sortOrder,
-    includeFileTree,
-    selectedFolder,
-    userInstructions,
-    includeBinaryPaths,
-    isElectron, // isElectron is now a necessary dependency
-  ]);
+    const debounceTimer = setTimeout(calculateAndSetTokenCount, 150);
+    return () => clearTimeout(debounceTimer);
+  }, [userInstructions, cachedBaseContentTokens, isElectron]);
 
   // ============================== Update Modal State ==============================
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
