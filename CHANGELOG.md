@@ -1,3 +1,55 @@
+## [1.1.0] - 2025-05-18
+
+### Features Added
+
+- **Automatic Folder Selection for New Workspaces:**
+
+  - When no folder is selected and the user creates a new workspace, the folder selector now automatically opens, prompting the user to choose a folder for the newly created workspace.
+
+- **Prompt to Use Current Folder for New Workspace:**
+
+  - If a folder is already loaded, creating a new workspace now prompts the user to confirm whether they want to use the currently selected folder as the workspace folder.
+
+- **Opt-Out Option for Folder Reuse:**
+
+  - Users can opt out of reusing the current folder. If they choose not to reuse it, the folder selector will open as usual to let them pick a folder for the new workspace.
+
+- **Workspace Folder Override:**
+
+  - Once a folder is selected for a workspace, it overrides the currently loaded folder with the newly assigned workspace folder.
+
+- **Proper Workspace Clearing on "Clear All":**
+
+  - Performing a "Clear All" action in @/src/App.tsx now fully clears the current workspace state, ensuring the user is not left in any workspace.
+  - This prevents accidental overwrites when reselecting a folder without properly assigning it to a workspace.
+
+- **Complete UI Overhaul:**
+  - Improved UI consistencies throughout the application
+  - Completely revamped copy settings section
+  - Made overall interface look neater and more professional
+
+## [1.0.12] - 2025-05-18
+
+### Features
+
+- **Model Contest Limit:**
+  - Added model token limit visualization in the UI
+  - Dropwdown for selecting models with token limits
+  - Added clear indicators when exceeding token limits
+- **Copy History:**
+  - Implemented a system to track and display copied content history
+- **Full Context View:**
+  - Added ability to see full context of copied content in history
+- **Resizable User Instructions:**
+  - Added vertical, horizontal, and corner resizing handles with min/max constraints and persistence via localStorage
+
+### Implementation Details
+
+- User Instructions now maintain size preferences between sessions
+- Copy History modal displays recent copies with timestamps
+- Full context view allows users to see the complete copied content
+- Added token limit visualization with warning levels
+
 ## [1.0.10] - 2025-05-18
 
 ### Improved
