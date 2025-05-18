@@ -2,16 +2,16 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useIgnorePatterns } from '../hooks/useIgnorePatterns';
 // ToggleSwitch is now defined below
 
-interface ToggleSwitchProps {
+interface IgnoreModeToggleProps {
   isOn: boolean;
   onToggle: () => void;
 }
 
-const ToggleSwitch = ({ isOn, onToggle }: ToggleSwitchProps) => {
+const IgnoreModeToggleSwitch = ({ isOn, onToggle }: IgnoreModeToggleProps) => {
   return (
-    <div className="toggle-switch" onClick={onToggle}>
+    <div className="modal-ignore-mode-toggle" onClick={onToggle}>
       <span className={`toggle-label left ${!isOn ? 'active' : ''}`}>Automatic</span>
-      <div className={`toggle-switch-inner ${isOn ? 'on' : 'off'}`}></div>
+      <div className={`modal-ignore-mode-toggle-inner ${isOn ? 'on' : 'off'}`}></div>
       <span className={`toggle-label right ${isOn ? 'active' : ''}`}>Global</span>
     </div>
   );
@@ -181,7 +181,7 @@ export const IgnoreListModal = ({
           {/* Mode Toggle Section */}
           <div className="ignore-patterns-mode-section">
             <div className="ignore-patterns-mode-toggle">
-              <ToggleSwitch
+              <IgnoreModeToggleSwitch
                 isOn={ignoreMode === 'global'}
                 onToggle={() => setIgnoreMode(ignoreMode === 'automatic' ? 'global' : 'automatic')}
               />

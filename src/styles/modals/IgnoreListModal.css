@@ -513,7 +513,7 @@
   font-style: italic;
 }
 /* ToggleSwitch styles with light/dark mode support */
-.toggle-switch {
+.modal-ignore-mode-toggle {
   position: relative;
   width: 180px; /* Reduced width */
   height: 36px; /* Reduced height */
@@ -532,7 +532,7 @@
   padding: 0 4px; /* Reduced padding for better centering */
 }
 
-.toggle-switch-inner {
+.modal-ignore-mode-toggle-inner {
   position: absolute;
   top: 3px; /* Adjusted for better vertical centering */
   width: calc(50% - 6px); /* Adjusted width for better fit */
@@ -550,17 +550,17 @@
   z-index: 1;
 }
 
-.toggle-switch-inner.off {
+.modal-ignore-mode-toggle-inner.off {
   left: 3px; /* Adjusted for better alignment */
   background-color: var(--color-primary); /* Grey when off */
 }
 
-.toggle-switch-inner.on {
+.modal-ignore-mode-toggle-inner.on {
   left: calc(50% + 3px); /* Adjusted for better alignment */
   background-color: var(--color-primary); /* Blue when on */
 }
 
-.toggle-switch .toggle-label {
+.modal-ignore-mode-toggle .toggle-label {
   font-size: 13px; /* Reduced font size */
   font-weight: 500;
   color: #ffffff;
@@ -573,38 +573,38 @@
   height: 100%;
 }
 
-.toggle-switch .toggle-label.left {
+.modal-ignore-mode-toggle .toggle-label.left {
   text-align: center;
 }
 
-.toggle-switch .toggle-label.right {
+.modal-ignore-mode-toggle .toggle-label.right {
   text-align: center;
 }
 
-.toggle-switch .toggle-label.active {
+.modal-ignore-mode-toggle .toggle-label.active {
   color: white; /* Bright white color for active text in light mode */
   font-weight: 600;
 }
 
 /* Dark mode adjustments */
-.dark-mode .toggle-switch {
+.dark-mode .modal-ignore-mode-toggle {
   background-color: #2c2c2e;
   border-color: #3a3a3c;
 }
 
-.dark-mode .toggle-switch-inner {
+.dark-mode .modal-ignore-mode-toggle-inner {
   background-color: var(--color-primary); /* Using primary color (blue) in dark mode */
 }
 
-.dark-mode .toggle-switch-inner.off {
+.dark-mode .modal-ignore-mode-toggle-inner.off {
   background-color: var(--color-primary);
 }
 
-.dark-mode .toggle-switch .toggle-label {
+.dark-mode .modal-ignore-mode-toggle .toggle-label {
   color: var(--text-secondary);
 }
 
-.dark-mode .toggle-switch .toggle-label.active {
+.dark-mode .modal-ignore-mode-toggle .toggle-label.active {
   color: white; /* Keep active text bright white in dark mode too */
 }
 
