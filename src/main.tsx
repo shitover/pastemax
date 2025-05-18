@@ -28,6 +28,7 @@ import './styles/modals/CopyHistoryModal.css';
 import './styles/base/Buttons.css';
 import './styles/base/Input.css';
 import './styles/base/Utilities.css';
+import './styles/base/ToggleSwitch.css';
 import './styles/contentarea/CopySettings/CopySettings.css';
 import './styles/contentarea/CopySettings/CopyHistoryButton.css';
 

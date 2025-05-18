@@ -1,0 +1,116 @@
+/* src/styles/base/ToggleSwitch.css */
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: default;
+  vertical-align: middle;
+}
+
+.toggle-switch.label-right .toggle-switch-text-label {
+  order: 1;
+}
+
+.toggle-switch-text-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch-control {
+  position: relative;
+  display: inline-block;
+}
+
+.toggle-switch-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-switch-visual {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background-color: var(--color-gray-medium);
+  border-radius: 11px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease-in-out;
+  border: 1px solid var(--border-color);
+}
+
+.toggle-switch-visual::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-visual {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-visual::after {
+  transform: translateX(18px);
+}
+
+.toggle-switch-checkbox:focus-visible + .toggle-switch-visual {
+  outline: 2px solid var(--color-primary-focus);
+  outline-offset: 1px;
+}
+
+.toggle-switch-checkbox:disabled + .toggle-switch-visual {
+  background-color: var(--color-gray-light);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.toggle-switch-checkbox:disabled + .toggle-switch-visual::after {
+  background-color: var(--color-gray-medium);
+}
+
+.toggle-switch-checkbox:disabled ~ .toggle-switch-text-label {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Dark Mode Styles */
+.dark-mode .toggle-switch-text-label {
+  color: var(--text-secondary-dark);
+}
+
+.dark-mode .toggle-switch-visual {
+  background-color: var(--color-gray-dark);
+  border-color: var(--border-color-dark);
+}
+
+.dark-mode .toggle-switch-visual::after {
+  background-color: var(--color-gray-light);
+}
+
+.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-visual {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.dark-mode .toggle-switch-checkbox:focus-visible + .toggle-switch-visual {
+  outline-color: var(--color-primary-dark-focus);
+}
+
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-visual {
+  background-color: var(--color-gray-darker);
+  opacity: 0.5;
+}
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-visual::after {
+  background-color: var(--color-gray-dark);
+}
