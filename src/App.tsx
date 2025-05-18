@@ -19,6 +19,7 @@ import { Workspace } from './types/WorkspaceTypes';
 import CopyHistoryModal, { CopyHistoryItem } from './components/CopyHistoryModal';
 import CopyHistoryButton from './components/CopyHistoryButton';
 import ModelDropdown from './components/ModelDropdown';
+import ToggleSwitch from './components/base/ToggleSwitch';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -1714,19 +1715,17 @@ const App = (): JSX.Element => {
 
             {/* Copy bar: options left, buttons right */}
             <div className="copy-settings-container">
-              <div className="copy-options">
-                <div className="option">
-                  <input
-                    type="checkbox"
+              <div className="copy-settings-options">
+                <div className="toggle-option-item">
+                  <ToggleSwitch
                     id="includeFileTree"
                     checked={includeFileTree}
                     onChange={(e) => setIncludeFileTree(e.target.checked)}
                   />
                   <label htmlFor="includeFileTree">Include File Tree</label>
                 </div>
-                <div className="option">
-                  <input
-                    type="checkbox"
+                <div className="toggle-option-item">
+                  <ToggleSwitch
                     id="includeBinaryPaths"
                     checked={includeBinaryPaths}
                     onChange={(e) => setIncludeBinaryPaths(e.target.checked)}

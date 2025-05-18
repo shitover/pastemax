@@ -1,28 +1,19 @@
 /* src/styles/base/ToggleSwitch.css */
+
+/* Container for the switch */
 .toggle-switch {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
-  cursor: default;
-  vertical-align: middle;
-}
-
-.toggle-switch.label-right .toggle-switch-text-label {
-  order: 1;
-}
-
-.toggle-switch-text-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.toggle-switch-control {
+  justify-content: center;
   position: relative;
-  display: inline-block;
+  width: auto;
+  height: auto;
+  border-radius: 9px;
+  box-sizing: border-box;
+  /* No gap or label styling here */
 }
 
+/* Hide the default checkbox */
 .toggle-switch-checkbox {
   opacity: 0;
   width: 0;
@@ -30,87 +21,79 @@
   position: absolute;
 }
 
-.toggle-switch-visual {
+/* The slider (track) */
+.toggle-switch-slider {
   display: block;
-  width: 40px;
-  height: 22px;
-  background-color: var(--color-gray-medium);
-  border-radius: 11px;
-  cursor: pointer;
+  width: 28px;
+  height: 16px;
+  background-color: var(--color-gray-medium, #ccc);
+  border-radius: 8px;
   position: relative;
-  transition: background-color 0.2s ease-in-out;
-  border: 1px solid var(--border-color);
+  transition: background-color 0.2s;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
-.toggle-switch-visual::after {
+/* The knob */
+.toggle-switch-slider::before {
   content: '';
   position: absolute;
-  top: 1px;
-  left: 1px;
-  width: 18px;
-  height: 18px;
-  background-color: white;
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  background-color: #fff;
   border-radius: 50%;
-  transition: transform 0.2s ease-in-out;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
-.toggle-switch-checkbox:checked + .toggle-switch-visual {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
+/* Checked state */
+.toggle-switch-checkbox:checked + .toggle-switch-slider {
+  background-color: var(--color-primary, #2da6fc);
 }
 
-.toggle-switch-checkbox:checked + .toggle-switch-visual::after {
-  transform: translateX(18px);
+.toggle-switch-checkbox:checked + .toggle-switch-slider::before {
+  transform: translateX(12px);
 }
 
-.toggle-switch-checkbox:focus-visible + .toggle-switch-visual {
-  outline: 2px solid var(--color-primary-focus);
+/* Focus state */
+.toggle-switch-checkbox:focus-visible + .toggle-switch-slider {
+  outline: 2px solid var(--color-primary-focus, #2da6fc);
   outline-offset: 1px;
 }
 
-.toggle-switch-checkbox:disabled + .toggle-switch-visual {
-  background-color: var(--color-gray-light);
+/* Disabled state */
+.toggle-switch-checkbox:disabled + .toggle-switch-slider {
+  background-color: var(--color-gray-light, #eee);
   cursor: not-allowed;
   opacity: 0.7;
 }
 
-.toggle-switch-checkbox:disabled + .toggle-switch-visual::after {
-  background-color: var(--color-gray-medium);
+.toggle-switch-checkbox:disabled + .toggle-switch-slider::before {
+  background-color: var(--color-gray-medium, #ccc);
 }
 
-.toggle-switch-checkbox:disabled ~ .toggle-switch-text-label {
-  cursor: not-allowed;
-  opacity: 0.7;
+.dark-mode .toggle-switch-slider {
+  background-color: var(--color-gray-dark, #444);
 }
 
-/* Dark Mode Styles */
-.dark-mode .toggle-switch-text-label {
-  color: var(--text-secondary-dark);
+.dark-mode .toggle-switch-slider::before {
+  background-color: var(--color-gray-light, #eee);
 }
 
-.dark-mode .toggle-switch-visual {
-  background-color: var(--color-gray-dark);
-  border-color: var(--border-color-dark);
+.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-slider {
+  background-color: var(--color-primary-dark, #1a6fb3);
 }
 
-.dark-mode .toggle-switch-visual::after {
-  background-color: var(--color-gray-light);
+.dark-mode .toggle-switch-checkbox:focus-visible + .toggle-switch-slider {
+  outline-color: var(--color-primary-dark-focus, #1a6fb3);
 }
 
-.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-visual {
-  background-color: var(--color-primary-dark);
-  border-color: var(--color-primary-dark);
-}
-
-.dark-mode .toggle-switch-checkbox:focus-visible + .toggle-switch-visual {
-  outline-color: var(--color-primary-dark-focus);
-}
-
-.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-visual {
-  background-color: var(--color-gray-darker);
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-slider {
+  background-color: var(--color-gray-darker, #222);
   opacity: 0.5;
 }
-.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-visual::after {
-  background-color: var(--color-gray-dark);
+.dark-mode .toggle-switch-checkbox:disabled + .toggle-switch-slider::before {
+  background-color: var(--color-gray-dark, #444);
 }

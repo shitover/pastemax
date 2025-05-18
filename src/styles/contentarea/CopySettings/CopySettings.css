@@ -1,3 +1,4 @@
+/* src/styles/contentarea/CopySettings/CopySettings.css */
 /* -------------------- Copy Button Area (in Content Area) -------------------- */
 .copy-settings-container {
   padding: var(--space-xl);
@@ -134,29 +135,34 @@
   gap: var(--space-sm);
 }
 
-.copy-options {
+.copy-settings-options {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-right: var(--space-lg);
 }
 
-.copy-options .option {
+.toggle-option-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 24px;
 }
 
-.copy-options .option label {
+.toggle-option-item label {
   font-size: var(--font-size-sm);
-  text-transform: capitalize;
   color: var(--text-secondary);
   cursor: pointer;
+  user-select: none;
 }
 
-.copy-options .option input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
+/* Prevent the label from wrapping under the switch on small screens */
+.toggle-option-item label {
+  white-space: nowrap;
+}
+
+.copy-settings-container > .copy-settings-options {
+  flex-shrink: 0;
 }
 
 .copy-button-text {
@@ -191,9 +197,5 @@
 @media (max-width: 768px) {
   .copy-button-wrapper {
     max-width: 300px;
-  }
-
-  .copy-button-text {
-    font-size: 13px;
   }
 }
