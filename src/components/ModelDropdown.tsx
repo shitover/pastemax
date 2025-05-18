@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ModelInfo } from '../types/ModelTypes';
 import { formatContextLength } from '../utils/modelUtils';
 import { useModels } from '../hooks/useModels';
-import { Search } from 'lucide-react';
 
 interface ModelDropdownProps {
   className?: string;
@@ -76,7 +75,7 @@ const ModelDropdown = ({
 
   // Filter models based on search term
   const filteredModels = models.filter(
-    (model) =>
+    (model: ModelInfo) =>
       model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       model.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -134,10 +133,12 @@ const ModelDropdown = ({
               ></div>
             </div>
             <div className="token-count-display">
-              <span className={`token-count ${warningLevel}`}>
-                {currentTokenCount.toLocaleString()}
-              </span>{' '}
-              / {selectedModel.context_length.toLocaleString()} tokens
+              <div>
+                <span className={`token-count ${warningLevel}`}>
+                  {currentTokenCount.toLocaleString()}
+                </span>{' '}
+                / {selectedModel.context_length.toLocaleString()} tokens
+              </div>
               {isContextExceeded && (
                 <span className="context-warning">
                   Exceeds limit by {exceedsByTokens.toLocaleString()} tokens
@@ -151,7 +152,7 @@ const ModelDropdown = ({
       {isOpen && (
         <div className="model-dropdown-list-container">
           <div className="model-search-container">
-            <Search size={14} className="search-icon" />
+            {/*  <Search size={14} className="search-icon" /> */}
             <input
               type="text"
               ref={searchInputRef}

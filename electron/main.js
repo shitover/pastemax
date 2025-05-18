@@ -469,7 +469,6 @@ ipcMain.on('request-file-list', async (event, payload) => {
 });
 
 // Handle fetch-models request from renderer
-/* Commented out for direct API fetch implementation
 ipcMain.handle('fetch-models', async () => {
   try {
     const fetch = require('node-fetch');
@@ -508,7 +507,6 @@ ipcMain.handle('fetch-models', async () => {
     return null;
   }
 });
-*/
 
 // ======================
 // ELECTRON WINDOW SETUP

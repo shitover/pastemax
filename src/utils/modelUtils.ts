@@ -7,14 +7,24 @@ import {
   STORAGE_KEY_MODELS_FETCH_TIME,
 } from '../types/ModelTypes';
 
-// OpenRouter API endpoint for fetching models
-const MODELS_API_URL = 'https://openrouter.ai/api/v1/models';
+// Define the Electron window interface for TypeScript
+declare global {
+  interface Window {
+    electron: {
+      ipcRenderer: {
+        invoke: (channel: string, data?: any) => Promise<any>;
+        send: (channel: string, data?: any) => void;
+        on: (channel: string, func: (...args: any[]) => void) => void;
+      };
+    };
+  }
+}
 
 // Cache expiration time in milliseconds (1 hour)
 const CACHE_EXPIRATION = 60 * 60 * 1000;
 
 /**
- * Fetches available models from the OpenRouter API directly.
+ * Fetches available models from the OpenRouter API through Electron's main process.
  * Caches results to minimize API calls.
  *
  * @returns {Promise<ModelInfo[] | null>} Array of model information or null if fetch fails
@@ -24,38 +34,18 @@ export async function fetchModels(): Promise<ModelInfo[] | null> {
     // Check for cached models first
     const cachedModels = getCachedModels();
     if (cachedModels) {
-      console.log(`Using ${cachedModels.length} cached models.`);
       return cachedModels;
     }
 
-    console.log('Fetching models from OpenRouter API...');
-    const response = await fetch(MODELS_API_URL);
+    // Fetch models via IPC
+    const models = await window.electron.ipcRenderer.invoke('fetch-models');
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+    if (models && models.length > 0) {
+      cacheModels(models);
+      return models;
     }
 
-    const data = await response.json();
-
-    if (!data || !Array.isArray(data.data)) {
-      throw new Error('Invalid API response format');
-    }
-
-    // Map API response to ModelInfo structure
-    const models = data.data.map((apiModel: any) => ({
-      id: apiModel.id,
-      name: apiModel.name || apiModel.id,
-      description: apiModel.description || '',
-      context_length: apiModel.context_length || 0,
-      pricing: apiModel.pricing || '',
-      available: apiModel.available !== false,
-    }));
-
-    // Cache the fetched models
-    cacheModels(models);
-    console.log(`Fetched and cached ${models.length} models.`);
-
-    return models;
+    return null;
   } catch (error) {
     console.error('Error fetching models:', error);
     return null;
@@ -74,8 +64,6 @@ export function cacheModels(models: ModelInfo[]): void {
 
     // Store timestamp for cache expiration checking
     localStorage.setItem(STORAGE_KEY_MODELS_FETCH_TIME, Date.now().toString());
-
-    console.log(`Cached ${models.length} models.`);
   } catch (error) {
     console.error('Error caching models:', error);
   }
@@ -101,7 +89,6 @@ export function getCachedModels(): ModelInfo[] | null {
     const now = Date.now();
 
     if (now - fetchTime > CACHE_EXPIRATION) {
-      console.log('Cached models have expired.');
       return null;
     }
 
