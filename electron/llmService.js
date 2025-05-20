@@ -464,7 +464,12 @@ async function getChatModel() {
           options.baseURL = config.baseUrl;
         }
 
-        return new ChatAnthropic(options);
+        try {
+          return new ChatAnthropic(options);
+        } catch (error) {
+          console.error(`[LLM Service] Error initializing Anthropic:`, error);
+          throw new Error(`Failed to initialize Anthropic: ${error.message}`);
+        }
       }
 
       case 'gemini': {
@@ -500,22 +505,99 @@ async function getChatModel() {
           options.modelName = config.modelName;
         }
 
-        return new ChatGoogleGenerativeAI(options);
+        try {
+          return new ChatGoogleGenerativeAI(options);
+        } catch (error) {
+          console.error(`[LLM Service] Error initializing Gemini:`, error);
+
+          // Special handling for common Gemini errors
+          const errorMsg = error.message || '';
+          if (errorMsg.includes('PERMISSION_DENIED')) {
+            throw new Error(
+              'Gemini API access denied. Please check if your API key is valid and you have accepted the terms of service in Google AI Studio.'
+            );
+          } else if (errorMsg.includes('API_KEY_INVALID')) {
+            throw new Error('Invalid Gemini API key. Please verify your API key.');
+          }
+
+          throw new Error(`Failed to initialize Gemini: ${error.message}`);
+        }
       }
 
       case 'openrouter': {
         console.log(`[LLM Service] Using OpenRouter model: ${config.modelName || 'Default model'}`);
-        const options = {
-          apiKey: config.apiKey,
-          temperature: 0.7,
-          baseURL: 'https://openrouter.ai/api/v1',
+
+        // For OpenRouter, we'll implement a custom solution that doesn't rely on Langchain's validation
+        return {
+          _type: 'openrouter',
+          _apiKey: config.apiKey,
+          _modelName: config.modelName || 'openai/gpt-3.5-turbo',
+          _baseUrl: 'https://openrouter.ai/api/v1',
+
+          // Custom invoke method to bypass Langchain restrictions
+          invoke: async function (messages) {
+            try {
+              const fetch = require('node-fetch');
+
+              console.log(`[LLM Service] Using OpenRouter with model: ${this._modelName}`);
+
+              // Convert Langchain messages to OpenRouter format
+              const openRouterMessages = messages.map((msg) => ({
+                role: msg._getType ? msg._getType() : msg.type,
+                content: msg.content,
+              }));
+
+              // Prepare request body
+              const requestBody = {
+                model: this._modelName,
+                messages: openRouterMessages,
+                temperature: 0.7,
+                max_tokens: 2048,
+              };
+
+              // Log request (without API key)
+              console.log('[LLM Service] OpenRouter request:', {
+                model: requestBody.model,
+                messageCount: requestBody.messages.length,
+                // Don't log full messages for privacy
+              });
+
+              // Send request to OpenRouter API
+              const response = await fetch(`${this._baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${this._apiKey}`,
+                  'HTTP-Referer': 'https://github.com/kleneway/pastemax',
+                  'X-Title': 'PasteMax',
+                },
+                body: JSON.stringify(requestBody),
+              });
+
+              // Check if request was successful
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(
+                  `[LLM Service] OpenRouter API error (${response.status}):`,
+                  errorText
+                );
+                throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+              }
+
+              // Parse response
+              const data = await response.json();
+
+              // Log success (without revealing full content)
+              console.log('[LLM Service] OpenRouter response received successfully');
+
+              // Format response to match Langchain's expected format
+              return { content: data.choices[0].message.content };
+            } catch (error) {
+              console.error('[LLM Service] Error in custom OpenRouter implementation:', error);
+              throw new Error(`OpenRouter API error: ${error.message}`);
+            }
+          },
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
-        }
-
-        return new ChatOpenAI(options);
       }
 
       // For other providers, we'll use OpenAI's client with a custom base URL if needed
@@ -526,6 +608,10 @@ async function getChatModel() {
         const options = {
           apiKey: config.apiKey,
           temperature: 0.7,
+          defaultHeaders: {
+            'HTTP-Referer': 'https://github.com/kleneway/pastemax',
+            'X-Title': 'PasteMax',
+          },
         };
 
         if (config.modelName) {
@@ -597,6 +683,14 @@ async function sendPromptToLlm({ messages }) {
     const chatModel = await getChatModel();
     console.log('[LLM Service] Chat model initialized');
 
+    // Check if this is our custom OpenRouter implementation
+    if (chatModel._type === 'openrouter') {
+      console.log('[LLM Service] Using custom OpenRouter implementation');
+      const langchainMessages = convertToLangchainMessages(messages);
+      return await chatModel.invoke(langchainMessages);
+    }
+
+    // Standard Langchain path for other providers
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);
     console.log(`[LLM Service] Converted ${langchainMessages.length} messages to Langchain format`);
@@ -626,7 +720,7 @@ async function sendPromptToLlm({ messages }) {
         const errorMsg = invokeError.message || '';
         if (errorMsg.includes('PERMISSION_DENIED')) {
           throw new Error(
-            'Gemini API access denied. Please check if your API key is valid and has the necessary permissions.'
+            'Gemini API access denied. Please check if your API key is valid and you have accepted the terms of service in Google AI Studio.'
           );
         } else if (errorMsg.includes('INVALID_ARGUMENT')) {
           throw new Error(

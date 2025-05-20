@@ -519,8 +519,10 @@ ipcMain.on('request-file-list', async (event, payload) => {
 });
 
 // Handle fetch-models request from renderer
-ipcMain.handle('fetch-models', async (event, { provider, apiKey, baseUrl }) => {
+ipcMain.handle('fetch-models', async (event, params = {}) => {
   try {
+    const { provider, apiKey, baseUrl } = params;
+
     console.log(`[Main Process] Fetching models for provider: ${provider}`);
 
     if (!provider || !apiKey) {

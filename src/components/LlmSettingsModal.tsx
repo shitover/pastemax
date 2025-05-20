@@ -233,16 +233,16 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="show-advanced">
-              <input
-                id="show-advanced"
-                type="checkbox"
-                checked={showAdvanced}
-                onChange={() => setShowAdvanced(!showAdvanced)}
-              />
-              <span style={{ marginLeft: '8px' }}>Show Advanced Options</span>
-            </label>
+          {/* Minimal advanced options toggle */}
+          <div className="form-group" style={{ marginBottom: showAdvanced ? 0 : 18 }}>
+            <button
+              type="button"
+              className="advanced-toggle"
+              aria-expanded={showAdvanced}
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
+            </button>
           </div>
 
           {showAdvanced && (
