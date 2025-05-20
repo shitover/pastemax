@@ -11,7 +11,7 @@ import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
 import { STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp, FolderKanban } from 'lucide-react';
+import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
 import WorkspaceManager from './components/WorkspaceManager';
@@ -20,6 +20,10 @@ import CopyHistoryModal, { CopyHistoryItem } from './components/CopyHistoryModal
 import CopyHistoryButton from './components/CopyHistoryButton';
 import ModelDropdown from './components/ModelDropdown';
 import ToggleSwitch from './components/base/ToggleSwitch';
+import LlmSettingsModal from './components/LlmSettingsModal';
+import ChatView from './components/ChatView';
+import ChatButton from './components/ChatButton';
+import { LlmConfig, ChatMessage, ChatTarget } from './types/llmTypes';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -55,6 +59,7 @@ const STORAGE_KEYS = {
   WORKSPACES: 'pastemax-workspaces',
   CURRENT_WORKSPACE: 'pastemax-current-workspace',
   COPY_HISTORY: 'pastemax-copy-history',
+  LLM_CONFIG: 'pastemax-llm-config',
 };
 
 /* ============================== MAIN APP COMPONENT ============================== */
@@ -191,6 +196,15 @@ const App = (): JSX.Element => {
     const savedModelId = localStorage.getItem('pastemax-selected-model');
     return savedModelId || '';
   });
+
+  /* ============================== STATE: LLM/Chat Functionality ============================== */
+  const [llmConfig, setLlmConfig] = useState<LlmConfig | null>(null);
+  const [isLlmSettingsModalOpen, setIsLlmSettingsModalOpen] = useState(false);
+  const [isChatViewOpen, setIsChatViewOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatTarget, setChatTarget] = useState<ChatTarget | undefined>(undefined);
+  const [isLlmLoading, setIsLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
@@ -368,6 +382,25 @@ const App = (): JSX.Element => {
       window.electron.ipcRenderer.removeListener('startup-mode', handleStartupMode);
     };
   }, [isElectron]);
+
+  /**
+   * Load LLM configuration on component mount
+   */
+  useEffect(() => {
+    const loadLlmConfig = async () => {
+      if (window.llmApi) {
+        try {
+          const config = await window.llmApi.getConfig();
+          setLlmConfig(config);
+          console.log('LLM config loaded:', config.provider || 'None configured');
+        } catch (error) {
+          console.error('Error loading LLM config:', error);
+        }
+      }
+    };
+
+    loadLlmConfig();
+  }, []);
 
   /**
    * Effect hook for loading file list data when dependencies change.
@@ -1460,10 +1493,220 @@ const App = (): JSX.Element => {
     }
   }, [workspaces, currentWorkspaceId]);
 
-  /* ===================================================================== */
-  /* ============================== RENDER =============================== */
-  /* ===================================================================== */
-  // Main JSX rendering
+  /* ============================== LLM/CHAT HANDLERS ============================== */
+
+  /**
+   * Opens the LLM settings modal
+   */
+  const handleOpenLlmSettings = () => {
+    setIsLlmSettingsModalOpen(true);
+  };
+
+  /**
+   * Saves LLM configuration
+   */
+  const handleSaveLlmConfig = async (config: LlmConfig) => {
+    try {
+      if (window.llmApi) {
+        const result = await window.llmApi.setConfig(config);
+        if (result.success) {
+          setLlmConfig(config);
+          return;
+        } else {
+          throw new Error(result.error || 'Failed to save LLM configuration');
+        }
+      } else {
+        throw new Error('LLM API not available');
+      }
+    } catch (error) {
+      console.error('Error saving LLM config:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Creates a unique ID for chat messages
+   */
+  const generateMessageId = () => {
+    return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  };
+
+  /**
+   * Opens the chat view for a specified target (file, selection, or general)
+   */
+  const handleOpenChatView = (target?: ChatTarget) => {
+    // Reset chat state
+    setChatMessages([]);
+    setChatTarget(target);
+    setLlmError(null);
+
+    // If a target is provided, create an initial system message
+    if (target) {
+      const systemMessage: ChatMessage = {
+        id: generateMessageId(),
+        role: 'system',
+        content: getSystemPromptForTarget(target),
+        timestamp: Date.now(),
+      };
+      setChatMessages([systemMessage]);
+    }
+
+    setIsChatViewOpen(true);
+  };
+
+  /**
+   * Generates an appropriate system prompt based on the chat target
+   */
+  const getSystemPromptForTarget = (target: ChatTarget): string => {
+    switch (target.type) {
+      case 'file':
+        return `You are discussing the following file: ${
+          target.fileName || 'Unnamed file'
+        }. Here is its content:\n\n${target.content}`;
+      case 'selection':
+        return `You are discussing the following code/text selection:\n\n${target.content}`;
+      case 'general':
+      default:
+        return 'You are a helpful AI assistant. The user is working with the PasteMax application.';
+    }
+  };
+
+  /**
+   * Sends a user message to the LLM and processes the response
+   */
+  const handleSendMessage = async (messageContent: string) => {
+    if (!window.llmApi || !llmConfig?.provider) {
+      setLlmError('LLM is not configured. Please configure your LLM settings first.');
+      return;
+    }
+
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: generateMessageId(),
+      role: 'user',
+      content: messageContent,
+      timestamp: Date.now(),
+    };
+
+    setChatMessages((prevMessages) => [...prevMessages, userMessage]);
+    setIsLlmLoading(true);
+    setLlmError(null);
+
+    try {
+      // Prepare messages for the LLM API
+      const messagesToSend = chatMessages
+        .concat(userMessage)
+        .map(({ role, content }) => ({ role, content }));
+
+      // Send to LLM API
+      const response = await window.llmApi.sendPrompt({ messages: messagesToSend });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Add assistant response to chat
+      const assistantMessage: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: response.content,
+        timestamp: Date.now(),
+      };
+
+      setChatMessages((prevMessages) => [...prevMessages, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message to LLM:', error);
+      setLlmError(error instanceof Error ? error.message : 'Failed to get response from LLM');
+    } finally {
+      setIsLlmLoading(false);
+    }
+  };
+
+  /**
+   * Copies a message's content to the clipboard
+   */
+  const handleCopyResponse = (messageId: string) => {
+    const message = chatMessages.find((msg) => msg.id === messageId);
+    if (message) {
+      navigator.clipboard.writeText(message.content);
+      // Optionally add a toast or notification here
+    }
+  };
+
+  /**
+   * Accepts an AI response and saves it to the original file
+   */
+  const handleAcceptAndSave = async (messageId: string) => {
+    if (!chatTarget?.filePath) {
+      setLlmError('No file target specified for saving.');
+      return;
+    }
+
+    const message = chatMessages.find((msg) => msg.id === messageId);
+    if (!message) {
+      setLlmError('Message not found.');
+      return;
+    }
+
+    setIsLlmLoading(true);
+    setLlmError(null);
+
+    try {
+      if (window.llmApi) {
+        const result = await window.llmApi.saveFile({
+          filePath: chatTarget.filePath,
+          content: message.content,
+        });
+
+        if (result.success) {
+          // Close the chat view after successful save
+          setIsChatViewOpen(false);
+
+          // Refresh the file list if needed
+          setReloadTrigger((prev) => prev + 1);
+        } else {
+          throw new Error(result.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving file:', error);
+      setLlmError(error instanceof Error ? error.message : 'Failed to save file');
+    } finally {
+      setIsLlmLoading(false);
+    }
+  };
+
+  /**
+   * Opens chat for a selected file
+   */
+  const handleChatAboutFile = (filePath: string) => {
+    // Find the file in allFiles
+    const file = allFiles.find((f) => f.path === filePath);
+    if (!file) return;
+
+    // Create chat target
+    const chatTarget: ChatTarget = {
+      type: 'file',
+      filePath: file.path,
+      fileName: file.name,
+      content: file.content || '',
+    };
+
+    handleOpenChatView(chatTarget);
+  };
+
+  /**
+   * Opens a general chat (not specific to any file)
+   */
+  const handleOpenGeneralChat = () => {
+    const target: ChatTarget = {
+      type: 'general',
+      content: '',
+    };
+    handleOpenChatView(target);
+  };
+
+  /* ============================== RENDER FUNCTIONS ============================== */
 
   return (
     <ThemeProvider>
@@ -1472,6 +1715,21 @@ const App = (): JSX.Element => {
           <h1>PasteMax</h1>
           <div className="header-actions">
             <ThemeToggle />
+            <button
+              className="llm-settings-button"
+              onClick={handleOpenLlmSettings}
+              title="Configure LLM Settings"
+            >
+              <MessageSquare size={16} />
+              <span>LLM Settings</span>
+            </button>
+            <ChatButton
+              onClick={handleOpenGeneralChat}
+              className="header-chat-button"
+              text="Chat with AI"
+              disabled={!llmConfig?.provider || !llmConfig?.apiKey}
+              title="Open AI Chat"
+            />
             <div className="folder-info">
               {selectedFolder ? (
                 <div className="selected-folder">{selectedFolder}</div>
@@ -1689,6 +1947,8 @@ const App = (): JSX.Element => {
                   files={displayedFiles}
                   selectedFiles={selectedFiles}
                   toggleFileSelection={toggleFileSelection}
+                  onChatAbout={handleChatAboutFile}
+                  isLlmConfigured={!!llmConfig?.provider && !!llmConfig?.apiKey}
                 />
               ) : (
                 <div className="file-list-empty">
@@ -1805,6 +2065,28 @@ const App = (): JSX.Element => {
           onDecline={handleDeclineUseCurrentFolder}
           workspaceName={confirmFolderModalDetails.workspaceName}
           folderPath={confirmFolderModalDetails.folderPath}
+        />
+
+        {/* LLM Settings Modal */}
+        <LlmSettingsModal
+          isOpen={isLlmSettingsModalOpen}
+          onClose={() => setIsLlmSettingsModalOpen(false)}
+          initialConfig={llmConfig}
+          onSaveConfig={handleSaveLlmConfig}
+        />
+
+        {/* Chat View */}
+        <ChatView
+          isOpen={isChatViewOpen}
+          onClose={() => setIsChatViewOpen(false)}
+          messages={chatMessages}
+          chatTarget={chatTarget}
+          isLlmConfigured={!!llmConfig?.provider && !!llmConfig?.apiKey}
+          isLoading={isLlmLoading}
+          error={llmError}
+          onSendMessage={handleSendMessage}
+          onCopyResponse={handleCopyResponse}
+          onAcceptAndSave={handleAcceptAndSave}
         />
       </div>
     </ThemeProvider>

@@ -123,3 +123,50 @@ contextBridge.exposeInMainWorld('electron', {
     },
   },
 });
+
+// Expose LLM API to renderer process
+contextBridge.exposeInMainWorld('llmApi', {
+  /**
+   * Gets the current LLM configuration
+   * @returns {Promise<{provider: string|null, apiKey: string|null, modelName: string|null, baseUrl: string|null}>}
+   */
+  getConfig: () => ipcRenderer.invoke('llm:get-config'),
+
+  /**
+   * Sets the LLM configuration
+   * @param {Object} config - The LLM configuration
+   * @param {string} config.provider - The LLM provider (openai, anthropic, gemini, etc.)
+   * @param {string} config.apiKey - The API key for the provider
+   * @param {string} config.modelName - Optional model name
+   * @param {string} config.baseUrl - Optional base URL for the API
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  setConfig: (config) => ipcRenderer.invoke('llm:set-config', ensureSerializable(config)),
+
+  /**
+   * Sends a prompt to the LLM
+   * @param {Object} params - Parameters for the prompt
+   * @param {Array} params.messages - Array of message objects with role and content
+   * @returns {Promise<{content: string, error?: string}>}
+   */
+  sendPrompt: (params) => ipcRenderer.invoke('llm:send-prompt', ensureSerializable(params)),
+
+  /**
+   * Saves content to a file
+   * @param {Object} params - Parameters for saving
+   * @param {string} params.filePath - Path to the file
+   * @param {string} params.content - Content to save
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  saveFile: (params) => ipcRenderer.invoke('llm:save-file', ensureSerializable(params)),
+
+  /**
+   * Fetches models from specified provider
+   * @param {string} provider - The LLM provider
+   * @param {string} apiKey - The API key
+   * @param {string} baseUrl - Optional custom API base URL
+   * @returns {Promise<{models: Array, error?: string}>}
+   */
+  fetchModels: (provider, apiKey, baseUrl) =>
+    ipcRenderer.invoke('fetch-models', ensureSerializable({ provider, apiKey, baseUrl })),
+});

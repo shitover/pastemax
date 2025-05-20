@@ -15,6 +15,28 @@ declare global {
         invoke: (channel: string, ...args: any[]) => Promise<any>;
       };
     };
+
+    llmApi: {
+      getConfig: () => Promise<import('./types/llmTypes').LlmConfig>;
+      setConfig: (
+        config: import('./types/llmTypes').LlmConfig
+      ) => Promise<{ success: boolean; error?: string }>;
+      sendPrompt: (params: {
+        messages: { role: import('./types/llmTypes').MessageRole; content: string }[];
+      }) => Promise<{ content: string; provider?: string; error?: string }>;
+      saveFile: (params: {
+        filePath: string;
+        content: string;
+      }) => Promise<{ success: boolean; message: string }>;
+      fetchModels: (
+        provider: import('./types/llmTypes').LlmProvider,
+        apiKey: string,
+        baseUrl?: string
+      ) => Promise<{
+        models: import('./types/llmTypes').ModelInfo[];
+        error?: string;
+      }>;
+    };
   }
 }
 
