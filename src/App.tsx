@@ -2101,7 +2101,7 @@ const App = (): JSX.Element => {
                 title="Edit System Prompt"
               >
                 <Edit size={18} />
-                Edit AI
+                Edit System Prompt
               </button>
             </div>
           </div>
@@ -2383,6 +2383,8 @@ const App = (): JSX.Element => {
           onSelectSession={selectChatSession}
           onDeleteSession={deleteChatSession}
           onCreateNewSession={handleCreateNewChat}
+          selectedModelId={selectedModelId}
+          onModelSelect={handleModelSelect}
         />
 
         {/* System Prompt Editor */}

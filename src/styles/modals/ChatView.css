@@ -46,6 +46,13 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+.chat-view-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
 .chat-view-header h3 {
   margin: 0;
   font-size: 18px;

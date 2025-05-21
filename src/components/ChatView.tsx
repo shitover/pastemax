@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, ChatTarget } from '../types/llmTypes';
 import ChatHistorySidebar, { ChatSession } from './ChatHistorySidebar';
+import ChatModelSelector from './ChatModelSelector';
 
 interface ChatViewProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface ChatViewProps {
   onSelectSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onCreateNewSession: () => void;
+  selectedModelId?: string;
+  onModelSelect?: (modelId: string) => void;
 }
 
 const ChatView: React.FC<ChatViewProps> = ({
@@ -36,6 +39,8 @@ const ChatView: React.FC<ChatViewProps> = ({
   onSelectSession,
   onDeleteSession,
   onCreateNewSession,
+  selectedModelId,
+  onModelSelect,
 }) => {
   const [userMessage, setUserMessage] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -71,6 +76,9 @@ const ChatView: React.FC<ChatViewProps> = ({
     return new Date(timestamp).toLocaleTimeString();
   };
 
+  // Filter out system messages for display
+  const visibleMessages = messages.filter((message) => message.role !== 'system');
+
   // Filter sessions based on search query
   const filteredSessions = searchQuery.trim()
     ? chatSessions.filter(
@@ -102,15 +110,23 @@ const ChatView: React.FC<ChatViewProps> = ({
 
           <div className="chat-view-main">
             <div className="chat-view-header">
-              <h3>
-                {chatTarget?.type === 'file' ? (
-                  <>Chat about: {chatTarget.fileName || 'File'}</>
-                ) : chatTarget?.type === 'selection' ? (
-                  <>Chat about selection</>
-                ) : (
-                  <>AI Chat</>
+              <div className="chat-view-header-content">
+                <h3>
+                  {chatTarget?.type === 'file' ? (
+                    <>Chat about: {chatTarget.fileName || 'File'}</>
+                  ) : chatTarget?.type === 'selection' ? (
+                    <>Chat about selection</>
+                  ) : (
+                    <>AI Chat</>
+                  )}
+                </h3>
+                {isLlmConfigured && onModelSelect && (
+                  <ChatModelSelector
+                    currentModelId={selectedModelId}
+                    onModelSelect={onModelSelect}
+                  />
                 )}
-              </h3>
+              </div>
               <button className="chat-view-close-button" onClick={onClose} aria-label="Close chat">
                 ×
               </button>
@@ -123,7 +139,7 @@ const ChatView: React.FC<ChatViewProps> = ({
             )}
 
             <div className="chat-view-messages" ref={chatContainerRef}>
-              {messages.map((message) => (
+              {visibleMessages.map((message) => (
                 <div
                   key={message.id}
                   className={`chat-message ${
