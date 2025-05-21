@@ -25,6 +25,7 @@ import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
 import { LlmConfig, ChatMessage, ChatTarget } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
+import { ChatSession } from './components/ChatHistorySidebar';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -67,6 +68,8 @@ const STORAGE_KEYS = {
   COPY_HISTORY: 'pastemax-copy-history',
   LLM_CONFIG: 'pastemax-llm-config',
   SYSTEM_PROMPT: 'pastemax-system-prompt',
+  CHAT_HISTORY: 'pastemax-chat-history', // New key for chat history
+  CURRENT_CHAT_SESSION: 'pastemax-current-chat-session', // New key for current chat session
 };
 
 export const DEFAULT_SYSTEM_PROMPT = `## System Prompt for Code/File Edit Agent
@@ -250,6 +253,24 @@ const App = (): JSX.Element => {
   const [chatTarget, setChatTarget] = useState<ChatTarget | undefined>(undefined);
   const [isLlmLoading, setIsLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
+
+  /* ============================== STATE: Chat History ============================== */
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
+    const savedSessions = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+    if (savedSessions) {
+      try {
+        return JSON.parse(savedSessions) as ChatSession[];
+      } catch (error) {
+        console.error('Failed to parse chat history from localStorage:', error);
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [currentChatSessionId, setCurrentChatSessionId] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT_SESSION);
+  });
 
   /* ============================== STATE: System Prompt ============================== */
   const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
@@ -1573,18 +1594,21 @@ const App = (): JSX.Element => {
     }
   };
 
-  /**
-   * Creates a unique ID for chat messages
-   */
-  const generateMessageId = () => {
-    return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  };
+  // This function has been moved higher up in the file
 
   /**
    * Opens the chat view for a specified target (file, selection, or general)
    */
   const handleOpenChatView = (target?: ChatTarget) => {
-    // Reset chat state
+    // If already have a session in progress, use it
+    // Otherwise create a new one
+    let sessionId = currentChatSessionId;
+
+    if (!sessionId || !isChatViewOpen) {
+      sessionId = createNewChatSession(target);
+    }
+
+    // Reset messages for the new session
     setChatMessages([]);
     setChatTarget(target);
     setLlmError(null);
@@ -1598,6 +1622,11 @@ const App = (): JSX.Element => {
         timestamp: Date.now(),
       };
       setChatMessages([systemMessage]);
+
+      // Update the session with the system message
+      setTimeout(() => {
+        updateCurrentSession([systemMessage]);
+      }, 0);
     }
 
     setIsChatViewOpen(true);
@@ -1670,7 +1699,14 @@ const App = (): JSX.Element => {
         timestamp: Date.now(),
       };
 
-      setChatMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      setChatMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, assistantMessage];
+        // Update the session with new messages
+        setTimeout(() => {
+          updateCurrentSession(updatedMessages);
+        }, 0);
+        return updatedMessages;
+      });
     } catch (error) {
       console.error('Error sending message to LLM:', error);
       setLlmError(error instanceof Error ? error.message : 'Failed to get response from LLM');
@@ -1798,6 +1834,161 @@ const App = (): JSX.Element => {
   const handleResetSystemPrompt = () => {
     setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
     localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT);
+  };
+
+  // Save chat sessions to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(chatSessions));
+  }, [chatSessions]);
+
+  // Save current chat session ID to localStorage when it changes
+  useEffect(() => {
+    if (currentChatSessionId) {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_CHAT_SESSION, currentChatSessionId);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_CHAT_SESSION);
+    }
+  }, [currentChatSessionId]);
+
+  // Update current session with new messages when chatMessages changes
+  useEffect(() => {
+    if (currentChatSessionId && chatMessages.length > 0) {
+      updateCurrentSession(chatMessages);
+    }
+  }, [chatMessages]);
+
+  /**
+   * Creates a unique ID for various entities
+   */
+  const generateId = (prefix = '') => {
+    return `${prefix}${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  };
+
+  /**
+   * Creates a unique ID for chat messages
+   */
+  const generateMessageId = () => {
+    return generateId('msg_');
+  };
+
+  /**
+   * Updates the current session with the new messages
+   */
+  const updateCurrentSession = (messages: ChatMessage[]) => {
+    if (!currentChatSessionId) return;
+
+    setChatSessions((prevSessions) => {
+      const updatedSessions = prevSessions.map((session) => {
+        if (session.id === currentChatSessionId) {
+          return {
+            ...session,
+            messages: messages.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp,
+            })),
+            lastUpdated: Date.now(),
+          };
+        }
+        return session;
+      });
+
+      return updatedSessions;
+    });
+  };
+
+  /**
+   * Creates a new chat session and sets it as the current session
+   */
+  const createNewChatSession = (target?: ChatTarget) => {
+    const sessionId = generateId('session_');
+    const sessionTitle =
+      target?.type === 'file'
+        ? `Chat about ${target.fileName || 'file'}`
+        : target?.type === 'selection'
+          ? 'Chat about selection'
+          : `Chat ${new Date().toLocaleString()}`;
+
+    const newSession: ChatSession = {
+      id: sessionId,
+      title: sessionTitle,
+      lastUpdated: Date.now(),
+      messages: [],
+      targetType: target?.type,
+      targetName: target?.fileName || undefined,
+    };
+
+    setChatSessions((prevSessions) => [newSession, ...prevSessions]);
+    setCurrentChatSessionId(sessionId);
+
+    return sessionId;
+  };
+
+  /**
+   * Selects an existing chat session
+   */
+  const selectChatSession = (sessionId: string) => {
+    const session = chatSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+
+    setCurrentChatSessionId(sessionId);
+
+    // Reconstruct chatMessages from session messages
+    const reconstructedMessages = session.messages.map((msg) => ({
+      id: generateMessageId(),
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp,
+    }));
+
+    setChatMessages(reconstructedMessages);
+
+    // Recreate the chat target if it exists
+    if (session.targetType) {
+      const target: ChatTarget = {
+        type: session.targetType,
+        content: '',
+        fileName: session.targetName,
+      };
+
+      // If it's a file chat, try to find file content
+      if (session.targetType === 'file' && session.targetName) {
+        const file = allFiles.find((f) => f.name === session.targetName);
+        if (file) {
+          target.filePath = file.path;
+          target.content = file.content || '';
+        }
+      }
+
+      setChatTarget(target);
+    }
+  };
+
+  /**
+   * Deletes a chat session
+   */
+  const deleteChatSession = (sessionId: string) => {
+    setChatSessions((prevSessions) => prevSessions.filter((s) => s.id !== sessionId));
+
+    // If deleting the current session, clear current session
+    if (currentChatSessionId === sessionId) {
+      setCurrentChatSessionId(null);
+      setChatMessages([]);
+      setChatTarget(undefined);
+    }
+  };
+
+  /**
+   * Handles creating a new chat
+   */
+  const handleCreateNewChat = () => {
+    // Create a new chat session (general type if not specified)
+    createNewChatSession();
+
+    // Reset chat state
+    setChatMessages([]);
+    setChatTarget({ type: 'general', content: '' });
+    setLlmError(null);
   };
 
   return (
@@ -2187,6 +2378,11 @@ const App = (): JSX.Element => {
           onSendMessage={handleSendMessage}
           onCopyResponse={handleCopyResponse}
           onAcceptAndSave={handleAcceptAndSave}
+          chatSessions={chatSessions}
+          currentSessionId={currentChatSessionId}
+          onSelectSession={selectChatSession}
+          onDeleteSession={deleteChatSession}
+          onCreateNewSession={handleCreateNewChat}
         />
 
         {/* System Prompt Editor */}

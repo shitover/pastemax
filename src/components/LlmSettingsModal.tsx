@@ -77,6 +77,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   };
 
+
   // Get recent models for the selected provider
   const getRecentModelsForProvider = () => {
     return recentModels[provider] || [];
