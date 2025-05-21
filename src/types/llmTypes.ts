@@ -9,7 +9,8 @@ export type LlmProvider =
   | 'deepseek'
   | 'qwen'
   | 'grok'
-  | 'openrouter';
+  | 'openrouter'
+  | 'mistral';
 
 /**
  * Interface for LLM configuration

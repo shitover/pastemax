@@ -70,11 +70,12 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'Enter Grok API Key';
       case 'openrouter':
         return 'Enter OpenRouter API Key';
+      case 'mistral':
+        return 'Enter Mistral API Key';
       default:
         return 'API Key';
     }
   };
-
 
   // Get recent models for the selected provider
   const getRecentModelsForProvider = () => {
@@ -175,6 +176,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               <option value="qwen">Qwen</option>
               <option value="grok">Grok</option>
               <option value="openrouter">OpenRouter</option>
+              <option value="mistral">Mistral</option>
             </select>
           </div>
 

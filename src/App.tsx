@@ -10,8 +10,8 @@ import ThemeToggle from './components/ThemeToggle';
 import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
-import { STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare } from 'lucide-react';
+// import { STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
+import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare, Edit } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
 import WorkspaceManager from './components/WorkspaceManager';
@@ -24,6 +24,7 @@ import LlmSettingsModal from './components/LlmSettingsModal';
 import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
 import { LlmConfig, ChatMessage, ChatTarget } from './types/llmTypes';
+import SystemPromptEditor from './components/SystemPromptEditor';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -48,19 +49,63 @@ import type { UpdateDisplayState } from './types/UpdateTypes';
  */
 const STORAGE_KEYS = {
   SELECTED_FOLDER: 'pastemax-selected-folder',
+  INCLUDE_FILE_TREE: 'pastemax-include-file-tree',
+  INCLUDE_BINARY_PATHS: 'pastemax-include-binary-paths',
   SELECTED_FILES: 'pastemax-selected-files',
   SORT_ORDER: 'pastemax-sort-order',
   SEARCH_TERM: 'pastemax-search-term',
+  USER_INSTRUCTIONS: 'pastemax-user-instructions',
   EXPANDED_NODES: 'pastemax-expanded-nodes',
   IGNORE_MODE: 'pastemax-ignore-mode',
   IGNORE_SETTINGS_MODIFIED: 'pastemax-ignore-settings-modified',
-  INCLUDE_BINARY_PATHS: 'pastemax-include-binary-paths',
-  TASK_TYPE: STORAGE_KEY_TASK_TYPE,
+  THEME: 'pastemax-theme',
+  RECENT_FOLDERS: 'pastemax-recent-folders',
   WORKSPACES: 'pastemax-workspaces',
   CURRENT_WORKSPACE: 'pastemax-current-workspace',
+  WINDOW_SIZES: 'pastemax-window-sizes',
+  TASK_TYPE: 'pastemax-task-type',
   COPY_HISTORY: 'pastemax-copy-history',
   LLM_CONFIG: 'pastemax-llm-config',
+  SYSTEM_PROMPT: 'pastemax-system-prompt',
 };
+
+export const DEFAULT_SYSTEM_PROMPT = `## System Prompt for Code/File Edit Agent
+
+You are a specialized file and code editing assistant. Your primary function is to help users analyze, modify, and manage their code files with efficiency and precision.
+
+### Core Capabilities:
+
+- Analyze code files across multiple programming languages
+- Suggest improvements to code quality, structure, and performance
+- Make targeted edits to files as requested by the user
+- Explain code functionality and identify potential issues
+- Help refactor and optimize existing code
+
+### Working Process:
+
+1. When presented with code files, first analyze the structure and content
+2. Understand the user's editing or analysis request clearly
+3. Provide concise, practical solutions or edits
+4. When making changes, highlight exactly what was modified and why
+5. Offer explanations in plain language that both novice and expert programmers can understand
+
+### Response Format:
+
+- Be direct and efficient in your communication
+- Use markdown formatting for code blocks with appropriate language syntax highlighting
+- For complex edits, show "before" and "after" code snippets
+- Include brief explanations for why specific changes were made
+
+### Usage Guidelines:
+
+- Focus on solving the specific editing task at hand
+- Prioritize practical solutions over theoretical discussions
+- When suggesting multiple approaches, clearly indicate which you recommend and why
+- Clarify any ambiguous requests before proceeding with significant code changes
+
+You have permission to access and modify files when explicitly requested. Always confirm important changes before implementing them. If a requested edit could cause errors or issues, warn the user and suggest alternatives.
+
+Remember that you are a tool to enhance the user's coding experience - aim to save them time and improve their code quality with every interaction.`;
 
 /* ============================== MAIN APP COMPONENT ============================== */
 /**
@@ -205,6 +250,10 @@ const App = (): JSX.Element => {
   const [chatTarget, setChatTarget] = useState<ChatTarget | undefined>(undefined);
   const [isLlmLoading, setIsLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
+
+  /* ============================== STATE: System Prompt ============================== */
+  const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
 
   // Utility function to clear all saved state and reset the app
   const clearSavedState = useCallback(() => {
@@ -1558,17 +1607,25 @@ const App = (): JSX.Element => {
    * Generates an appropriate system prompt based on the chat target
    */
   const getSystemPromptForTarget = (target: ChatTarget): string => {
+    let contextInfo = '';
+
     switch (target.type) {
       case 'file':
-        return `You are discussing the following file: ${
+        contextInfo = `\n\n## Context\nYou are discussing the following file: ${
           target.fileName || 'Unnamed file'
-        }. Here is its content:\n\n${target.content}`;
+        }. Here is its content:\n\n\`\`\`\n${target.content}\n\`\`\``;
+        break;
       case 'selection':
-        return `You are discussing the following code/text selection:\n\n${target.content}`;
+        contextInfo = `\n\n## Context\nYou are discussing the following code/text selection:\n\n\`\`\`\n${target.content}\n\`\`\``;
+        break;
       case 'general':
       default:
-        return 'You are a helpful AI assistant. The user is working with the PasteMax application.';
+        contextInfo = '\n\n## Context\nThe user is working with the PasteMax application.';
+        break;
     }
+
+    // Return the custom system prompt with context appended
+    return systemPrompt + contextInfo;
   };
 
   /**
@@ -1708,6 +1765,41 @@ const App = (): JSX.Element => {
 
   /* ============================== RENDER FUNCTIONS ============================== */
 
+  // Add after other useEffects
+  /**
+   * Loads the system prompt from localStorage
+   */
+  useEffect(() => {
+    const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
+    if (savedSystemPrompt) {
+      setSystemPrompt(savedSystemPrompt);
+    }
+  }, []);
+
+  // Add handler functions
+  /**
+   * Opens the system prompt editor modal
+   */
+  const handleOpenSystemPromptEditor = () => {
+    setIsSystemPromptEditorOpen(true);
+  };
+
+  /**
+   * Saves the system prompt and updates localStorage
+   */
+  const handleSaveSystemPrompt = (newSystemPrompt: string) => {
+    setSystemPrompt(newSystemPrompt);
+    localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, newSystemPrompt);
+  };
+
+  /**
+   * Resets the system prompt to the default value
+   */
+  const handleResetSystemPrompt = () => {
+    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+    localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT);
+  };
+
   return (
     <ThemeProvider>
       <div className="app-container">
@@ -1812,6 +1904,14 @@ const App = (): JSX.Element => {
                   </div>
                 )}
               </div>
+              <button
+                className="header-action-btn"
+                onClick={handleOpenSystemPromptEditor}
+                title="Edit System Prompt"
+              >
+                <Edit size={18} />
+                Edit AI
+              </button>
             </div>
           </div>
         </header>
@@ -2087,6 +2187,15 @@ const App = (): JSX.Element => {
           onSendMessage={handleSendMessage}
           onCopyResponse={handleCopyResponse}
           onAcceptAndSave={handleAcceptAndSave}
+        />
+
+        {/* System Prompt Editor */}
+        <SystemPromptEditor
+          isOpen={isSystemPromptEditorOpen}
+          onClose={() => setIsSystemPromptEditorOpen(false)}
+          initialPrompt={systemPrompt}
+          onSave={handleSaveSystemPrompt}
+          onResetToDefault={handleResetSystemPrompt}
         />
       </div>
     </ThemeProvider>

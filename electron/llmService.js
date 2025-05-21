@@ -1,12 +1,18 @@
 const { ChatOpenAI } = require('@langchain/openai');
 const { ChatAnthropic } = require('@langchain/anthropic');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
+const { ChatMistralAI } = require('@langchain/mistralai');
+// implement later 
+// const { ChatQwen } = require('@langchain/qwen'); // 
+// const { ChatGroq } = require('@langchain/groq'); 
+// const { ChatGrok } = require('@langchain/xai');
+// const { ChatOpenRouter } = require('@langchain/openrouter');
 const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
 const Store = require('electron-store');
 const fs = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
-
+const { Mistral } = require('@mistralai/mistralai');
 
 /**
  * Store instance for persisting LLM configuration
@@ -142,7 +148,7 @@ async function setLlmConfig({ provider, apiKey, modelName, baseUrl }) {
 
 /**
  * Creates and returns the appropriate Langchain chat model based on configuration
- * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI>}
+ * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI>}
  */
 async function getChatModel() {
   initializeStore();
@@ -247,6 +253,29 @@ async function getChatModel() {
           }
 
           throw new Error(`Failed to initialize Gemini: ${error.message}`);
+        }
+      }
+
+      case 'mistral': {
+        console.log(`[LLM Service] Using Mistral model: ${config.modelName || 'Default model'}`);
+        const options = {
+          apiKey: config.apiKey,
+          temperature: 0.7,
+        };
+
+        if (config.modelName) {
+          options.modelName = config.modelName;
+        }
+
+        if (config.baseUrl) {
+          options.baseURL = config.baseUrl;
+        }
+
+        try {
+          return new ChatMistralAI(options);
+        } catch (error) {
+          console.error(`[LLM Service] Error initializing Mistral:`, error);
+          throw new Error(`Failed to initialize Mistral: ${error.message}`);
         }
       }
 
@@ -400,7 +429,69 @@ async function sendPromptToLlm({ messages }) {
     console.log(`[LLM Service] Using provider: ${config.provider}`);
     console.log(`[LLM Service] Using model: ${config.modelName || 'default'}`);
 
-    // Get chat model
+    // Special handling for Mistral API
+    if (config.provider === 'mistral') {
+      try {
+        console.log('[LLM Service] Using direct Mistral API client');
+        // Format messages in the format Mistral expects
+        const mistralMessages = messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+        // Create a Mistral client with the correct initialization
+        console.log('[LLM Service] Creating Mistral client');
+        const mistralOptions = {
+          apiKey: config.apiKey,
+        };
+
+        if (config.baseUrl) {
+          mistralOptions.endpoint = config.baseUrl;
+        }
+
+        const mistral = new Mistral(mistralOptions);
+
+        console.log(
+          '[LLM Service] Sending request to Mistral API with model:',
+          config.modelName || 'mistral-medium'
+        );
+        const response = await mistral.chat.completions.create({
+          model: config.modelName || 'mistral-medium',
+          messages: mistralMessages,
+          temperature: 0.7,
+          max_tokens: 2048,
+        });
+
+        console.log('[LLM Service] Received response from Mistral API');
+        return {
+          content: response.choices[0].message.content,
+          provider: 'mistral',
+        };
+      } catch (mistralError) {
+        console.error('[LLM Service] Mistral direct API error:', mistralError);
+
+        // Handle common Mistral API errors
+        const errorMsg = mistralError.message || '';
+        if (errorMsg.includes('401')) {
+          throw new Error('Mistral API authentication failed. Please check your API key.');
+        } else if (errorMsg.includes('429')) {
+          throw new Error('Mistral API rate limit exceeded. Please try again later.');
+        } else if (errorMsg.includes('400')) {
+          throw new Error('Mistral API request error: ' + errorMsg);
+        } else if (errorMsg.includes('403')) {
+          throw new Error('Mistral API access denied. Please check your permissions.');
+        } else if (errorMsg.includes('404')) {
+          throw new Error('Mistral API model not found. Please check your model name.');
+        } else if (errorMsg.includes('500')) {
+          throw new Error('Mistral API server error. Please try again later.');
+        }
+
+        // Rethrow with more context
+        throw new Error(`Mistral API error: ${mistralError.message}`);
+      }
+    }
+
+    // Get chat model for other providers
     const chatModel = await getChatModel();
     console.log('[LLM Service] Chat model initialized');
 
@@ -421,7 +512,7 @@ async function sendPromptToLlm({ messages }) {
       '[LLM Service] Message structure:',
       langchainMessages.map((msg) => ({
         type: msg.constructor.name,
-        _type: msg._getType && msg._getType(),
+        _type: typeof msg._getType === 'function' ? msg._getType() : msg._type || 'unknown',
         contentLength: msg.content?.length || 0,
       }))
     );
