@@ -307,3 +307,45 @@
   background-color: var(--color-accent, #1e90ff);
   border-color: var(--color-accent, #1e90ff);
 }
+
+.system-prompt-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border, #444c56);
+}
+
+.system-prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.edit-system-prompt-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-bg-secondary, #2d3748);
+  color: var(--color-text, #fff);
+  border: 1px solid var(--color-border, #444c56);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-system-prompt-button:hover {
+  background-color: var(--color-bg-hover, #444c56);
+}
+
+.dark-mode .edit-system-prompt-button {
+  background-color: var(--color-bg-secondary-dark, #2d3748);
+  color: var(--color-text-dark, #f7fafc);
+  border: 1px solid var(--color-border-dark, #4a5568);
+}
+
+.dark-mode .edit-system-prompt-button:hover {
+  background-color: var(--color-bg-hover-dark, #4a5568);
+}

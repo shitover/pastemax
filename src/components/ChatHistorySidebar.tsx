@@ -33,7 +33,7 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   onSelectSession,
   onDeleteSession,
   onCreateNewSession,
-  isSearching = false,
+  // isSearching = false,
   searchQuery = '',
   onSearchChange,
   onClearSearch,

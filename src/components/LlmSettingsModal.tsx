@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { LlmConfig, LlmProvider } from '../types/llmTypes';
+import { Edit } from 'lucide-react';
 
 interface LlmSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialConfig: LlmConfig | null;
   onSaveConfig: (config: LlmConfig) => Promise<void>;
+  onOpenSystemPromptEditor?: () => void;
 }
 
 const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
@@ -13,6 +15,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   onClose,
   initialConfig,
   onSaveConfig,
+  onOpenSystemPromptEditor,
 }) => {
   const [provider, setProvider] = useState<LlmProvider | ''>('');
   const [apiKey, setApiKey] = useState<string>('');
@@ -76,7 +79,6 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'API Key';
     }
   };
-
 
   // Get recent models for the selected provider
   const getRecentModelsForProvider = () => {
@@ -194,6 +196,36 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="model-name">Model Name</label>
+            <input
+              id="model-name"
+              type="text"
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              className="model-name-input"
+              disabled={isSaving || !provider}
+            />
+
+            {provider && getRecentModelsForProvider().length > 0 && (
+              <div className="recent-models">
+                <small className="help-text">Recently used models:</small>
+                <div className="recent-models-list">
+                  {getRecentModelsForProvider().map((model, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="recent-model-button"
+                      onClick={() => handleSelectRecentModel(model)}
+                    >
+                      {model}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Minimal advanced options toggle */}
           <div className="form-group" style={{ marginBottom: showAdvanced ? 0 : 18 }}>
             <button
@@ -226,35 +258,26 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="model-name">Model Name</label>
-            <input
-              id="model-name"
-              type="text"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              className="model-name-input"
-              disabled={isSaving || !provider}
-            />
-
-            {provider && getRecentModelsForProvider().length > 0 && (
-              <div className="recent-models">
-                <small className="help-text">Recently used models:</small>
-                <div className="recent-models-list">
-                  {getRecentModelsForProvider().map((model, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      className="recent-model-button"
-                      onClick={() => handleSelectRecentModel(model)}
-                    >
-                      {model}
-                    </button>
-                  ))}
-                </div>
+          {/* System Prompt Section */}
+          {onOpenSystemPromptEditor && (
+            <div className="form-group system-prompt-section">
+              <div className="system-prompt-header">
+                <label>System Prompt</label>
+                <button
+                  type="button"
+                  className="edit-system-prompt-button"
+                  onClick={onOpenSystemPromptEditor}
+                  title="Edit System Prompt"
+                >
+                  <Edit size={16} />
+                  <span>Edit System Prompt</span>
+                </button>
               </div>
-            )}
-          </div>
+              <small className="help-text">
+                Customize how the AI behaves by editing the system prompt that guides its responses.
+              </small>
+            </div>
+          )}
 
           {errorMessage && <div className="error-message">{errorMessage}</div>}
         </div>

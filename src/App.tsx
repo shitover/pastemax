@@ -11,7 +11,7 @@ import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
 // import { STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare, Edit } from 'lucide-react';
+import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
 import WorkspaceManager from './components/WorkspaceManager';
@@ -2095,14 +2095,6 @@ const App = (): JSX.Element => {
                   </div>
                 )}
               </div>
-              <button
-                className="header-action-btn"
-                onClick={handleOpenSystemPromptEditor}
-                title="Edit System Prompt"
-              >
-                <Edit size={18} />
-                Edit System Prompt
-              </button>
             </div>
           </div>
         </header>
@@ -2364,6 +2356,7 @@ const App = (): JSX.Element => {
           onClose={() => setIsLlmSettingsModalOpen(false)}
           initialConfig={llmConfig}
           onSaveConfig={handleSaveLlmConfig}
+          onOpenSystemPromptEditor={handleOpenSystemPromptEditor}
         />
 
         {/* Chat View */}
