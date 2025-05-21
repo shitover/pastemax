@@ -6,72 +6,12 @@ const Store = require('electron-store');
 const fs = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+
 
 /**
  * Store instance for persisting LLM configuration
  */
 let store;
-
-/**
- * Provider-specific API endpoints for fetching models
- */
-const PROVIDER_MODEL_ENDPOINTS = {
-  openai: 'https://api.openai.com/v1/models',
-  anthropic: 'https://api.anthropic.com/v1/models',
-  gemini: 'https://generativelanguage.googleapis.com/v1/models',
-  groq: 'https://api.groq.com/v1/models',
-  deepseek: 'https://api.deepseek.com/v1/models',
-  qwen: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/models',
-  openrouter: 'https://openrouter.ai/api/v1/models',
-};
-
-/**
- * Provider-specific headers for API requests
- */
-function getProviderHeaders(provider, apiKey) {
-  switch (provider) {
-    case 'openai':
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-    case 'anthropic':
-      return {
-        'x-api-key': apiKey,
-        'Content-Type': 'application/json',
-      };
-    case 'gemini':
-      return {
-        'Content-Type': 'application/json',
-      };
-    case 'groq':
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-    case 'deepseek':
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-    case 'qwen':
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-    case 'openrouter':
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-    default:
-      return {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-  }
-}
 
 /**
  * Generates a secure encryption key based on a combination of environment variables
@@ -198,220 +138,6 @@ async function getLlmConfig() {
 async function setLlmConfig({ provider, apiKey, modelName, baseUrl }) {
   initializeStore();
   store.set('llmConfig', { provider, apiKey, modelName, baseUrl });
-}
-
-/**
- * Fetches available models from the specified provider
- * @param {string} provider - The LLM provider
- * @param {string} apiKey - The API key
- * @param {string} baseUrl - Optional base URL override
- * @returns {Promise<{models: Array, error?: string}>}
- */
-async function fetchModelsFromProvider(provider, apiKey, baseUrl = null) {
-  try {
-    console.log(`[LLM Service] Fetching models from ${provider}...`);
-
-    if (!provider || !apiKey) {
-      return {
-        models: [],
-        error: 'Provider and API key are required',
-      };
-    }
-
-    let url = baseUrl || PROVIDER_MODEL_ENDPOINTS[provider] || PROVIDER_MODEL_ENDPOINTS.openrouter;
-    let headers = getProviderHeaders(provider, apiKey);
-    let models = [];
-
-    // Add API key as query parameter for Gemini
-    if (provider === 'gemini') {
-      url = `${url}?key=${apiKey}`;
-    }
-
-    const response = await fetch(url, { headers });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `[LLM Service] Error fetching models from ${provider}: ${response.status} ${response.statusText}`
-      );
-      console.error(`[LLM Service] Error details: ${errorText}`);
-      return {
-        models: [],
-        error: `Failed to fetch models: ${response.status} ${response.statusText}`,
-      };
-    }
-
-    const data = await response.json();
-
-    // Handle provider-specific response formats
-    switch (provider) {
-      case 'openai':
-        if (data.data && Array.isArray(data.data)) {
-          models = data.data
-            .filter((model) => model.id.includes('gpt'))
-            .map((model) => ({
-              id: model.id,
-              name: model.id,
-              provider: 'openai',
-              context_length: getContextLengthForModel(model.id, 'openai'),
-              description: `OpenAI ${model.id}`,
-              available: true,
-            }));
-        }
-        break;
-
-      case 'anthropic':
-        if (data.models && Array.isArray(data.models)) {
-          models = data.models.map((model) => ({
-            id: model.id,
-            name: model.id,
-            provider: 'anthropic',
-            context_length: model.context_window || getContextLengthForModel(model.id, 'anthropic'),
-            description: `Anthropic ${model.id}`,
-            available: true,
-          }));
-        }
-        break;
-
-      case 'gemini':
-        if (data.models && Array.isArray(data.models)) {
-          models = data.models
-            .filter((model) => model.name.includes('gemini'))
-            .map((model) => {
-              const modelId = model.name.split('/').pop();
-              return {
-                id: modelId,
-                name: modelId,
-                provider: 'gemini',
-                context_length: getContextLengthForModel(modelId, 'gemini'),
-                description: model.description || `Google ${modelId}`,
-                available: model.state === 'ACTIVE',
-              };
-            });
-        }
-        break;
-
-      case 'groq':
-        if (data.data && Array.isArray(data.data)) {
-          models = data.data.map((model) => ({
-            id: model.id,
-            name: model.id,
-            provider: 'groq',
-            context_length: getContextLengthForModel(model.id, 'groq'),
-            description: `Groq ${model.id}`,
-            available: true,
-          }));
-        }
-        break;
-
-      case 'openrouter':
-        if (data.data && Array.isArray(data.data)) {
-          models = data.data.map((model) => ({
-            id: model.id,
-            name: model.name || model.id,
-            provider: 'openrouter',
-            context_length: model.context_length || 4096,
-            description: model.description || '',
-            pricing: model.pricing || '',
-            available: model.available !== false,
-          }));
-        }
-        break;
-
-      default:
-        // Generic handling for other providers
-        if (data.data && Array.isArray(data.data)) {
-          models = data.data.map((model) => ({
-            id: model.id || model.name,
-            name: model.name || model.id,
-            provider,
-            context_length: model.context_length || 4096,
-            description: model.description || '',
-            available: true,
-          }));
-        } else if (data.models && Array.isArray(data.models)) {
-          models = data.models.map((model) => ({
-            id: model.id || model.name,
-            name: model.name || model.id,
-            provider,
-            context_length: model.context_length || 4096,
-            description: model.description || '',
-            available: true,
-          }));
-        }
-    }
-
-    console.log(`[LLM Service] Successfully fetched ${models.length} models from ${provider}`);
-    return { models };
-  } catch (error) {
-    console.error(`[LLM Service] Error fetching models from ${provider}:`, error);
-    return {
-      models: [],
-      error: `Error fetching models: ${error.message}`,
-    };
-  }
-}
-
-/**
- * Get estimated context length for known models when not provided by the API
- * @param {string} modelId - The model ID
- * @param {string} provider - The provider
- * @returns {number} - Estimated context length
- */
-function getContextLengthForModel(modelId, provider) {
-  const knownModels = {
-    // OpenAI models
-    'gpt-4-turbo': 128000,
-    'gpt-4-turbo-preview': 128000,
-    'gpt-4': 8192,
-    'gpt-4-32k': 32768,
-    'gpt-3.5-turbo': 4096,
-    'gpt-3.5-turbo-16k': 16384,
-
-    // Anthropic models
-    'claude-3-opus': 200000,
-    'claude-3-sonnet': 180000,
-    'claude-3-haiku': 150000,
-    'claude-2': 100000,
-    'claude-instant': 100000,
-
-    // Gemini models
-    'gemini-pro': 32768,
-    'gemini-pro-vision': 16384,
-    'gemini-1.5-pro': 1000000,
-    'gemini-1.5-flash': 1000000,
-
-    // Groq models
-    'llama2-70b': 4096,
-    'mixtral-8x7b': 32768,
-    'gemma-7b': 8192,
-  };
-
-  // Check for exact matches
-  if (knownModels[modelId]) {
-    return knownModels[modelId];
-  }
-
-  // Check for partial matches
-  for (const [key, value] of Object.entries(knownModels)) {
-    if (modelId.includes(key)) {
-      return value;
-    }
-  }
-
-  // Default values by provider
-  const defaultContextLengths = {
-    openai: 4096,
-    anthropic: 100000,
-    gemini: 32768,
-    groq: 32768,
-    deepseek: 4096,
-    qwen: 8192,
-    grok: 4096,
-    openrouter: 4096,
-  };
-
-  return defaultContextLengths[provider] || 4096;
 }
 
 /**
@@ -620,11 +346,6 @@ async function getChatModel() {
 
         if (config.baseUrl) {
           options.baseURL = config.baseUrl;
-        } else if (PROVIDER_MODEL_ENDPOINTS[config.provider]) {
-          // Extract base URL from the endpoints object - strip the "/models" part
-          const endpointUrl = PROVIDER_MODEL_ENDPOINTS[config.provider];
-          const baseUrl = endpointUrl.substring(0, endpointUrl.lastIndexOf('/'));
-          options.baseURL = baseUrl;
         }
 
         return new ChatOpenAI(options);
@@ -788,5 +509,4 @@ module.exports = {
   setLlmConfig,
   sendPromptToLlm,
   saveContentToFile,
-  fetchModelsFromProvider,
 };

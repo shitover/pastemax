@@ -113,7 +113,11 @@ contextBridge.exposeInMainWorld('electron', {
         'check-for-updates',
         'get-token-count',
         'fetch-models',
-      ]; // Added 'fetch-models'
+        'llm:get-config',
+        'llm:set-config',
+        'llm:send-prompt',
+        'llm:save-file',
+      ]; // Added LLM channels
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
       }
@@ -159,14 +163,4 @@ contextBridge.exposeInMainWorld('llmApi', {
    * @returns {Promise<{success: boolean, message: string}>}
    */
   saveFile: (params) => ipcRenderer.invoke('llm:save-file', ensureSerializable(params)),
-
-  /**
-   * Fetches models from specified provider
-   * @param {string} provider - The LLM provider
-   * @param {string} apiKey - The API key
-   * @param {string} baseUrl - Optional custom API base URL
-   * @returns {Promise<{models: Array, error?: string}>}
-   */
-  fetchModels: (provider, apiKey, baseUrl) =>
-    ipcRenderer.invoke('fetch-models', ensureSerializable({ provider, apiKey, baseUrl })),
 });

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { LlmConfig, LlmProvider, ModelInfo } from '../types/llmTypes';
+import React, { useState, useEffect } from 'react';
+import { LlmConfig, LlmProvider } from '../types/llmTypes';
 
 interface LlmSettingsModalProps {
   isOpen: boolean;
@@ -20,9 +20,20 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   const [baseUrl, setBaseUrl] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
-  const [models, setModels] = useState<ModelInfo[]>([]);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [recentModels, setRecentModels] = useState<{ [key: string]: string[] }>({});
+
+  // Load user's recent models from localStorage
+  useEffect(() => {
+    try {
+      const savedModels = localStorage.getItem('pastemax-recent-models');
+      if (savedModels) {
+        setRecentModels(JSON.parse(savedModels));
+      }
+    } catch (error) {
+      console.error('Error loading recent models:', error);
+    }
+  }, []);
 
   // Populate form from initialConfig
   useEffect(() => {
@@ -31,15 +42,6 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       setApiKey(initialConfig.apiKey || '');
       setModelName(initialConfig.modelName || '');
       setBaseUrl(initialConfig.baseUrl || '');
-
-      // If we have a provider and API key, fetch models
-      if (initialConfig.provider && initialConfig.apiKey) {
-        fetchModels(
-          initialConfig.provider,
-          initialConfig.apiKey,
-          initialConfig.baseUrl || undefined
-        );
-      }
     }
   }, [initialConfig, isOpen]);
 
@@ -47,76 +49,8 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setErrorMessage(null);
-      setModels([]);
-      setIsLoadingModels(false);
     }
   }, [isOpen]);
-
-  // Fetch models for the selected provider
-  const fetchModels = useCallback(
-    async (providerValue: LlmProvider, apiKeyValue: string, baseUrlValue?: string) => {
-      if (!providerValue || !apiKeyValue) return;
-
-      setIsLoadingModels(true);
-      setErrorMessage(null);
-
-      try {
-        const result = await window.llmApi.fetchModels(
-          providerValue,
-          apiKeyValue,
-          baseUrlValue || undefined
-        );
-
-        if (result.error) {
-          setErrorMessage(`Error fetching models: ${result.error}`);
-          setModels([]);
-        } else {
-          setModels(result.models || []);
-        }
-      } catch (error) {
-        console.error('Error fetching models:', error);
-        setErrorMessage(
-          `Failed to fetch models: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        setModels([]);
-      } finally {
-        setIsLoadingModels(false);
-      }
-    },
-    []
-  );
-
-  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as LlmProvider | '';
-    setProvider(value);
-    setModelName(''); // Reset model selection
-    setModels([]); // Clear models list
-
-    // If API key is already set, fetch models for the new provider
-    if (apiKey && value) {
-      fetchModels(value, apiKey, baseUrl || undefined);
-    }
-  };
-
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newApiKey = e.target.value;
-    setApiKey(newApiKey);
-
-    // If provider is set and API key is not empty, fetch models
-    if (provider && newApiKey.length > 5) {
-      fetchModels(provider, newApiKey, baseUrl || undefined);
-    }
-  };
-
-  const handleBaseUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newBaseUrl = e.target.value;
-    setBaseUrl(newBaseUrl);
-
-    // If provider and API key are set, fetch models with the new base URL
-    if (provider && apiKey) {
-      fetchModels(provider, apiKey, newBaseUrl || undefined);
-    }
-  };
 
   const getProviderPlaceholder = () => {
     switch (provider) {
@@ -141,6 +75,20 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   };
 
+
+  // Get recent models for the selected provider
+  const getRecentModelsForProvider = () => {
+    return recentModels[provider] || [];
+  };
+
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as LlmProvider | '';
+    setProvider(value);
+
+    // Clear model name when changing provider
+    setModelName('');
+  };
+
   const handleSave = async () => {
     if (!provider) {
       setErrorMessage('Please select a provider');
@@ -152,16 +100,36 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       return;
     }
 
+    if (!modelName) {
+      setErrorMessage('Please enter a model name');
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
 
     try {
-      await onSaveConfig({
+      const config: LlmConfig = {
         provider,
         apiKey,
-        modelName: modelName.trim() || null,
+        modelName: modelName.trim(),
         baseUrl: baseUrl.trim() || null,
-      });
+      };
+
+      await onSaveConfig(config);
+
+      // Save this model to recent models for this provider
+      const updatedRecentModels = { ...recentModels };
+      const providerModels = updatedRecentModels[provider] || [];
+
+      // Only add if it's not already in the list
+      if (!providerModels.includes(modelName)) {
+        // Add to the beginning of the array, limit to 5 recent models
+        updatedRecentModels[provider] = [modelName, ...providerModels].slice(0, 5);
+        setRecentModels(updatedRecentModels);
+        localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
+      }
+
       onClose();
     } catch (error) {
       console.error('Error saving LLM config:', error);
@@ -171,19 +139,9 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   };
 
-  // Format context length for display
-  const formatContextLength = (tokens: number): string => {
-    if (!tokens) return 'unknown';
-
-    if (tokens >= 1000000) {
-      return `${(tokens / 1000000).toFixed(1)}M`;
-    }
-
-    if (tokens >= 1000) {
-      return `${Math.round(tokens / 1000)}K`;
-    }
-
-    return tokens.toString();
+  // Handle selecting a recent model
+  const handleSelectRecentModel = (model: string) => {
+    setModelName(model);
   };
 
   if (!isOpen) return null;
@@ -226,7 +184,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               id="api-key"
               type="password"
               value={apiKey}
-              onChange={handleApiKeyChange}
+              onChange={(e) => setApiKey(e.target.value)}
               placeholder={getProviderPlaceholder()}
               className="api-key-input"
               disabled={isSaving || !provider}
@@ -254,7 +212,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
                 id="base-url"
                 type="text"
                 value={baseUrl}
-                onChange={handleBaseUrlChange}
+                onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="Custom API endpoint URL"
                 className="base-url-input"
                 disabled={isSaving || !provider}
@@ -266,42 +224,33 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           )}
 
           <div className="form-group">
-            <label htmlFor="model-name">Model</label>
+            <label htmlFor="model-name">Model Name</label>
+            <input
+              id="model-name"
+              type="text"
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              className="model-name-input"
+              disabled={isSaving || !provider}
+            />
 
-            {isLoadingModels ? (
-              <div className="models-loading">Loading models...</div>
-            ) : models.length > 0 ? (
-              <select
-                id="model-name"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                className="model-select"
-                disabled={isSaving || !provider || isLoadingModels}
-              >
-                <option value="">Select a model</option>
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name} ({formatContextLength(model.context_length)} context)
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="model-name"
-                type="text"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="Enter model name"
-                className="model-name-input"
-                disabled={isSaving || !provider}
-              />
+            {provider && getRecentModelsForProvider().length > 0 && (
+              <div className="recent-models">
+                <small className="help-text">Recently used models:</small>
+                <div className="recent-models-list">
+                  {getRecentModelsForProvider().map((model, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="recent-model-button"
+                      onClick={() => handleSelectRecentModel(model)}
+                    >
+                      {model}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-
-            <small className="help-text">
-              {models.length > 0
-                ? `${models.length} models available. Select one from the list.`
-                : 'Enter the model name manually or provide a valid API key to see available models.'}
-            </small>
           </div>
 
           {errorMessage && <div className="error-message">{errorMessage}</div>}
@@ -314,7 +263,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           <button
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={isSaving || !provider || !apiKey}
+            disabled={isSaving || !provider || !apiKey || !modelName}
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>

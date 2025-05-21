@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
 const { getUpdateStatus, resetUpdateSessionState } = require('./update-manager');
-const llmService = require('./llmService');
+const { getLlmConfig, setLlmConfig, sendPromptToLlm, saveContentToFile } = require('./llmService');
 // GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
@@ -117,6 +117,46 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // ======================
 // IPC HANDLERS
 // ======================
+
+// LLM Service Handlers
+ipcMain.handle('llm:get-config', async () => {
+  try {
+    const config = await getLlmConfig();
+    return config;
+  } catch (error) {
+    console.error('Error getting LLM config:', error);
+    return { error: error.message };
+  }
+});
+
+ipcMain.handle('llm:set-config', async (_event, config) => {
+  try {
+    await setLlmConfig(config);
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting LLM config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('llm:send-prompt', async (_event, { messages }) => {
+  try {
+    return await sendPromptToLlm({ messages });
+  } catch (error) {
+    console.error('Error sending prompt to LLM:', error);
+    return { error: error.message };
+  }
+});
+
+ipcMain.handle('llm:save-file', async (_event, { filePath, content }) => {
+  try {
+    return await saveContentToFile({ filePath, content });
+  } catch (error) {
+    console.error('Error saving file:', error);
+    return { success: false, message: error.message };
+  }
+});
+
 ipcMain.handle('check-for-updates', async (event) => {
   console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
   try {
@@ -311,55 +351,6 @@ ipcMain.handle('get-token-count', async (event, textToTokenize) => {
   }
 });
 
-// LLM API Handlers
-ipcMain.handle('llm:get-config', async () => {
-  try {
-    console.log('[IPC:llm:get-config] Getting LLM configuration');
-    const config = await llmService.getLlmConfig();
-    // Mask API key in logs
-    const logConfig = { ...config, apiKey: config.apiKey ? '****' : null };
-    console.log('[IPC:llm:get-config] Returning config:', logConfig);
-    return config;
-  } catch (error) {
-    console.error('[IPC:llm:get-config] Error:', error);
-    return { provider: null, apiKey: null, modelName: null, error: error.message };
-  }
-});
-
-ipcMain.handle('llm:set-config', async (event, config) => {
-  try {
-    console.log('[IPC:llm:set-config] Setting LLM configuration for provider:', config.provider);
-    await llmService.setLlmConfig(config);
-    return { success: true };
-  } catch (error) {
-    console.error('[IPC:llm:set-config] Error:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('llm:send-prompt', async (event, { messages }) => {
-  try {
-    console.log('[IPC:llm:send-prompt] Sending prompt to LLM');
-    const response = await llmService.sendPromptToLlm({ messages });
-    console.log('[IPC:llm:send-prompt] Received response from LLM');
-    return response;
-  } catch (error) {
-    console.error('[IPC:llm:send-prompt] Error:', error);
-    return { error: error.message };
-  }
-});
-
-ipcMain.handle('llm:save-file', async (event, { filePath, content }) => {
-  try {
-    console.log('[IPC:llm:save-file] Saving content to file:', filePath);
-    const result = await llmService.saveContentToFile({ filePath, content });
-    return result;
-  } catch (error) {
-    console.error('[IPC:llm:save-file] Error:', error);
-    return { success: false, message: error.message };
-  }
-});
-
 ipcMain.on('request-file-list', async (event, payload) => {
   console.log('Received request-file-list payload:', payload); // Log the entire payload
 
@@ -519,31 +510,42 @@ ipcMain.on('request-file-list', async (event, payload) => {
 });
 
 // Handle fetch-models request from renderer
-ipcMain.handle('fetch-models', async (event, params = {}) => {
+ipcMain.handle('fetch-models', async () => {
   try {
-    const { provider, apiKey, baseUrl } = params;
+    const fetch = require('node-fetch');
+    console.log('Fetching models from OpenRouter API in main process...');
+    const response = await fetch('https://openrouter.ai/api/v1/models');
 
-    console.log(`[Main Process] Fetching models for provider: ${provider}`);
-
-    if (!provider || !apiKey) {
-      console.error('[Main Process] Missing required parameters for fetching models');
-      return {
-        models: [],
-        error: 'Provider and API key are required',
-      };
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    const result = await llmService.fetchModelsFromProvider(provider, apiKey, baseUrl);
+    const apiResponse = await response.json();
 
-    console.log(`[Main Process] Fetched ${result.models?.length || 0} models for ${provider}`);
+    if (apiResponse && Array.isArray(apiResponse.data)) {
+      console.log(`Successfully fetched ${apiResponse.data.length} models from main process.`);
 
-    return result;
+      // Map API response to expected ModelInfo structure
+      const models = apiResponse.data.map((apiModel) => ({
+        id: apiModel.id,
+        name: apiModel.name || apiModel.id,
+        description: apiModel.description || '',
+        context_length: apiModel.context_length || 0,
+        pricing: apiModel.pricing || '',
+        available: apiModel.available !== false,
+      }));
+
+      return models;
+    } else {
+      console.error(
+        "Error fetching models: Invalid response format. Expected object with 'data' array.",
+        apiResponse
+      );
+      return null;
+    }
   } catch (error) {
-    console.error('[Main Process] Error fetching models:', error);
-    return {
-      models: [],
-      error: `Error fetching models: ${error.message}`,
-    };
+    console.error('Error fetching models in main process:', error);
+    return null;
   }
 });
 
@@ -718,9 +720,6 @@ function createWindow() {
 // APP LIFECYCLE
 // ======================
 app.whenReady().then(() => {
-  // Initialize the LLM service store
-  llmService.initializeStore();
-
   createWindow();
 
   app.on('activate', () => {

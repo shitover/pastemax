@@ -270,3 +270,40 @@
 .advanced-toggle[aria-expanded='true'] {
   font-weight: 600;
 }
+
+.recent-models {
+  margin-top: 10px;
+}
+
+.recent-models-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.recent-model-button {
+  background-color: var(--color-input-background, #2a2e36);
+  border: 1px solid var(--color-border, #444c56);
+  color: var(--color-text, #fff);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.recent-model-button:hover {
+  background-color: var(--color-accent, #1e90ff);
+  border-color: var(--color-accent, #1e90ff);
+}
+
+.dark-mode .recent-model-button {
+  background-color: var(--color-input-background-dark, #23272f);
+  border-color: var(--color-border-dark, #333843);
+}
+
+.dark-mode .recent-model-button:hover {
+  background-color: var(--color-accent, #1e90ff);
+  border-color: var(--color-accent, #1e90ff);
+}

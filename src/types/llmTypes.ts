@@ -67,13 +67,6 @@ export interface LlmApiWindow {
       filePath: string;
       content: string;
     }) => Promise<{ success: boolean; message: string }>;
-    fetchModels: (
-      provider: LlmProvider,
-      apiKey: string
-    ) => Promise<{
-      models: ModelInfo[];
-      error?: string;
-    }>;
   };
 }
 
