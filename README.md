@@ -30,23 +30,27 @@ PasteMax is a simple desktop app built for developers using AI coding assistants
 ## Features
 
 ### 📁 File Navigation & Management
+
 - **File Tree Navigation**: Browse directories and files with an expandable tree view
 - **Search Capabilities**: Quickly find files by name or content
 - **Sorting Options**: Sort files by name, size, or token count
 - **File Change Watcher**: Auto-updates when files are modified
 
 ### 🤖 AI-Ready Features
+
 - **Token Counting**: View approximate token count for each file
 - **Model Context Limit**: Select different models (Claude-3.7, GPT-4o, Gemini 2.5, etc.)
 - **Context Limit Warning**: Get alerted when selections exceed the model's context limit
 
 ### 🔍 Content & Preview
+
 - **File Previewer**: View file contents in a dedicated preview pane
 - **Selection Management**: Select multiple files and copy their contents together
 - **Binary File Detection**: Automatic detection and exclusion of binary files
 - **Smart File Exclusion**: Auto-excludes package-lock.json, node_modules, etc.
 
 ### 💼 Workflow Enhancements
+
 - **Workspace Management**: Save and load workspaces for quick directory access
 - **Automatic Update Checker**: Stay current with the latest releases
 - **Dark Mode**: Toggle between light and dark themes for comfortable viewing

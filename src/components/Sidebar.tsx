@@ -3,6 +3,7 @@ import { SidebarProps, TreeNode } from '../types/FileTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
 import TaskTypeSelector from './TaskTypeSelector';
+import { ListChecks, ListX, FolderMinus, FolderPlus } from 'lucide-react';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -33,6 +34,8 @@ const Sidebar = ({
   selectedTaskType,
   onTaskTypeChange,
   onManageCustomTypes,
+  collapseAllFolders,
+  expandAllFolders,
 }: Omit<SidebarProps, 'openFolder'>) => {
   // State for managing the file tree and UI
   const [fileTree, setFileTree] = useState(() => [] as TreeNode[]);
@@ -360,15 +363,37 @@ const Sidebar = ({
           className="sidebar-action-btn"
           title="Select all files and folders"
           onClick={selectAllFiles}
+          aria-label="Select all files and folders"
+          type="button"
         >
-          Select All
+          <ListChecks size={18} />
         </button>
         <button
           className="sidebar-action-btn"
           title="Deselect all files and folders"
           onClick={deselectAllFiles}
+          aria-label="Deselect all files and folders"
+          type="button"
         >
-          Deselect All
+          <ListX size={18} />
+        </button>
+        <button
+          className="sidebar-action-btn"
+          title="Collapse all folders"
+          onClick={collapseAllFolders}
+          aria-label="Collapse all folders"
+          type="button"
+        >
+          <FolderMinus size={18} />
+        </button>
+        <button
+          className="sidebar-action-btn"
+          title="Expand all folders"
+          onClick={expandAllFolders}
+          aria-label="Expand all folders"
+          type="button"
+        >
+          <FolderPlus size={18} />
         </button>
       </div>
 

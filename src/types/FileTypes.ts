@@ -41,9 +41,11 @@ export interface SidebarProps {
   toggleExpanded: (nodeId: string) => void;
   includeBinaryPaths: boolean;
   selectedTaskType?: string;
-  onTaskTypeChange?: (taskTypeId: string) => void;
+  onTaskTypeChange?: (taskType: string) => void;
   onManageCustomTypes?: () => void;
   currentWorkspaceName?: string | null;
+  collapseAllFolders: () => void;
+  expandAllFolders: () => void;
 }
 
 export interface FileListProps {
