@@ -189,7 +189,7 @@
   gap: 12px;
   padding: 12px;
   border-radius: 8px;
-  background-color: var(--color-loading-background, #f5f5f5);
+  background-color: var(--color-loading-background, #3f3a3a);
   align-self: center;
 }
 

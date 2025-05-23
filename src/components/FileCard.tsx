@@ -1,6 +1,6 @@
 import { useCallback, memo, useMemo } from 'react';
 import { FileData } from '../types/FileTypes';
-import { Plus, X, FileText, Eye, FileWarning } from 'lucide-react';
+import { Plus, X, FileText, Eye, FileWarning, MessageSquare } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ChatButton from './ChatButton';
 
@@ -92,13 +92,17 @@ const FileCard = ({
               {''}
             </CopyButton>
             {onChatAbout && !isBinary && (
-              <ChatButton
-                onClick={handleChatAbout}
-                className="file-card-action"
-                disabled={!isLlmConfigured}
+              <button
+                className="file-card-action chat-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onChatAbout) onChatAbout(filePath);
+                }}
                 title="Chat about this file"
-                text=""
-              />
+                disabled={!isLlmConfigured}
+              >
+                <MessageSquare size={16} />
+              </button>
             )}
           </>
         )}

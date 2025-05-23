@@ -31,7 +31,7 @@ const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({ onModelSelect, cu
           (modelNames as string[]).forEach((modelName: string) => {
             models.push({
               id: modelName, // Use the model name as the ID
-              name: `${provider.charAt(0).toUpperCase() + provider.slice(1)}: ${modelName}`, // Format as "Provider: Model"
+              name: modelName, // Format as "Provider: Model"
               context_length: 0, // We don't have this information from localStorage
             });
           });
