@@ -349,3 +349,14 @@
 .dark-mode .edit-system-prompt-button:hover {
   background-color: var(--color-bg-hover-dark, #4a5568);
 }
+
+.delete-recent-model-button {
+  margin-left: 8px;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+}
+
+.delete-recent-model-button:hover {
+  color: var(--color-danger);
+}

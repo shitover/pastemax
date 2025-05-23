@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LlmConfig, LlmProvider } from '../types/llmTypes';
-import { Edit } from 'lucide-react';
+import { Edit, X } from 'lucide-react';
 
 interface LlmSettingsModalProps {
   isOpen: boolean;
@@ -148,6 +148,18 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     setModelName(model);
   };
 
+  const handleDeleteRecentModel = (modelToDelete: string) => {
+    if (!provider) return;
+
+    const updatedRecentModels = { ...recentModels };
+    const providerModels = updatedRecentModels[provider] || [];
+
+    updatedRecentModels[provider] = providerModels.filter((model) => model !== modelToDelete);
+
+    setRecentModels(updatedRecentModels);
+    localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -219,6 +231,14 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
                       onClick={() => handleSelectRecentModel(model)}
                     >
                       {model}
+                      <X
+                        size={14}
+                        className="delete-recent-model-button"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent model selection
+                          handleDeleteRecentModel(model);
+                        }}
+                      />
                     </button>
                   ))}
                 </div>
