@@ -3,6 +3,7 @@ import { SidebarProps, TreeNode } from '../types/FileTypes';
 import SearchBar from './SearchBar';
 import TreeItem from './TreeItem';
 import TaskTypeSelector from './TaskTypeSelector';
+import { ListChecks, ListX } from 'lucide-react';
 
 /**
  * Import path utilities for handling file paths across different operating systems.
@@ -360,15 +361,19 @@ const Sidebar = ({
           className="sidebar-action-btn"
           title="Select all files and folders"
           onClick={selectAllFiles}
+          aria-label="Select all files and folders"
+          type="button"
         >
-          Select All
+          <ListChecks size={18} />
         </button>
         <button
           className="sidebar-action-btn"
           title="Deselect all files and folders"
           onClick={deselectAllFiles}
+          aria-label="Deselect all files and folders"
+          type="button"
         >
-          Deselect All
+          <ListX size={18} />
         </button>
       </div>
 

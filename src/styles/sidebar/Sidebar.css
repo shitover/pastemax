@@ -10,9 +10,7 @@
   overflow: hidden; /* Manage internal scrolling */
   background-color: var(--background-secondary);
   position: relative; /* For resize handle positioning */
-  transition: width 0.1s ease;
   flex-shrink: 0; /* Prevent sidebar from shrinking */
-  animation: slideInFromLeft 0.3s ease-out;
 }
 
 .sidebar-header {
@@ -70,22 +68,36 @@
 }
 
 .sidebar-action-btn {
-  flex: 1;
-  font-size: 13px;
-  padding: var(--space-sm) var(--space-md);
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background-color: var(--background-primary);
-  color: var (--text-primary);
+  color: var(--text-primary);
   border: var(--standard-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.sidebar-action-btn:hover,
+.sidebar-action-btn:focus {
+  background-color: var(--color-primary);
+  color: #fff;
+  outline: none;
 }
 
 /* -------------------- Sidebar Resize Handle -------------------- */
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: -2px;
+  right: -4px;
   bottom: 0;
-  width: 4px;
-  cursor: col-resize;
+  width: 6px;
+  cursor: ew-resize;
   z-index: 10;
   background-color: transparent;
   will-change: transform; /* Optimize for performance */
