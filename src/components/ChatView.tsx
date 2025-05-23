@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, ChatTarget } from '../types/llmTypes';
 import ChatHistorySidebar, { ChatSession } from './ChatHistorySidebar';
 import ChatModelSelector from './ChatModelSelector';
+import ReactMarkdown, { Options } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useTheme } from '../context/ThemeContext';
+import '../styles/modals/ChatView.css';
+import '../styles/modals/ChatHistorySidebar.css';
 
 interface ChatViewProps {
   isOpen: boolean;
@@ -21,6 +28,15 @@ interface ChatViewProps {
   onCreateNewSession: () => void;
   selectedModelId?: string;
   onModelSelect?: (modelId: string) => void;
+}
+
+// Define this interface for your code renderer props
+interface CodeRendererProps {
+  node?: any; // Ideally, this would be typed with 'Element' from 'hast'
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: any; // For ...rest and other HTML attributes
 }
 
 const ChatView: React.FC<ChatViewProps> = ({
@@ -47,6 +63,24 @@ const ChatView: React.FC<ChatViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+
+  // State for expanded messages and truncation limits
+  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
+  const MAX_CHARS_TRUNCATE = 700;
+  const MAX_LINES_TRUNCATE = 15;
+
+  const toggleMessageExpansion = (messageId: string) => {
+    setExpandedMessageIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
 
   // Auto-focus the input when the chat opens
   useEffect(() => {
@@ -89,6 +123,107 @@ const ChatView: React.FC<ChatViewProps> = ({
           )
       )
     : chatSessions;
+
+  // Helper function to get displayable message content
+  const commonMarkdownComponents: Options['components'] = {
+    code({ node, inline, className, children, ...rest }: CodeRendererProps) {
+      const match = /language-(\w+)/.exec(className || '');
+      const lang = match ? match[1] : '';
+      const safeClassName = className || '';
+
+      // Ensure children is an array of strings and join, or handle single string child
+      let codeString = '';
+      if (Array.isArray(children)) {
+        codeString = children
+          .map((child) => (typeof child === 'string' ? child : String(child)))
+          .join('');
+      } else if (typeof children === 'string') {
+        codeString = children;
+      } else if (children !== null && children !== undefined) {
+        codeString = String(children);
+      }
+
+      return !inline && lang ? (
+        <SyntaxHighlighter
+          style={theme === 'dark' ? oneDark : oneLight}
+          language={lang}
+          PreTag="div"
+          {...rest}
+        >
+          {codeString.replace(/\\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={safeClassName} {...rest}>
+          {codeString}
+        </code>
+      );
+    },
+  };
+
+  const getDisplayableMessageContent = (message: ChatMessage) => {
+    const isExpanded = expandedMessageIds.has(message.id);
+    const lines = message.content.split('\n');
+    const charCount = message.content.length;
+
+    const needsTruncationByChars = charCount > MAX_CHARS_TRUNCATE;
+    const needsTruncationByLines = lines.length > MAX_LINES_TRUNCATE;
+    const needsTruncation = needsTruncationByChars || needsTruncationByLines;
+
+    if (!needsTruncation || isExpanded) {
+      return (
+        <>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={commonMarkdownComponents}>
+            {message.content}
+          </ReactMarkdown>
+          {needsTruncation && (
+            <button
+              onClick={() => toggleMessageExpansion(message.id)}
+              className="toggle-message-button"
+            >
+              Show less
+            </button>
+          )}
+        </>
+      );
+    }
+
+    let truncatedContent = message.content;
+    if (needsTruncationByLines && lines.length > MAX_LINES_TRUNCATE) {
+      truncatedContent = lines.slice(0, MAX_LINES_TRUNCATE).join('\n');
+    }
+
+    if (truncatedContent.length > MAX_CHARS_TRUNCATE) {
+      truncatedContent = truncatedContent.substring(0, MAX_CHARS_TRUNCATE);
+    }
+
+    // Basic check to avoid cutting in the middle of a code block for the preview
+    // This could be made more robust.
+    const lastCodeBlockStart = truncatedContent.lastIndexOf('```');
+    if (lastCodeBlockStart > -1) {
+      const subsequentCodeBlockEnd = truncatedContent.indexOf('```', lastCodeBlockStart + 3);
+      if (subsequentCodeBlockEnd === -1) {
+        // Unclosed code block in truncated view
+        // If the start of an unclosed code block is too close to the end, truncate before it
+        if (truncatedContent.length - lastCodeBlockStart < 100) {
+          truncatedContent = truncatedContent.substring(0, lastCodeBlockStart);
+        }
+      }
+    }
+
+    return (
+      <>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={commonMarkdownComponents}>
+          {truncatedContent + '...'}
+        </ReactMarkdown>
+        <button
+          onClick={() => toggleMessageExpansion(message.id)}
+          className="toggle-message-button"
+        >
+          Show more
+        </button>
+      </>
+    );
+  };
 
   // Don't render if the modal is not open
   if (!isOpen) return null;
@@ -139,9 +274,10 @@ const ChatView: React.FC<ChatViewProps> = ({
             )}
 
             <div className="chat-view-messages" ref={chatContainerRef}>
-              {visibleMessages.map((message) => (
+              {visibleMessages.map((message, index) => (
                 <div
                   key={message.id}
+                  ref={index === messages.length - 1 ? messagesEndRef : null}
                   className={`chat-message ${
                     message.role === 'user'
                       ? 'user-message'
@@ -160,7 +296,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                     </span>
                     <span className="message-time">{formatTime(message.timestamp)}</span>
                   </div>
-                  <div className="message-content">{message.content}</div>
+                  <div className="message-content">{getDisplayableMessageContent(message)}</div>
 
                   {/* Action buttons for assistant messages */}
                   {message.role === 'assistant' && (

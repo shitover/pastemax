@@ -326,10 +326,29 @@
 }
 
 .dark-mode .copy-button {
-  background-color: var(--color-button-secondary-dark, #424242);
-  color: var(--text-primary);
+  background-color: var(--color-background-higher);
+  color: var(--color-text-secondary);
 }
 
 .dark-mode .copy-button:hover {
-  background-color: var(--color-button-secondary-hover-dark, #535353);
+  background-color: var(--color-background-highest);
+}
+
+.toggle-message-button {
+  background-color: transparent;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 8px;
+  font-size: 0.85em;
+  align-self: flex-start;
+}
+
+.toggle-message-button:hover {
+  text-decoration: underline;
+}
+
+.dark-mode .toggle-message-button {
+  color: var(--color-accent-dark-theme);
 }
