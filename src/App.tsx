@@ -25,7 +25,7 @@ import ToggleSwitch from './components/base/ToggleSwitch';
  * Import path utilities for handling file paths across different operating systems.
  * While not all utilities are used directly, they're kept for consistency and future use.
  */
-import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
+import { normalizePath, arePathsEqual, isSubPath, join, dirname } from './utils/pathUtils';
 
 /**
  * Import utility functions for content formatting and language detection.
@@ -985,6 +985,47 @@ const App = (): JSX.Element => {
     });
   };
 
+  // Helper function to get all directory node IDs from the current file list
+  const getAllDirectoryNodeIds = useCallback(() => {
+    if (!selectedFolder || !allFiles.length) {
+      return [];
+    }
+    const directoryPaths = new Set<string>();
+    allFiles.forEach((file) => {
+      let currentPath = dirname(file.path);
+      while (currentPath && currentPath !== selectedFolder && !arePathsEqual(currentPath, selectedFolder) && currentPath.startsWith(selectedFolder)) {
+        directoryPaths.add(normalizePath(currentPath));
+        const parentPath = dirname(currentPath);
+        if (parentPath === currentPath) break; // Avoid infinite loop for root or malformed paths
+        currentPath = parentPath;
+      }
+      // Add the root selected folder itself if it's not already (e.g. if only files are at root)
+      // This is implicitly handled by the Sidebar's root node, but good to be aware
+    });
+    // Add the selected folder itself as a potential directory node
+    directoryPaths.add(normalizePath(selectedFolder));
+
+    return Array.from(directoryPaths).map((dirPath) => `node-${dirPath}`);
+  }, [allFiles, selectedFolder]);
+
+  const collapseAllFolders = useCallback(() => {
+    const dirNodeIds = getAllDirectoryNodeIds();
+    const newExpandedNodes: Record<string, boolean> = {};
+    dirNodeIds.forEach(id => {
+      newExpandedNodes[id] = false;
+    });
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+  }, [getAllDirectoryNodeIds, setExpandedNodes]);
+
+  const expandAllFolders = useCallback(() => {
+    // Setting to empty object means all nodes will default to expanded
+    // as per the logic in Sidebar.tsx: expandedNodes[node.id] !== undefined ? expandedNodes[node.id] : true;
+    const newExpandedNodes = {};
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+  }, [setExpandedNodes]);
+
   // Cache base content when file selections or formatting options change
   useEffect(() => {
     const updateBaseContent = async () => {
@@ -1595,6 +1636,8 @@ const App = (): JSX.Element => {
               onTaskTypeChange={handleTaskTypeChange}
               onManageCustomTypes={handleManageCustomTaskTypes}
               currentWorkspaceName={currentWorkspaceName}
+              collapseAllFolders={collapseAllFolders}
+              expandAllFolders={expandAllFolders}
             />
           ) : (
             <div className="sidebar" style={{ width: '300px' }}>

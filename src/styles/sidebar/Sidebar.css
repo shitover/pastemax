@@ -61,10 +61,11 @@
 .sidebar-actions {
   display: flex;
   padding: var(--space-sm) var(--space-lg);
-  gap: var(--space-sm);
+  gap: var(--space-lg);
   border-bottom: var(--standard-border);
   background-color: var(--background-secondary);
   flex-shrink: 0;
+  justify-content: center;
 }
 
 .sidebar-action-btn {
@@ -83,11 +84,9 @@
   font-size: 0;
 }
 
-.sidebar-action-btn:hover,
-.sidebar-action-btn:focus {
-  background-color: var(--color-primary);
-  color: #fff;
-  outline: none;
+.sidebar-action-btn:hover {
+  background-color: var(--color-primary); /* Uses existing primary color for hover */
+  color: var(--text-on-primary); /* Uses existing text on primary for hover */
 }
 
 /* -------------------- Sidebar Resize Handle -------------------- */
