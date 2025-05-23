@@ -32,7 +32,7 @@ const TreeItem = ({
   includeBinaryPaths,
 }: TreeItemProps) => {
   const { id, name, path, type, level, isExpanded, fileData } = node;
-  const checkboxRef = useRef(null);
+  const checkboxRef = useRef<HTMLInputElement | null>(null);
 
   // Check if this file is in the selected files list - memoize this calculation
   const isSelected = useMemo(

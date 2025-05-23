@@ -32,11 +32,11 @@
 
 .select-folder-btn,
 .clear-data-btn,
-.refresh-list-btn {
-  /* Added refresh-list-btn here */
+.refresh-list-btn,
+.view-ignores-btn {
+  background-color: var(--background-tertiary);
   padding: var(--space-sm) var(--space-md);
   font-size: var(--font-size-sm);
-  /* Add any other shared styles for these buttons */
 }
 
 .folder-info {
