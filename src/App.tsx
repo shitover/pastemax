@@ -1792,11 +1792,42 @@ const App = (): JSX.Element => {
    * Opens a general chat (not specific to any file)
    */
   const handleOpenGeneralChat = () => {
-    const target: ChatTarget = {
-      type: 'general',
-      content: '',
-    };
-    handleOpenChatView(target);
+    const sessionToOpen = currentChatSessionId
+      ? chatSessions.find((s) => s.id === currentChatSessionId)
+      : null;
+
+    if (sessionToOpen) {
+      // Open existing session
+      selectChatSession(sessionToOpen.id); // This loads messages and target
+      setLlmError(null);
+      setIsChatViewOpen(true);
+    } else {
+      // No current session or session not found, create a new general chat
+      const generalChatTarget: ChatTarget = { type: 'general', content: '' };
+
+      // createNewChatSession sets currentChatSessionId and adds session to chatSessions
+      // It also correctly sets the targetType for the new session.
+      createNewChatSession(generalChatTarget);
+
+      const systemMessage: ChatMessage = {
+        id: generateMessageId(),
+        role: 'system',
+        content: getSystemPromptForTarget(generalChatTarget), // Use the specific general target
+        timestamp: Date.now(),
+      };
+
+      setChatMessages([systemMessage]); // Set messages for the UI for the new chat
+      setChatTarget(generalChatTarget); // Set target for the UI for the new chat
+      setLlmError(null);
+      setIsChatViewOpen(true);
+
+      // After UI state is set, update the session in chatSessions with the initial message
+      // createNewChatSession already set currentChatSessionId to the new session's ID.
+      // updateCurrentSession uses this currentChatSessionId.
+      setTimeout(() => {
+        updateCurrentSession([systemMessage]);
+      }, 0);
+    }
   };
 
   /* ============================== RENDER FUNCTIONS ============================== */
