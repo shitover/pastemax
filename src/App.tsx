@@ -1908,9 +1908,32 @@ const App = (): JSX.Element => {
   const updateCurrentSession = (messages: ChatMessage[]) => {
     if (!currentChatSessionId) return;
 
+    // Find the first user message to create a preview
+    const firstUserMessage = messages.find((msg) => msg.role === 'user');
+    let userPreview: string | undefined;
+    if (firstUserMessage?.content) {
+      userPreview = firstUserMessage.content.substring(0, 40);
+      if (firstUserMessage.content.length > 40) {
+        userPreview += '...';
+      }
+    }
+
     setChatSessions((prevSessions) => {
       const updatedSessions = prevSessions.map((session) => {
         if (session.id === currentChatSessionId) {
+          // Determine the title based on target type and user preview
+          let title = session.title; // Keep existing title by default
+          if (userPreview) {
+            title = userPreview; // Prefer user preview if available
+          } else if (session.targetType === 'file') {
+            title = session.targetName ? `File: ${session.targetName}` : 'File Chat';
+          } else if (session.targetType === 'selection') {
+            title = 'Selection Chat';
+          } else if (!session.messages.some((m) => m.role === 'user')) {
+            // If no user messages yet, but it's not a targeted chat, it's a new general chat
+            title = 'New Chat';
+          }
+
           return {
             ...session,
             messages: messages.map((msg) => ({
@@ -1919,6 +1942,8 @@ const App = (): JSX.Element => {
               timestamp: msg.timestamp,
             })),
             lastUpdated: Date.now(),
+            userPreview: userPreview, // Update the preview
+            title: title, // Update the title
           };
         }
         return session;
@@ -1933,20 +1958,25 @@ const App = (): JSX.Element => {
    */
   const createNewChatSession = (target?: ChatTarget) => {
     const sessionId = generateId('session_');
-    const sessionTitle =
-      target?.type === 'file'
-        ? `Chat about ${target.fileName || 'file'}`
-        : target?.type === 'selection'
-          ? 'Chat about selection'
-          : `Chat ${new Date().toLocaleString()}`;
+    let sessionTitle: string;
+    const userPreview: string | undefined = undefined; // Always undefined for a brand new chat
+
+    if (target?.type === 'file') {
+      sessionTitle = target.fileName ? `File: ${target.fileName}` : 'File Chat';
+    } else if (target?.type === 'selection') {
+      sessionTitle = 'Selection Chat';
+    } else {
+      sessionTitle = 'New Chat'; // Default for general new chats
+    }
 
     const newSession: ChatSession = {
       id: sessionId,
       title: sessionTitle,
       lastUpdated: Date.now(),
-      messages: [],
+      messages: [], // New session starts with no messages
       targetType: target?.type,
       targetName: target?.fileName || undefined,
+      userPreview: userPreview,
     };
 
     setChatSessions((prevSessions) => [newSession, ...prevSessions]);

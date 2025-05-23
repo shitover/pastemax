@@ -13,6 +13,7 @@ export interface ChatSession {
   }[];
   targetType?: 'file' | 'selection' | 'general';
   targetName?: string;
+  userPreview?: string;
 }
 
 interface ChatHistorySidebarProps {
@@ -106,15 +107,15 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
                 <div className="chat-session-title">
                   {session.targetType === 'file' ? (
                     <span title={`Chat about file: ${session.targetName}`}>
-                      <i className="file-icon">📄</i> {session.title}
+                      <i className="file-icon">📄</i> {session.userPreview || session.title}
                     </span>
                   ) : session.targetType === 'selection' ? (
                     <span title="Chat about code selection">
-                      <i className="selection-icon">✂️</i> {session.title}
+                      <i className="selection-icon">✂️</i> {session.userPreview || session.title}
                     </span>
                   ) : (
                     <span>
-                      <MessageSquare size={14} /> {session.title}
+                      <MessageSquare size={14} /> {session.userPreview || session.title}
                     </span>
                   )}
                 </div>
