@@ -200,7 +200,19 @@ const App = (): JSX.Element => {
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const lastSentIgnoreSettingsModifiedRef = useRef<boolean | null>(null);
   const [copyHistory, setCopyHistory] = useState<CopyHistoryItem[]>(() => {
-    /* ... */ return [];
+    try {
+      const savedHistory = localStorage.getItem(STORAGE_KEYS.COPY_HISTORY);
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory);
+        if (Array.isArray(parsedHistory)) {
+          // Optional: Validate each item in parsedHistory if necessary
+          return parsedHistory;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading copy history from localStorage:', error);
+    }
+    return []; // Default to empty array if nothing saved or error occurs
   });
   const [isCopyHistoryModalOpen, setIsCopyHistoryModalOpen] = useState(false);
 
