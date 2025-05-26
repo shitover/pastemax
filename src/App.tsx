@@ -1623,14 +1623,7 @@ const App = (): JSX.Element => {
       updateCurrentSession([...currentChatMessagesState, assistantMessage]);
     } catch (e) {
       const err = e instanceof Error ? e.message : 'Failed to get response from LLM.';
-      setLlmError(err);
-      const errorMsgForChat: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: `Error: ${err}`,
-        timestamp: Date.now(),
-      };
-      setChatMessages((prev) => [...prev, errorMsgForChat]);
+      setLlmError(err); // Keep this to show the red banner error
     } finally {
       setIsLlmLoading(false);
     }
