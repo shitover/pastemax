@@ -683,7 +683,9 @@ function createWindow() {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
+    const devUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173'; // Use env var, fallback if not set
+    console.log(`[Main Process] Development mode: Loading URL: ${devUrl}`);
+    mainWindow.loadURL(devUrl);
     mainWindow.webContents.openDevTools();
   } else {
     const prodPath = app.isPackaged

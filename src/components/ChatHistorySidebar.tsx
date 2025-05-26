@@ -1,16 +1,13 @@
 import React from 'react';
 import { MessageSquare, Trash2, Clock } from 'lucide-react';
 import '../styles/modals/ChatHistorySidebar.css';
+import { ChatMessage } from '../types/llmTypes';
 
 export interface ChatSession {
   id: string;
   title: string;
   lastUpdated: number;
-  messages: {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-    timestamp: number;
-  }[];
+  messages: ChatMessage[];
   targetType?: 'file' | 'selection' | 'general';
   targetName?: string;
   userPreview?: string;
