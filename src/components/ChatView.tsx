@@ -20,7 +20,7 @@ interface ChatViewProps {
   error: string | null;
   onSendMessage: (message: string) => void;
   onCopyResponse: (messageId: string) => void;
-  onAcceptAndSave?: (messageId: string) => void; // Only available for file chat target
+ // onAcceptAndSave?: (messageId: string) => void; // this feature will be implemeted in the future
   chatSessions: ChatSession[];
   currentSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
@@ -49,7 +49,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   error,
   onSendMessage,
   onCopyResponse,
-  onAcceptAndSave,
+ // onAcceptAndSave,
   chatSessions,
   currentSessionId,
   onSelectSession,
@@ -309,7 +309,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                         Copy
                       </button>
 
-                      {/* Only show Accept & Save button for file targets */}
+                      {/* Only show Accept & Save button for file targets
                       {chatTarget?.type === 'file' && onAcceptAndSave && (
                         <button
                           className="save-button"
@@ -318,7 +318,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                         >
                           Accept & Save
                         </button>
-                      )}
+                      )} */}
                     </div>
                   )}
                 </div>

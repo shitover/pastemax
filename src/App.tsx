@@ -1639,49 +1639,49 @@ const App = (): JSX.Element => {
       // Optionally add a toast or notification here
     }
   };
+// this feature will be implemented in the future
+  // /**
+  //  * Accepts an AI response and saves it to the original file
+  //  */
+  // const handleAcceptAndSave = async (messageId: string) => {
+  //   if (!chatTarget?.filePath) {
+  //     setLlmError('No file target specified for saving.');
+  //     return;
+  //   }
 
-  /**
-   * Accepts an AI response and saves it to the original file
-   */
-  const handleAcceptAndSave = async (messageId: string) => {
-    if (!chatTarget?.filePath) {
-      setLlmError('No file target specified for saving.');
-      return;
-    }
+  //   const message = chatMessages.find((msg) => msg.id === messageId);
+  //   if (!message) {
+  //     setLlmError('Message not found.');
+  //     return;
+  //   }
 
-    const message = chatMessages.find((msg) => msg.id === messageId);
-    if (!message) {
-      setLlmError('Message not found.');
-      return;
-    }
+  //   setIsLlmLoading(true);
+  //   setLlmError(null);
 
-    setIsLlmLoading(true);
-    setLlmError(null);
+  //   try {
+  //     if (window.llmApi) {
+  //       const result = await window.llmApi.saveFile({
+  //         filePath: chatTarget.filePath,
+  //         content: message.content,
+  //       });
 
-    try {
-      if (window.llmApi) {
-        const result = await window.llmApi.saveFile({
-          filePath: chatTarget.filePath,
-          content: message.content,
-        });
+  //       if (result.success) {
+  //         // Close the chat view after successful save
+  //         setIsChatViewOpen(false);
 
-        if (result.success) {
-          // Close the chat view after successful save
-          setIsChatViewOpen(false);
-
-          // Refresh the file list if needed
-          setReloadTrigger((prev) => prev + 1);
-        } else {
-          throw new Error(result.message);
-        }
-      }
-    } catch (error) {
-      console.error('Error saving file:', error);
-      setLlmError(error instanceof Error ? error.message : 'Failed to save file');
-    } finally {
-      setIsLlmLoading(false);
-    }
-  };
+  //         // Refresh the file list if needed
+  //         setReloadTrigger((prev) => prev + 1);
+  //       } else {
+  //         throw new Error(result.message);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Error saving file:', error);
+  //     setLlmError(error instanceof Error ? error.message : 'Failed to save file');
+  //   } finally {
+  //     setIsLlmLoading(false);
+  //   }
+  // };
 
   /**
    * Opens chat for a selected file
@@ -2492,7 +2492,7 @@ const App = (): JSX.Element => {
             selectedModelId={selectedModelId}
             onModelSelect={handleModelSelect}
             onCopyResponse={handleCopyResponse} // ENSURE THIS IS PASSED
-            onAcceptAndSave={handleAcceptAndSave} // Ensure handleAcceptAndSave is defined if used
+          //  onAcceptAndSave={handleAcceptAndSave} // this feature will be implemented in the future
             chatSessions={chatSessions}
             currentSessionId={currentChatSessionId}
             onSelectSession={selectChatSession}
