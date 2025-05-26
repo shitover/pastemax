@@ -1,3 +1,22 @@
+## [1.1.1] - 2025-05-23
+
+### Added
+
+- **Sidebar Folder Navigation:**
+  - Added "Collapse All" and "Expand All" buttons to the file tree sidebar for easier navigation of folder structures, using `FolderMinus` and `FolderPlus` icons respectively.
+  - Implemented functionality to recursively collapse or expand all directory nodes.
+
+### Improved
+
+- **Changed all main button in Header and Sidebar to use Lucide React Icons:**
+  - Adjusted the buttons used in the header and sidebar to use Lucide React Icons for a more modern and consistent look.
+- **UI Consistency for Selected Folder Display:**
+  - The header area that displays the selected folder path now consistently uses the `.selected-folder` class.
+  - When no folder is selected, the text "No Folder Selected" is displayed within the same styled `div`, ensuring visual consistency with when a folder path is shown.
+  - When no folder is selected the message "Select Folder" is now using the folder icon from Lucide React Icons.
+- **Sidebar Action Button States:**
+  - Differentiated `:hover`, `:focus`, and `:active` CSS states for sidebar action buttons (`.sidebar-action-btn`) to prevent the "stuck" hover appearance after clicking and improve visual feedback.
+
 ## [1.1.0] - 2025-05-18
 
 ### Features Added

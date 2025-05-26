@@ -10,8 +10,16 @@ import ThemeToggle from './components/ThemeToggle';
 import UpdateModal from './components/UpdateModal';
 import { useIgnorePatterns } from './hooks/useIgnorePatterns';
 import UserInstructions from './components/UserInstructions';
-// import { STORAGE_KEY_TASK_TYPE } from './types/TaskTypes';
-import { DownloadCloud, ArrowDownUp, FolderKanban, MessageSquare } from 'lucide-react';
+import {
+  DownloadCloud,
+  ArrowDownUp,
+  FolderKanban,
+  MessageSquare,
+  FolderOpen,
+  XCircle,
+  RefreshCw,
+  FilterX,
+} from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
 import WorkspaceManager from './components/WorkspaceManager';
@@ -23,7 +31,6 @@ import ToggleSwitch from './components/base/ToggleSwitch';
 import LlmSettingsModal from './components/LlmSettingsModal';
 import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
-// Ensure all necessary types are imported from llmTypes
 import {
   AllLlmConfigs,
   LlmConfig,
@@ -36,7 +43,7 @@ import {
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
-import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
+import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUtils';
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
@@ -880,6 +887,52 @@ const App = (): JSX.Element => {
     });
   };
 
+  // Helper function to get all directory node IDs from the current file list
+  const getAllDirectoryNodeIds = useCallback(() => {
+    if (!selectedFolder || !allFiles.length) {
+      return [];
+    }
+    const directoryPaths = new Set<string>();
+    allFiles.forEach((file) => {
+      let currentPath = dirname(file.path);
+      while (
+        currentPath &&
+        currentPath !== selectedFolder &&
+        !arePathsEqual(currentPath, selectedFolder) &&
+        currentPath.startsWith(selectedFolder)
+      ) {
+        directoryPaths.add(normalizePath(currentPath));
+        const parentPath = dirname(currentPath);
+        if (parentPath === currentPath) break; // Avoid infinite loop for root or malformed paths
+        currentPath = parentPath;
+      }
+      // Add the root selected folder itself if it's not already (e.g. if only files are at root)
+      // This is implicitly handled by the Sidebar's root node, but good to be aware
+    });
+    // Add the selected folder itself as a potential directory node
+    directoryPaths.add(normalizePath(selectedFolder));
+
+    return Array.from(directoryPaths).map((dirPath) => `node-${dirPath}`);
+  }, [allFiles, selectedFolder]);
+
+  const collapseAllFolders = useCallback(() => {
+    const dirNodeIds = getAllDirectoryNodeIds();
+    const newExpandedNodes: Record<string, boolean> = {};
+    dirNodeIds.forEach((id) => {
+      newExpandedNodes[id] = false;
+    });
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+  }, [getAllDirectoryNodeIds, setExpandedNodes]);
+
+  const expandAllFolders = useCallback(() => {
+    // Setting to empty object means all nodes will default to expanded
+    // as per the logic in Sidebar.tsx: expandedNodes[node.id] !== undefined ? expandedNodes[node.id] : true;
+    const newExpandedNodes = {};
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+  }, [setExpandedNodes]);
+
   // Cache base content when file selections or formatting options change
   useEffect(() => {
     const updateBaseContent = async () => {
@@ -1463,8 +1516,8 @@ const App = (): JSX.Element => {
    * Sends a user message to the LLM and processes the response
    */
   const handleSendMessage = async (messageContent: string) => {
-    console.log('[App.tsx] handleSendMessage triggered.'); // New Log
-    console.log('[App.tsx] Current selectedModelId state:', selectedModelId); // New Log
+    console.log('[App.tsx] handleSendMessage triggered.');
+    console.log('[App.tsx] Current selectedModelId state:', selectedModelId);
 
     if (!selectedModelId) {
       setLlmError('No model selected. Please select a model from the dropdown.');
@@ -1474,8 +1527,8 @@ const App = (): JSX.Element => {
     const currentProvider = getProviderFromModelId(selectedModelId);
     const actualModelName = getActualModelName(selectedModelId);
 
-    console.log('[App.tsx] Derived provider:', currentProvider); // New Log
-    console.log('[App.tsx] Derived actualModelName:', actualModelName); // New Log
+    console.log('[App.tsx] Derived provider:', currentProvider);
+    console.log('[App.tsx] Derived actualModelName:', actualModelName);
 
     if (!currentProvider) {
       setLlmError(
@@ -1494,7 +1547,7 @@ const App = (): JSX.Element => {
         currentProvider,
         'All Configs:',
         allLlmConfigs
-      ); // New Log
+      );
       setLlmError(
         `API key for ${currentProvider} is not configured. Please go to LLM Settings for ${currentProvider} to add it.`
       );
@@ -1502,7 +1555,7 @@ const App = (): JSX.Element => {
       return;
     }
     const providerConfig = allLlmConfigs[currentProvider];
-    console.log('[App.tsx] Using providerConfig:', providerConfig); // New Log
+    console.log('[App.tsx] Using providerConfig:', providerConfig);
 
     if (!providerConfig?.apiKey) {
       setLlmError(
@@ -1532,12 +1585,9 @@ const App = (): JSX.Element => {
 
       let messagesToSend: { role: MessageRole; content: string }[];
 
-      // Check if the *current* message list already starts with a system message.
-      // This would be the one added by handleOpenChatView (getSystemPromptForTarget).
       if (plainMessagesForLlm.length > 0 && plainMessagesForLlm[0].role === 'system') {
         messagesToSend = plainMessagesForLlm;
       } else if (systemPrompt) {
-        // If not, and we have a global systemPrompt, prepend that.
         messagesToSend = [
           { role: 'system' as MessageRole, content: systemPrompt },
           ...plainMessagesForLlm,
@@ -1550,13 +1600,15 @@ const App = (): JSX.Element => {
         throw new Error('LLM API bridge (window.llmApi) is not available. Check preload script.');
       }
 
-      const response = await window.llmApi.sendPrompt({
-        messages: messagesToSend.slice(-20), // Send up to the last 20 messages
+      const paramsForSendPrompt = {
+        messages: messagesToSend.slice(-20),
         provider: currentProvider,
         model: actualModelName,
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
-      });
+      };
+
+      const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
 
       if (response.error) {
         throw new Error(response.error);
@@ -2068,25 +2120,23 @@ const App = (): JSX.Element => {
               title={isAnyLlmConfigured() ? 'Open AI Chat' : 'Configure LLM to enable Chat'}
             />
             <div className="folder-info">
-              {selectedFolder ? (
-                <div className="selected-folder">{selectedFolder}</div>
-              ) : (
-                <span>No folder selected</span>
-              )}
+              <div className="selected-folder">
+                {selectedFolder ? selectedFolder : 'No Folder Selected'}
+              </div>
               <button
                 className="select-folder-btn"
                 onClick={openFolder}
                 disabled={processingStatus.status === 'processing'}
                 title="Select a Folder to import"
               >
-                Select Folder
+                <FolderOpen size={16} />
               </button>
               <button
                 className="clear-data-btn"
                 onClick={clearSavedState}
-                title="Clear all saved data and start fresh"
+                title="Clear all Selected Files and Folders"
               >
-                Clear All
+                <XCircle size={16} />
               </button>
               <button
                 className="refresh-list-btn"
@@ -2096,16 +2146,16 @@ const App = (): JSX.Element => {
                   }
                 }}
                 disabled={processingStatus.status === 'processing' || !selectedFolder}
-                title="Refresh the current file list"
+                title="Refresh File List"
               >
-                Refresh
+                <RefreshCw size={16} />
               </button>
               <button
                 onClick={handleViewIgnorePatterns}
-                title="View Applied Ignore Rules"
+                title="View Ignore Filter"
                 className="view-ignores-btn"
               >
-                Ignore Filters
+                <FilterX size={16} />
               </button>
               <button
                 className="workspace-button"
@@ -2190,6 +2240,8 @@ const App = (): JSX.Element => {
               onTaskTypeChange={handleTaskTypeChange}
               onManageCustomTypes={handleManageCustomTaskTypes}
               currentWorkspaceName={currentWorkspaceName}
+              collapseAllFolders={collapseAllFolders}
+              expandAllFolders={expandAllFolders}
             />
           ) : (
             <div className="sidebar" style={{ width: '300px' }}>
@@ -2205,7 +2257,17 @@ const App = (): JSX.Element => {
               </div>
 
               <div className="tree-empty">
-                No folder selected. Use the "Select Folder" button to choose a project folder.
+                No folder selected. Use the{' '}
+                <FolderOpen
+                  size={16}
+                  style={{
+                    display: 'inline-block',
+                    verticalAlign: 'middle',
+                    marginLeft: '2px',
+                    marginRight: '2px',
+                  }}
+                />{' '}
+                button to choose a project folder.
               </div>
 
               <div className="sidebar-resize-handle"></div>
@@ -2289,7 +2351,17 @@ const App = (): JSX.Element => {
                 />
               ) : (
                 <div className="file-list-empty">
-                  No folder selected. Use the "Select Folder" button to choose a project folder.
+                  No folder selected. Use the{' '}
+                  <FolderOpen
+                    size={16}
+                    style={{
+                      display: 'inline-block',
+                      verticalAlign: 'middle',
+                      marginLeft: '6px',
+                      marginRight: '6px',
+                    }}
+                  />{' '}
+                  button to choose a project folder.
                 </div>
               )}
             </div>
@@ -2450,3 +2522,5 @@ const App = (): JSX.Element => {
 };
 
 export default App;
+
+export {}; // Add this line to fix the global scope augmentation error
