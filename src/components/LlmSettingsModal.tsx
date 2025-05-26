@@ -37,12 +37,19 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       setAllConfigs(initialConfigs || {});
       let providerToSet: LlmProvider | '' = '';
 
+      // Determine provider to display when modal opens (not immediately post-save, handleSave handles that)
       // 1. Try to load the globally last saved provider
-      const lastSavedProvider = localStorage.getItem(LAST_SAVED_PROVIDER_KEY) as LlmProvider | null;
-      if (lastSavedProvider && initialConfigs && initialConfigs[lastSavedProvider]) {
-        providerToSet = lastSavedProvider;
+      const lastSavedProviderFromStorage = localStorage.getItem(
+        LAST_SAVED_PROVIDER_KEY
+      ) as LlmProvider | null;
+      if (
+        lastSavedProviderFromStorage &&
+        initialConfigs &&
+        initialConfigs[lastSavedProviderFromStorage]
+      ) {
+        providerToSet = lastSavedProviderFromStorage;
       }
-      // 2. Else, try to use the in-session last active provider
+      // 2. Else, try to use the in-session last active provider (e.g. user was tabbing)
       else if (
         lastActiveProviderRef.current &&
         initialConfigs &&
@@ -62,9 +69,18 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         }
       }
 
-      setCurrentProvider(providerToSet);
+      // If currentProvider is already set (e.g. by handleSave), and providerToSet is different,
+      // this useEffect will align it based on persisted state for subsequent views.
+      // If they are the same, this call is okay.
+      if (currentProvider !== providerToSet && providerToSet !== '') {
+        setCurrentProvider(providerToSet);
+      } else if (currentProvider === '' && providerToSet !== '') {
+        setCurrentProvider(providerToSet); // Handles initial set if currentProvider is empty
+      }
+
+      // Ensure lastActiveProviderRef is updated if a provider is determined
       if (providerToSet) {
-        lastActiveProviderRef.current = providerToSet; // Keep this for in-session memory
+        lastActiveProviderRef.current = providerToSet;
       }
     } else {
       // Optional: Reset specific states when modal closes if desired, e.g., error messages
@@ -145,6 +161,8 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       return;
     }
 
+    const providerBeingSaved = currentProvider; // Capture the provider being saved
+
     setIsSaving(true);
     setErrorMessage(null);
 
@@ -156,30 +174,35 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       };
 
       const newAllConfigs = {
-        ...allConfigs,
-        [currentProvider]: updatedProviderConfig,
+        ...allConfigs, // Use local allConfigs as base
+        [providerBeingSaved]: updatedProviderConfig,
       };
 
-      setAllConfigs(newAllConfigs);
+      // Propagate to parent/store, which will eventually update initialConfigs prop
       await onSaveAllConfigs(newAllConfigs);
-      lastActiveProviderRef.current = currentProvider; // Keep this
 
-      // Store the successfully saved provider in localStorage
-      if (currentProvider) {
-        localStorage.setItem(LAST_SAVED_PROVIDER_KEY, currentProvider);
-      }
+      // Update local state immediately to ensure UI consistency post-save
+      setAllConfigs(newAllConfigs);
+      setCurrentProvider(providerBeingSaved); // Force UI to stick to the saved provider
+
+      // Update persistent/semi-persistent stores
+      localStorage.setItem(LAST_SAVED_PROVIDER_KEY, providerBeingSaved);
+      lastActiveProviderRef.current = providerBeingSaved; // Reflect the save here too
 
       if (defaultModelName.trim()) {
         const trimmedModelName = defaultModelName.trim();
         const updatedRecentModels = { ...recentModels };
-        const providerModels = updatedRecentModels[currentProvider] || [];
+        const providerModels = updatedRecentModels[providerBeingSaved] || [];
         if (!providerModels.includes(trimmedModelName)) {
-          updatedRecentModels[currentProvider] = [trimmedModelName, ...providerModels].slice(0, 5);
+          updatedRecentModels[providerBeingSaved] = [trimmedModelName, ...providerModels].slice(
+            0,
+            5
+          );
           setRecentModels(updatedRecentModels);
           localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
         }
       }
-      setErrorMessage('Settings saved successfully for ' + currentProvider + '!');
+      setErrorMessage('Settings saved successfully for ' + providerBeingSaved + '!');
       setTimeout(() => setErrorMessage(null), 3000);
     } catch (error) {
       console.error('Error saving LLM config:', error);
