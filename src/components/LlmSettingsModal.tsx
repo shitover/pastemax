@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LlmProvider, ProviderSpecificConfig, AllLlmConfigs } from '../types/llmTypes';
 import { Edit, X } from 'lucide-react';
 
+// Define a constant for the localStorage key
+const LAST_SAVED_PROVIDER_KEY = 'pastemax-last-saved-llm-provider';
+
 interface LlmSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,13 +37,21 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       setAllConfigs(initialConfigs || {});
       let providerToSet: LlmProvider | '' = '';
 
-      if (
+      // 1. Try to load the globally last saved provider
+      const lastSavedProvider = localStorage.getItem(LAST_SAVED_PROVIDER_KEY) as LlmProvider | null;
+      if (lastSavedProvider && initialConfigs && initialConfigs[lastSavedProvider]) {
+        providerToSet = lastSavedProvider;
+      }
+      // 2. Else, try to use the in-session last active provider
+      else if (
         lastActiveProviderRef.current &&
         initialConfigs &&
         initialConfigs[lastActiveProviderRef.current]
       ) {
         providerToSet = lastActiveProviderRef.current;
-      } else if (initialConfigs && Object.keys(initialConfigs).length > 0) {
+      }
+      // 3. Else, fallback to existing logic (first with API key, then first overall)
+      else if (initialConfigs && Object.keys(initialConfigs).length > 0) {
         const providerWithApiKey = Object.entries(initialConfigs).find(
           ([, config]) => !!config.apiKey
         ) as [LlmProvider, ProviderSpecificConfig] | undefined;
@@ -50,9 +61,10 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           providerToSet = Object.keys(initialConfigs)[0] as LlmProvider;
         }
       }
+
       setCurrentProvider(providerToSet);
       if (providerToSet) {
-        lastActiveProviderRef.current = providerToSet;
+        lastActiveProviderRef.current = providerToSet; // Keep this for in-session memory
       }
     } else {
       // Optional: Reset specific states when modal closes if desired, e.g., error messages
@@ -124,7 +136,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProvider = e.target.value as LlmProvider | '';
     setCurrentProvider(newProvider);
-    lastActiveProviderRef.current = newProvider;
+    lastActiveProviderRef.current = newProvider; // Keep this for correctly setting the ref when user changes dropdown
   };
 
   const handleSave = async () => {
@@ -150,7 +162,12 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
 
       setAllConfigs(newAllConfigs);
       await onSaveAllConfigs(newAllConfigs);
-      lastActiveProviderRef.current = currentProvider;
+      lastActiveProviderRef.current = currentProvider; // Keep this
+
+      // Store the successfully saved provider in localStorage
+      if (currentProvider) {
+        localStorage.setItem(LAST_SAVED_PROVIDER_KEY, currentProvider);
+      }
 
       if (defaultModelName.trim()) {
         const trimmedModelName = defaultModelName.trim();
