@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '../context/ThemeContext';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import '../styles/modals/ChatView.css';
 import '../styles/modals/ChatHistorySidebar.css';
 
@@ -64,6 +65,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // State for expanded messages and truncation limits
   const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
@@ -86,6 +88,9 @@ const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
+    }
+    if (!isOpen) {
+      setIsMaximized(false);
     }
   }, [isOpen]);
 
@@ -228,9 +233,14 @@ const ChatView: React.FC<ChatViewProps> = ({
   // Don't render if the modal is not open
   if (!isOpen) return null;
 
+  const toggleMaximize = () => setIsMaximized(!isMaximized);
+
   return (
     <div className="chat-view-overlay" onClick={onClose}>
-      <div className="chat-view-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`chat-view-modal ${isMaximized ? 'chat-view-modal--maximized' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="chat-view-content">
           <ChatHistorySidebar
             sessions={filteredSessions}
@@ -245,7 +255,7 @@ const ChatView: React.FC<ChatViewProps> = ({
 
           <div className="chat-view-main">
             <div className="chat-view-header">
-              <div className="chat-view-header-content">
+              <div className="chat-view-header-title-area">
                 <h3>
                   {chatTarget?.type === 'file' ? (
                     <>Chat about: {chatTarget.fileName || 'File'}</>
@@ -262,9 +272,24 @@ const ChatView: React.FC<ChatViewProps> = ({
                   />
                 )}
               </div>
-              <button className="chat-view-close-button" onClick={onClose} aria-label="Close chat">
-                ×
-              </button>
+              <div className="chat-view-header-controls">
+                <button
+                  onClick={toggleMaximize}
+                  className="chat-view-control-button chat-view-maximize-button"
+                  aria-label={isMaximized ? 'Minimize chat' : 'Maximize chat'}
+                  title={isMaximized ? 'Minimize chat' : 'Maximize chat'}
+                >
+                  {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                <button
+                  className="chat-view-control-button chat-view-close-button"
+                  onClick={onClose}
+                  aria-label="Close chat"
+                  title="Close chat"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {!isLlmConfigured && (
