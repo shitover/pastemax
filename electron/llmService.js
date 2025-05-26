@@ -2,9 +2,9 @@ const { ChatOpenAI } = require('@langchain/openai');
 const { ChatAnthropic } = require('@langchain/anthropic');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { ChatMistralAI } = require('@langchain/mistralai');
+const { ChatGroq } = require('@langchain/groq');
 // implement later
 // const { ChatQwen } = require('@langchain/qwen'); //
-// const { ChatGroq } = require('@langchain/groq');
 // const { ChatGrok } = require('@langchain/xai');
 // const { ChatOpenRouter } = require('@langchain/openrouter');
 const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
@@ -12,7 +12,6 @@ const Store = require('electron-store');
 const fs = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
-const { Mistral } = require('@mistralai/mistralai');
 
 /**
  * Store instance for persisting LLM configuration
@@ -147,242 +146,120 @@ async function setLlmConfig({ provider, apiKey, modelName, baseUrl }) {
 }
 
 /**
- * Creates and returns the appropriate Langchain chat model based on configuration
- * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI>}
+ * Creates and returns the appropriate Langchain chat model based on provided configuration.
+ * MODIFIED: Now accepts parameters instead of reading from global store.
+ * @param {string} provider - The LLM provider (e.g., 'openai', 'groq', 'gemini')
+ * @param {string} modelName - The specific model name to use
+ * @param {string} apiKey - The API key for the provider
+ * @param {string} [baseUrl] - Optional base URL for the API
+ * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI|ChatGroq>}
  */
-async function getChatModel() {
-  initializeStore();
-  const config = await getLlmConfig();
-
-  if (!config.provider || !config.apiKey) {
-    throw new Error('LLM provider or API key not configured.');
+async function getChatModel(provider, modelName, apiKey, baseUrl) {
+  if (!provider || !apiKey) {
+    throw new Error('LLM provider or API key not provided to getChatModel.');
   }
 
-  // Log provider without showing API key
-  console.log(`[LLM Service] Creating chat model for provider: ${config.provider}`);
+  console.log(`[LLM Service] Creating chat model for provider: ${provider}`);
 
   try {
-    switch (config.provider) {
+    switch (provider) {
       case 'openai': {
-        console.log(`[LLM Service] Using OpenAI model: ${config.modelName || 'Default model'}`);
+        console.log(`[LLM Service] Using OpenAI model: ${modelName || 'Default (gpt-3.5-turbo)'}`);
         const options = {
-          apiKey: config.apiKey,
+          apiKey: apiKey,
           temperature: 0.7,
+          modelName: modelName || 'gpt-3.5-turbo',
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
+        if (baseUrl) {
+          options.configuration = { baseURL: baseUrl };
         }
-
-        if (config.baseUrl) {
-          options.baseURL = config.baseUrl;
-        }
-
         return new ChatOpenAI(options);
       }
 
       case 'anthropic': {
-        console.log(`[LLM Service] Using Anthropic model: ${config.modelName || 'Default model'}`);
+        console.log(`[LLM Service] Using Anthropic model: ${modelName || 'Default (claude-2)'}`);
         const options = {
-          apiKey: config.apiKey,
+          apiKey: apiKey,
           temperature: 0.7,
+          modelName: modelName || 'claude-2',
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
-        }
-
-        if (config.baseUrl) {
-          options.baseURL = config.baseUrl;
-        }
-
-        try {
-          return new ChatAnthropic(options);
-        } catch (error) {
-          console.error(`[LLM Service] Error initializing Anthropic:`, error);
-          throw new Error(`Failed to initialize Anthropic: ${error.message}`);
-        }
+        return new ChatAnthropic(options);
       }
 
       case 'gemini': {
         console.log(
-          `[LLM Service] Using Google Gemini model: ${config.modelName || 'Default model'}`
+          `[LLM Service] Using Google Gemini model: ${modelName || 'Default (gemini-pro)'}`
         );
-
         const options = {
-          apiKey: config.apiKey,
+          apiKey: apiKey,
           maxOutputTokens: 2048,
           temperature: 0.7,
+          modelName: modelName || 'gemini-pro',
           safetySettings: [
-            {
-              category: 'HARM_CATEGORY_HARASSMENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
-            {
-              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-            },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           ],
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
-        }
-
-        try {
-          return new ChatGoogleGenerativeAI(options);
-        } catch (error) {
-          console.error(`[LLM Service] Error initializing Gemini:`, error);
-
-          // Special handling for common Gemini errors
-          const errorMsg = error.message || '';
-          if (errorMsg.includes('PERMISSION_DENIED')) {
-            throw new Error(
-              'Gemini API access denied. Please check if your API key is valid and you have accepted the terms of service in Google AI Studio.'
-            );
-          } else if (errorMsg.includes('API_KEY_INVALID')) {
-            throw new Error('Invalid Gemini API key. Please verify your API key.');
-          }
-
-          throw new Error(`Failed to initialize Gemini: ${error.message}`);
-        }
+        return new ChatGoogleGenerativeAI(options);
       }
 
       case 'mistral': {
-        console.log(`[LLM Service] Using Mistral model: ${config.modelName || 'Default model'}`);
+        console.log(
+          `[LLM Service] Using Mistral model: ${modelName || 'Default (mistral-small-latest)'}`
+        );
         const options = {
-          apiKey: config.apiKey,
+          apiKey: apiKey,
           temperature: 0.7,
+          modelName: modelName || 'mistral-small-latest',
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
+        if (baseUrl) {
+          options.baseUrl = baseUrl;
         }
+        return new ChatMistralAI(options);
+      }
 
-        if (config.baseUrl) {
-          options.baseURL = config.baseUrl;
+      case 'groq': {
+        console.log(`[LLM Service] Using Groq model: ${modelName}`);
+        if (!modelName) {
+          throw new Error('Model name is required for Groq provider.');
         }
-
-        try {
-          return new ChatMistralAI(options);
-        } catch (error) {
-          console.error(`[LLM Service] Error initializing Mistral:`, error);
-          throw new Error(`Failed to initialize Mistral: ${error.message}`);
-        }
+        const options = {
+          apiKey: apiKey,
+          temperature: 0.7,
+          modelName: modelName,
+        };
+        return new ChatGroq(options);
       }
 
       case 'openrouter': {
-        console.log(`[LLM Service] Using OpenRouter model: ${config.modelName || 'Default model'}`);
-
-        // For OpenRouter, we'll implement a custom solution that doesn't rely on Langchain's validation
-        return {
-          _type: 'openrouter',
-          _apiKey: config.apiKey,
-          _modelName: config.modelName || 'openai/gpt-3.5-turbo',
-          _baseUrl: 'https://openrouter.ai/api/v1',
-
-          // Custom invoke method to bypass Langchain restrictions
-          invoke: async function (messages) {
-            try {
-              const fetch = require('node-fetch');
-
-              console.log(`[LLM Service] Using OpenRouter with model: ${this._modelName}`);
-
-              // Convert Langchain messages to OpenRouter format
-              const openRouterMessages = messages.map((msg) => ({
-                role: msg._getType ? msg._getType() : msg.type,
-                content: msg.content,
-              }));
-
-              // Prepare request body
-              const requestBody = {
-                model: this._modelName,
-                messages: openRouterMessages,
-                temperature: 0.7,
-                max_tokens: 2048,
-              };
-
-              // Log request (without API key)
-              console.log('[LLM Service] OpenRouter request:', {
-                model: requestBody.model,
-                messageCount: requestBody.messages.length,
-                // Don't log full messages for privacy
-              });
-
-              // Send request to OpenRouter API
-              const response = await fetch(`${this._baseUrl}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${this._apiKey}`,
-                  'HTTP-Referer': 'https://github.com/kleneway/pastemax',
-                  'X-Title': 'PasteMax',
-                },
-                body: JSON.stringify(requestBody),
-              });
-
-              // Check if request was successful
-              if (!response.ok) {
-                const errorText = await response.text();
-                console.error(
-                  `[LLM Service] OpenRouter API error (${response.status}):`,
-                  errorText
-                );
-                throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-              }
-
-              // Parse response
-              const data = await response.json();
-
-              // Log success (without revealing full content)
-              console.log('[LLM Service] OpenRouter response received successfully');
-
-              // Format response to match Langchain's expected format
-              return { content: data.choices[0].message.content };
-            } catch (error) {
-              console.error('[LLM Service] Error in custom OpenRouter implementation:', error);
-              throw new Error(`OpenRouter API error: ${error.message}`);
-            }
-          },
-        };
-      }
-
-      // For other providers, we'll use OpenAI's client with a custom base URL if needed
-      default: {
-        console.log(
-          `[LLM Service] Using ${config.provider} model with OpenAI client: ${config.modelName || 'Default model'}`
-        );
+        console.log(`[LLM Service] Using OpenRouter via OpenAI client. Model: ${modelName}`);
+        if (!modelName) {
+          throw new Error('Model name (e.g., deepseek/deepseek-chat) is required for OpenRouter.');
+        }
         const options = {
-          apiKey: config.apiKey,
+          apiKey: apiKey,
           temperature: 0.7,
-          defaultHeaders: {
-            'HTTP-Referer': 'https://github.com/kleneway/pastemax',
-            'X-Title': 'PasteMax',
+          modelName: modelName,
+          configuration: {
+            baseURL: baseUrl || 'https://openrouter.ai/api/v1',
+            defaultHeaders: {
+              'HTTP-Referer': '',
+              'X-Title': 'PasteMax',
+            },
           },
         };
-
-        if (config.modelName) {
-          options.modelName = config.modelName;
-        }
-
-        if (config.baseUrl) {
-          options.baseURL = config.baseUrl;
-        }
-
         return new ChatOpenAI(options);
       }
+
+      default:
+        console.error(`[LLM Service] Unsupported provider: ${provider}`);
+        throw new Error(`Unsupported LLM provider: ${provider}`);
     }
   } catch (error) {
-    console.error(`[LLM Service] Error creating chat model for ${config.provider}:`, error);
-    throw new Error(`Failed to initialize LLM provider: ${error.message}`);
+    console.error(`[LLM Service] Error initializing chat model for ${provider}:`, error);
+    throw new Error(`Failed to initialize chat model for ${provider}: ${error.message}`);
   }
 }
 
@@ -407,166 +284,46 @@ function convertToLangchainMessages(messages) {
 }
 
 /**
- * Sends a prompt to the configured LLM
- * @param {Object} params - Parameters for the prompt
- * @param {Array} params.messages - Array of message objects with role and content
- * @returns {Promise<{content: string}>}
+ * Sends the prompt to the configured LLM and returns the response.
+ * MODIFIED: Accepts full configuration per call.
+ * @param {Object} params - The parameters for sending the prompt.
+ * @param {{ role: string, content: string }[]} params.messages - The messages to send.
+ * @param {string} params.provider - The LLM provider.
+ * @param {string} params.model - The model name.
+ * @param {string} params.apiKey - The API key.
+ * @param {string} [params.baseUrl] - Optional base URL.
+ * @returns {Promise<{ content: string, provider?: string, error?: string }>}
  */
-async function sendPromptToLlm({ messages }) {
+async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl }) {
+  console.log('[LLM Service] Preparing to send prompt to LLM');
+
+  const chat = await getChatModel(provider, model, apiKey, baseUrl);
+
+  const langchainMessages = convertToLangchainMessages(messages);
+
+  console.log('[LLM Service] Converted', langchainMessages.length, 'messages to Langchain format');
+  console.log(
+    '[LLM Service] Message structure:',
+    langchainMessages.map((m) => ({
+      type: m.constructor.name,
+      _type: m._getType(),
+      contentLength: m.content.length,
+    }))
+  );
+
   try {
-    console.log('[LLM Service] Preparing to send prompt to LLM');
-    const config = await getLlmConfig();
-
-    // Enhanced validation
-    if (!config.provider) {
-      throw new Error('LLM provider not configured');
-    }
-
-    if (!config.apiKey) {
-      throw new Error('API key not configured');
-    }
-
-    console.log(`[LLM Service] Using provider: ${config.provider}`);
-    console.log(`[LLM Service] Using model: ${config.modelName || 'default'}`);
-
-    // Special handling for Mistral API
-    if (config.provider === 'mistral') {
-      try {
-        console.log('[LLM Service] Using direct Mistral API client');
-        // Format messages in the format Mistral expects
-        const mistralMessages = messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
-
-        // Create a Mistral client with the correct initialization
-        console.log('[LLM Service] Creating Mistral client');
-        const mistralOptions = {
-          apiKey: config.apiKey,
-        };
-
-        if (config.baseUrl) {
-          mistralOptions.endpoint = config.baseUrl;
-        }
-
-        const mistral = new Mistral(mistralOptions);
-
-        console.log(
-          '[LLM Service] Sending request to Mistral API with model:',
-          config.modelName || 'mistral-medium'
-        );
-        const response = await mistral.chat.completions.create({
-          model: config.modelName || 'mistral-medium',
-          messages: mistralMessages,
-          temperature: 0.7,
-          max_tokens: 2048,
-        });
-
-        console.log('[LLM Service] Received response from Mistral API');
-        return {
-          content: response.choices[0].message.content,
-          provider: 'mistral',
-        };
-      } catch (mistralError) {
-        console.error('[LLM Service] Mistral direct API error:', mistralError);
-
-        // Handle common Mistral API errors
-        const errorMsg = mistralError.message || '';
-        if (errorMsg.includes('401')) {
-          throw new Error('Mistral API authentication failed. Please check your API key.');
-        } else if (errorMsg.includes('429')) {
-          throw new Error('Mistral API rate limit exceeded. Please try again later.');
-        } else if (errorMsg.includes('400')) {
-          throw new Error('Mistral API request error: ' + errorMsg);
-        } else if (errorMsg.includes('403')) {
-          throw new Error('Mistral API access denied. Please check your permissions.');
-        } else if (errorMsg.includes('404')) {
-          throw new Error('Mistral API model not found. Please check your model name.');
-        } else if (errorMsg.includes('500')) {
-          throw new Error('Mistral API server error. Please try again later.');
-        }
-
-        // Rethrow with more context
-        throw new Error(`Mistral API error: ${mistralError.message}`);
-      }
-    }
-
-    // Get chat model for other providers
-    const chatModel = await getChatModel();
-    console.log('[LLM Service] Chat model initialized');
-
-    // Check if this is our custom OpenRouter implementation
-    if (chatModel._type === 'openrouter') {
-      console.log('[LLM Service] Using custom OpenRouter implementation');
-      const langchainMessages = convertToLangchainMessages(messages);
-      return await chatModel.invoke(langchainMessages);
-    }
-
-    // Standard Langchain path for other providers
-    // Convert messages to Langchain format
-    const langchainMessages = convertToLangchainMessages(messages);
-    console.log(`[LLM Service] Converted ${langchainMessages.length} messages to Langchain format`);
-
-    // Log message structure (without actual content for privacy)
-    console.log(
-      '[LLM Service] Message structure:',
-      langchainMessages.map((msg) => ({
-        type: msg.constructor.name,
-        _type: typeof msg._getType === 'function' ? msg._getType() : msg._type || 'unknown',
-        contentLength: msg.content?.length || 0,
-      }))
-    );
-
-    // Provider-specific handling
-    let response;
-    try {
-      console.log('[LLM Service] Invoking chat model');
-      response = await chatModel.invoke(langchainMessages);
-      console.log('[LLM Service] Received response from LLM');
-    } catch (invokeError) {
-      console.error('[LLM Service] Error invoking chat model:', invokeError);
-
-      // Add provider-specific error handling
-      if (config.provider === 'gemini') {
-        // Check for common Gemini API errors
-        const errorMsg = invokeError.message || '';
-        if (errorMsg.includes('PERMISSION_DENIED')) {
-          throw new Error(
-            'Gemini API access denied. Please check if your API key is valid and you have accepted the terms of service in Google AI Studio.'
-          );
-        } else if (errorMsg.includes('INVALID_ARGUMENT')) {
-          throw new Error(
-            'Invalid request to Gemini API. This could be due to prompt content restrictions or invalid format.'
-          );
-        } else if (errorMsg.includes('RESOURCE_EXHAUSTED')) {
-          throw new Error('Gemini API quota exceeded. Please check your usage limits.');
-        } else if (errorMsg.includes('API_KEY_INVALID')) {
-          throw new Error('Invalid Gemini API key. Please verify your API key.');
-        }
-      }
-
-      // Re-throw with more context
-      throw new Error(`Failed to get response: ${invokeError.message}`);
-    }
-
-    // Validate response
-    if (!response || !response.content) {
-      throw new Error('Received empty response from LLM');
-    }
-
-    console.log(`[LLM Service] Response received, length: ${response.content.length} characters`);
-
-    return {
-      content: response.content,
-      provider: config.provider,
-    };
+    console.log('[LLM Service] Invoking chat model');
+    const response = await chat.invoke(langchainMessages);
+    console.log('[LLM Service] Received response from LLM');
+    const responseContent =
+      typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+    console.log('[LLM Service] Response received, length:', responseContent.length, 'characters');
+    return { content: responseContent, provider: provider };
   } catch (error) {
-    console.error('[LLM Service] Error in sendPromptToLlm:', error);
-    // Return a structured error that's more helpful for users
+    console.error('[LLM Service] Error invoking chat model:', error);
     return {
-      error: `Failed to get response from LLM: ${error.message}`,
-      errorDetails: error.stack,
-      provider: (await getLlmConfig()).provider,
+      content: '',
+      error: `Failed to get response: ${error.message}`,
     };
   }
 }

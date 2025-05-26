@@ -6,20 +6,37 @@ export type LlmProvider =
   | 'anthropic'
   | 'gemini'
   | 'groq'
-  | 'deepseek'
   | 'qwen'
   | 'grok'
   | 'openrouter'
   | 'mistral';
 
 /**
- * Interface for LLM configuration
+ * OLD Interface for LLM configuration - Used by existing IPC, to be phased out.
+ * The new LlmSettingsModal uses ProviderSpecificConfig and AllLlmConfigs.
  */
 export interface LlmConfig {
   provider: LlmProvider | null;
   apiKey: string | null;
   modelName?: string | null;
   baseUrl?: string | null; // For custom endpoints
+}
+
+/**
+ * Configuration for a specific LLM provider (NEW)
+ */
+export interface ProviderSpecificConfig {
+  apiKey: string | null;
+  defaultModel?: string | null;
+  baseUrl?: string | null;
+}
+
+/**
+ * Object to store configurations for all LLM providers (NEW)
+ * The key is the LlmProvider type (string, but maps to LlmProvider)
+ */
+export interface AllLlmConfigs {
+  [provider: string]: ProviderSpecificConfig;
 }
 
 /**
@@ -59,10 +76,15 @@ export interface ProviderEndpoints {
  */
 export interface LlmApiWindow {
   llmApi: {
-    getConfig: () => Promise<LlmConfig>;
-    setConfig: (config: LlmConfig) => Promise<{ success: boolean; error?: string }>;
+    getConfig: () => Promise<LlmConfig>; // Still uses old LlmConfig for now due to existing IPC
+    setConfig: (config: LlmConfig) => Promise<{ success: boolean; error?: string }>; // Still uses old LlmConfig
     sendPrompt: (params: {
       messages: { role: MessageRole; content: string }[];
+      // Backend will also need provider, model, apiKey, baseUrl for the new flow
+      provider: LlmProvider;
+      model: string;
+      apiKey: string;
+      baseUrl?: string | null;
     }) => Promise<{ content: string; provider?: string; error?: string }>;
     saveFile: (params: {
       filePath: string;
@@ -77,7 +99,7 @@ export interface LlmApiWindow {
 export interface ModelInfo {
   id: string;
   name: string;
-  provider: LlmProvider;
+  provider: LlmProvider; // This was present in your original llmTypes.ts
   context_length: number;
   description?: string;
   pricing?: string;

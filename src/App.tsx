@@ -23,31 +23,31 @@ import ToggleSwitch from './components/base/ToggleSwitch';
 import LlmSettingsModal from './components/LlmSettingsModal';
 import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
-import { LlmConfig, ChatMessage, ChatTarget } from './types/llmTypes';
+// Ensure all necessary types are imported from llmTypes
+import {
+  AllLlmConfigs,
+  LlmConfig,
+  ChatMessage,
+  ChatTarget,
+  LlmProvider,
+  ProviderSpecificConfig,
+  LlmApiWindow,
+  MessageRole,
+} from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
-
-/**
- * Import path utilities for handling file paths across different operating systems.
- * While not all utilities are used directly, they're kept for consistency and future use.
- */
 import { normalizePath, arePathsEqual, isSubPath } from './utils/pathUtils';
-
-/**
- * Import utility functions for content formatting and language detection.
- * The contentFormatUtils module handles content assembly and applies language detection
- * via the languageUtils module internally.
- */
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 
-/* ============================== GLOBAL DECLARATIONS ============================== */
+// Augment the Window interface
+declare global {
+  interface Window {
+    electron: any; // Consider more specific typing if possible
+    llmApi: LlmApiWindow['llmApi']; // MODIFIED: Removed '?' to make it non-optional
+  }
+}
 
-/* ============================== CONSTANTS ============================== */
-/**
- * Keys used for storing app state in localStorage.
- * Keeping them in one place makes them easier to manage and update.
- */
 const STORAGE_KEYS = {
   SELECTED_FOLDER: 'pastemax-selected-folder',
   INCLUDE_FILE_TREE: 'pastemax-include-file-tree',
@@ -66,10 +66,10 @@ const STORAGE_KEYS = {
   WINDOW_SIZES: 'pastemax-window-sizes',
   TASK_TYPE: 'pastemax-task-type',
   COPY_HISTORY: 'pastemax-copy-history',
-  LLM_CONFIG: 'pastemax-llm-config',
+  ALL_LLM_CONFIGS: 'pastemax-all-llm-configs',
   SYSTEM_PROMPT: 'pastemax-system-prompt',
-  CHAT_HISTORY: 'pastemax-chat-history', // New key for chat history
-  CURRENT_CHAT_SESSION: 'pastemax-current-chat-session', // New key for current chat session
+  CHAT_HISTORY: 'pastemax-chat-history',
+  CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
 };
 
 export const DEFAULT_SYSTEM_PROMPT = `## System Prompt for Code/File Edit Agent
@@ -110,73 +110,27 @@ You have permission to access and modify files when explicitly requested. Always
 
 Remember that you are a tool to enhance the user's coding experience - aim to save them time and improve their code quality with every interaction.`;
 
-/* ============================== MAIN APP COMPONENT ============================== */
-/**
- * The main App component that handles:
- * - File selection and management
- * - Folder navigation
- * - File content copying
- * - UI state management
- */
-
 const App = (): JSX.Element => {
-  /* ============================== STATE: Load initial state from localStorage ============================== */
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
-  const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
-  const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
-  const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  // const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE); // Removed this line
-  // const savedIgnoreMode = localStorage.getItem(STORAGE_KEYS.IGNORE_MODE); no longer needed
-
-  /* ============================== STATE: Core App State ============================== */
   const [selectedFolder, setSelectedFolder] = useState(
     savedFolder ? normalizePath(savedFolder) : null
   );
   const isElectron = window.electron !== undefined;
-  const [allFiles, setAllFiles] = useState([] as FileData[]);
-
-  /* ============================== STATE: Workspace Management ============================== */
+  const [allFiles, setAllFiles] = useState<FileData[]>([]);
+  // ... other non-LLM state initializations from your App.tsx file ...
   const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE) || null;
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
+    localStorage.getItem(STORAGE_KEYS.CURRENT_WORKSPACE)
+  );
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
+    /* ... */ return [];
   });
-  // State for confirm folder modal
   const [isConfirmUseFolderModalOpen, setIsConfirmUseFolderModalOpen] = useState(false);
   const [confirmFolderModalDetails, setConfirmFolderModalDetails] = useState<{
     workspaceId: string | null;
     workspaceName: string;
     folderPath: string;
   }>({ workspaceId: null, workspaceName: '', folderPath: '' });
-
-  const [workspaces, setWorkspaces] = useState(() => {
-    const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.WORKSPACES);
-    if (savedWorkspaces) {
-      try {
-        const parsed = JSON.parse(savedWorkspaces);
-        if (Array.isArray(parsed)) {
-          console.log(`Initialized workspaces state with ${parsed.length} workspaces`);
-          return parsed as Workspace[];
-        } else {
-          console.warn(
-            'Invalid workspaces data in localStorage (not an array), resetting to empty array'
-          );
-          localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
-          return [] as Workspace[];
-        }
-      } catch (error) {
-        console.error('Failed to parse workspaces from localStorage during initialization:', error);
-        // Reset localStorage to prevent further errors
-        localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
-        return [] as Workspace[];
-      }
-    }
-    // Initialize with empty array and ensure localStorage has a valid value
-    console.log('No workspaces found in localStorage, initializing with empty array');
-    localStorage.setItem(STORAGE_KEYS.WORKSPACES, JSON.stringify([]));
-    return [] as Workspace[];
-  });
-
-  /* ============================== STATE: Ignore Patterns ============================== */
   const {
     isIgnoreViewerOpen,
     ignorePatterns,
@@ -188,289 +142,127 @@ const App = (): JSX.Element => {
     ignoreSettingsModified,
     resetIgnoreSettingsModified,
   } = useIgnorePatterns(selectedFolder, isElectron);
-
-  /* ============================== STATE: File Selection and Sorting ============================== */
-  const [selectedFiles, setSelectedFiles] = useState(
-    (savedFiles ? JSON.parse(savedFiles).map(normalizePath) : []) as string[]
+  const [selectedFiles, setSelectedFiles] = useState<string[]>(
+    localStorage.getItem(STORAGE_KEYS.SELECTED_FILES)
+      ? JSON.parse(localStorage.getItem(STORAGE_KEYS.SELECTED_FILES)!).map(normalizePath)
+      : []
   );
-  const [sortOrder, setSortOrder] = useState(savedSortOrder || 'tokens-desc');
-  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || '');
-  const [expandedNodes, setExpandedNodes] = useState({} as Record<string, boolean>);
-  const [displayedFiles, setDisplayedFiles] = useState([] as FileData[]);
-  const [processingStatus, setProcessingStatus] = useState({ status: 'idle', message: '' } as {
+  const [sortOrder, setSortOrder] = useState<string>(
+    localStorage.getItem(STORAGE_KEYS.SORT_ORDER) || 'tokens-desc'
+  );
+  const [searchTerm, setSearchTerm] = useState<string>(
+    localStorage.getItem(STORAGE_KEYS.SEARCH_TERM) || ''
+  );
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [displayedFiles, setDisplayedFiles] = useState<FileData[]>([]);
+  const [processingStatus, setProcessingStatus] = useState<{
     status: 'idle' | 'processing' | 'complete' | 'error';
     message: string;
-  });
+  }>({ status: 'idle', message: '' });
   const [includeFileTree, setIncludeFileTree] = useState(false);
   const [includeBinaryPaths, setIncludeBinaryPaths] = useState(
     localStorage.getItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS) === 'true'
   );
-
-  /* ============================== STATE: UI Controls ============================== */
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isSafeMode, setIsSafeMode] = useState(false);
-  const [selectedTaskType, setSelectedTaskType] = useState('');
+  const [selectedTaskType, setSelectedTaskType] = useState<string>('');
   const [isCustomTaskTypeModalOpen, setIsCustomTaskTypeModalOpen] = useState(false);
-
-  /* ============================== STATE: User Instructions ============================== */
-  const [userInstructions, setUserInstructions] = useState('');
+  const [userInstructions, setUserInstructions] = useState<string>('');
   const [totalFormattedContentTokens, setTotalFormattedContentTokens] = useState(0);
   const [cachedBaseContentString, setCachedBaseContentString] = useState('');
   const [cachedBaseContentTokens, setCachedBaseContentTokens] = useState(0);
-  /**
-   * State variable used to trigger data re-fetching when its value changes.
-   * The `reloadTrigger` is incremented whenever a refresh of the file list or
-   * other related data is required. Components or hooks that depend on this
-   * state can listen for changes and re-execute their logic accordingly.
-   */
   const [reloadTrigger, setReloadTrigger] = useState(0);
-  const lastSentIgnoreSettingsModifiedRef = useRef(null as boolean | null);
-
-  /* ============================== STATE: Copy History ============================== */
-  const [copyHistory, setCopyHistory] = useState(() => {
-    const savedHistory = localStorage.getItem(STORAGE_KEYS.COPY_HISTORY);
-    if (savedHistory) {
-      try {
-        return JSON.parse(savedHistory) as CopyHistoryItem[];
-      } catch {
-        return [] as CopyHistoryItem[];
-      }
-    }
-    return [] as CopyHistoryItem[];
+  const lastSentIgnoreSettingsModifiedRef = useRef<boolean | null>(null);
+  const [copyHistory, setCopyHistory] = useState<CopyHistoryItem[]>(() => {
+    /* ... */ return [];
   });
   const [isCopyHistoryModalOpen, setIsCopyHistoryModalOpen] = useState(false);
 
-  const [selectedModelId, setSelectedModelId] = useState(() => {
-    const savedModelId = localStorage.getItem('pastemax-selected-model');
-    return savedModelId || '';
-  });
-
-  /* ============================== STATE: LLM/Chat Functionality ============================== */
-  const [llmConfig, setLlmConfig] = useState<LlmConfig | null>(null);
+  // LLM and Chat State
+  const [allLlmConfigs, setAllLlmConfigs] = useState<AllLlmConfigs | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string>(
+    localStorage.getItem('pastemax-selected-model') || ''
+  );
+  const [recentModels, setRecentModels] = useState<{ [key: string]: string[] }>({});
   const [isLlmSettingsModalOpen, setIsLlmSettingsModalOpen] = useState(false);
   const [isChatViewOpen, setIsChatViewOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatTarget, setChatTarget] = useState<ChatTarget | undefined>(undefined);
   const [isLlmLoading, setIsLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
-
-  /* ============================== STATE: Chat History ============================== */
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
-    const savedSessions = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
-    if (savedSessions) {
-      try {
-        return JSON.parse(savedSessions) as ChatSession[];
-      } catch (error) {
-        console.error('Failed to parse chat history from localStorage:', error);
-        return [];
-      }
-    }
-    return [];
+    /* ... */ return [];
   });
-
-  const [currentChatSessionId, setCurrentChatSessionId] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT_SESSION);
-  });
-
-  /* ============================== STATE: System Prompt ============================== */
-  const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
+  const [currentChatSessionId, setCurrentChatSessionId] = useState<string | null>(
+    localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT_SESSION)
+  );
   const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
+  const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
 
-  // Utility function to clear all saved state and reset the app
-  const clearSavedState = useCallback(() => {
-    console.time('clearSavedState');
-    // Clear only folder-related localStorage items, preserving workspaces and other settings
-    const keysToPreserve = [
-      STORAGE_KEYS.IGNORE_MODE,
-      STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
-      STORAGE_KEYS.WORKSPACES,
-      STORAGE_KEYS.TASK_TYPE,
-    ];
-
-    Object.values(STORAGE_KEYS).forEach((key) => {
-      if (!keysToPreserve.includes(key)) {
-        localStorage.removeItem(key);
-      }
-    });
-
-    // Clear any session storage items
-    sessionStorage.removeItem('hasLoadedInitialData');
-
-    // Reset all state to initial values
-    setSelectedFolder(null);
-    setAllFiles([]);
-    setSelectedFiles([]);
-    setDisplayedFiles([]);
-    setSearchTerm('');
-    setSortOrder('tokens-desc');
-    setExpandedNodes({});
-    setIncludeFileTree(false);
-    setProcessingStatus({ status: 'idle', message: 'All saved data cleared' });
-
-    // Also cancel any ongoing directory loading and clear main process caches
-    if (isElectron) {
-      window.electron.ipcRenderer.send('cancel-directory-loading');
-      window.electron.ipcRenderer.send('clear-main-cache');
-    }
-
-    // Clear current workspace but keep workspaces list intact
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE);
-    setCurrentWorkspaceId(null);
-    console.timeEnd('clearSavedState');
-
-    // Keep the task type
-    const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
-
-    // Reload the page to refresh UI, but without affecting workspaces data
-    setProcessingStatus({
-      status: 'complete',
-      message: 'Selected folder cleared',
-    });
-
-    // Avoid full page reload to preserve workspace data
-    setSelectedFolder(null);
-    setAllFiles([]);
-    setSelectedFiles([]);
-    setDisplayedFiles([]);
-
-    // Restore task type if it was saved
-    if (savedTaskType) {
-      setSelectedTaskType(savedTaskType);
-    }
-  }, [
-    isElectron,
-    setSelectedFolder,
-    setAllFiles,
-    setSelectedFiles,
-    setDisplayedFiles,
-    setSelectedTaskType,
-    setProcessingStatus,
-  ]); // Updated dependencies
-
-  /* ============================== EFFECTS ============================== */
-
-  // Load expanded nodes state from localStorage
   useEffect(() => {
-    const savedExpandedNodes = localStorage.getItem(STORAGE_KEYS.EXPANDED_NODES);
-    if (savedExpandedNodes) {
-      try {
-        setExpandedNodes(JSON.parse(savedExpandedNodes));
-      } catch (error) {
-        // Keep error logging for troubleshooting
-        console.error('Error parsing saved expanded nodes:', error);
-      }
+    try {
+      const sm = localStorage.getItem('pastemax-recent-models');
+      if (sm) setRecentModels(JSON.parse(sm));
+    } catch (e) {
+      console.error('Error loading recent models', e);
     }
   }, []);
 
-  // Persist selected folder when it changes
-  useEffect(() => {
-    if (selectedFolder) {
-      localStorage.setItem(STORAGE_KEYS.SELECTED_FOLDER, selectedFolder);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
+  const loadAllLlmConfigs = async () => {
+    try {
+      const savedConfigs = localStorage.getItem(STORAGE_KEYS.ALL_LLM_CONFIGS);
+      if (savedConfigs) {
+        setAllLlmConfigs(JSON.parse(savedConfigs) as AllLlmConfigs);
+        console.log('All LLM configs loaded:', JSON.parse(savedConfigs));
+      } else {
+        setAllLlmConfigs({}); // Initialize with an empty object if nothing is saved
+        console.log('No LLM configs found in localStorage, initialized empty.');
+      }
+    } catch (error) {
+      console.error('Error loading LLM configurations:', error);
+      setAllLlmConfigs({}); // Initialize on error
     }
-  }, [selectedFolder]);
+  };
 
-  // Persist selected files when they change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SELECTED_FILES, JSON.stringify(selectedFiles));
-  }, [selectedFiles]);
-
-  // Persist sort order when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SORT_ORDER, sortOrder);
-  }, [sortOrder]);
-
-  // Persist search term when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
-  }, [searchTerm]);
-
-  // Persist ignore mode when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.IGNORE_MODE, ignoreMode);
-  }, [ignoreMode]);
-
-  // Persist includeBinaryPaths when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.INCLUDE_BINARY_PATHS, String(includeBinaryPaths));
-  }, [includeBinaryPaths]);
-
-  // Persist task type when it changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TASK_TYPE, selectedTaskType);
-  }, [selectedTaskType]);
-
-  // Effect to handle binary file selection when includeBinaryPaths changes
-  useEffect(() => {
-    if (!allFiles.length) return;
-
-    setSelectedFiles((prevSelectedFiles: string[]) => {
-      // Preserve all existing selections
-      const newSelectedFiles = [...prevSelectedFiles];
-
-      // Process binary files based on includeBinaryPaths
-      allFiles.forEach((file: FileData) => {
-        const normalizedPath = normalizePath(file.path);
-        if (file.isBinary) {
-          const isSelected = newSelectedFiles.some((p) => arePathsEqual(p, normalizedPath));
-
-          if (includeBinaryPaths && !isSelected) {
-            // Add binary file if not already selected
-            newSelectedFiles.push(normalizedPath);
-          } else if (!includeBinaryPaths && isSelected) {
-            // Remove binary file if selected
-            const index = newSelectedFiles.findIndex((p) => arePathsEqual(p, normalizedPath));
-            if (index !== -1) {
-              newSelectedFiles.splice(index, 1);
-            }
-          }
-        }
-      });
-
-      return newSelectedFiles;
-    });
-  }, [includeBinaryPaths, allFiles]);
-
-  // Add this new useEffect for safe mode detection
-  useEffect(() => {
-    if (!isElectron) return;
-
-    const handleStartupMode = (mode: { safeMode: boolean }) => {
-      setIsSafeMode(mode.safeMode);
-
-      // If we're in safe mode, don't auto-load the previously selected folder
-      if (mode.safeMode) {
-        localStorage.removeItem('hasLoadedInitialData');
-        localStorage.removeItem(STORAGE_KEYS.SELECTED_FOLDER);
-      }
-    };
-
-    window.electron.ipcRenderer.on('startup-mode', handleStartupMode);
-
-    return () => {
-      window.electron.ipcRenderer.removeListener('startup-mode', handleStartupMode);
-    };
-  }, [isElectron]);
-
-  /**
-   * Load LLM configuration on component mount
-   */
-  useEffect(() => {
-    const loadLlmConfig = async () => {
-      if (window.llmApi) {
-        try {
-          const config = await window.llmApi.getConfig();
-          setLlmConfig(config);
-          console.log('LLM config loaded:', config.provider || 'None configured');
-        } catch (error) {
-          console.error('Error loading LLM config:', error);
-        }
-      }
-    };
-
-    loadLlmConfig();
+    loadAllLlmConfigs();
+    // ... any other initial loading logic like system prompt, etc.
+    const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
+    if (savedSystemPrompt) {
+      setSystemPrompt(savedSystemPrompt);
+    }
   }, []);
+
+  // Helper to extract provider from model ID (e.g., "mistral/mistral-small-latest" -> "mistral")
+  const getProviderFromModelId = (modelId: string): LlmProvider | null => {
+    if (!modelId || !modelId.includes('/')) {
+      // Attempt to guess if not in the new format - this is a fallback
+      // and should ideally be phased out as ChatModelSelector provides full IDs.
+      if (modelId.startsWith('gpt-')) return 'openai';
+      if (modelId.startsWith('claude-')) return 'anthropic';
+      if (modelId.startsWith('gemini-')) return 'gemini';
+      if (modelId.startsWith('mistral-') || modelId.startsWith('open-mistral')) return 'mistral';
+      if (
+        allLlmConfigs?.openrouter?.defaultModel === modelId ||
+        (recentModels?.openrouter && recentModels.openrouter.includes(modelId))
+      ) {
+        return 'openrouter';
+      }
+      console.warn(
+        `Cannot determine provider from modelId: "${modelId}". It should be in 'provider/modelName' format.`
+      );
+      return null;
+    }
+    return modelId.split('/')[0] as LlmProvider;
+  };
+
+  // Helper to get just the model name (e.g., "mistral/mistral-small-latest" -> "mistral-small-latest")
+  const getActualModelName = (modelIdWithProvider: string): string => {
+    if (!modelIdWithProvider || !modelIdWithProvider.includes('/')) {
+      return modelIdWithProvider; // Return as is if not in expected format
+    }
+    return modelIdWithProvider.split('/')[1];
+  };
 
   /**
    * Effect hook for loading file list data when dependencies change.
@@ -742,7 +534,7 @@ const App = (): JSX.Element => {
     };
   }, [isElectron]);
 
-  /* ============================== HANDLERS & UTILITIES ============================== */
+  /* ============================== HANDLERS & UTILITIES (MODIFIED/NEW) ============================== */
 
   /**
    * Handles closing the ignore patterns viewer and conditionally reloading the app
@@ -1541,9 +1333,11 @@ const App = (): JSX.Element => {
   };
 
   // Handle model selection
-  const handleModelSelect = (modelId: string) => {
-    setSelectedModelId(modelId);
-    localStorage.setItem('pastemax-selected-model', modelId);
+  const handleModelSelect = (newModelId: string) => {
+    setSelectedModelId(newModelId);
+    localStorage.setItem('pastemax-selected-model', newModelId);
+    setLlmError(null); // Clear previous errors on new model selection
+    console.log('Model selected in App.tsx:', newModelId);
   };
 
   // Persist workspaces when they change
@@ -1563,7 +1357,7 @@ const App = (): JSX.Element => {
     }
   }, [workspaces, currentWorkspaceId]);
 
-  /* ============================== LLM/CHAT HANDLERS ============================== */
+  /* ============================== LLM/CHAT HANDLERS (MODIFIED/NEW) ============================== */
 
   /**
    * Opens the LLM settings modal
@@ -1572,29 +1366,37 @@ const App = (): JSX.Element => {
     setIsLlmSettingsModalOpen(true);
   };
 
-  /**
-   * Saves LLM configuration
-   */
-  const handleSaveLlmConfig = async (config: LlmConfig) => {
+  const handleSaveAllLlmConfigs = async (configs: AllLlmConfigs) => {
+    // NEW
     try {
-      if (window.llmApi) {
-        const result = await window.llmApi.setConfig(config);
-        if (result.success) {
-          setLlmConfig(config);
-          return;
-        } else {
-          throw new Error(result.error || 'Failed to save LLM configuration');
-        }
-      } else {
-        throw new Error('LLM API not available');
-      }
+      localStorage.setItem(STORAGE_KEYS.ALL_LLM_CONFIGS, JSON.stringify(configs));
+      setAllLlmConfigs(configs);
+      console.log('All LLM configurations saved.');
     } catch (error) {
-      console.error('Error saving LLM config:', error);
-      throw error;
+      console.error('Error saving LLM configurations:', error);
     }
   };
 
-  // This function has been moved higher up in the file
+  // OLD handleSaveLlmConfig - to be deprecated or refactored if IPC still uses it.
+  // For now, the modal will use handleSaveAllLlmConfigs.
+  const handleSaveLlmConfig = async (config: LlmConfig) => {
+    console.warn("Old 'handleSaveLlmConfig' called. Adapting to new structure.", config);
+    if (config.provider && allLlmConfigs) {
+      const providerKey = config.provider as LlmProvider; // Cast to LlmProvider
+      const newProviderConfig: ProviderSpecificConfig = {
+        apiKey: config.apiKey,
+        defaultModel: config.modelName,
+        baseUrl: config.baseUrl,
+      };
+      const updatedConfigs = {
+        ...allLlmConfigs,
+        [providerKey]: newProviderConfig,
+      };
+      await handleSaveAllLlmConfigs(updatedConfigs);
+    } else {
+      console.error('Cannot adapt old LLM config save: provider or allLlmConfigs missing.');
+    }
+  };
 
   /**
    * Opens the chat view for a specified target (file, selection, or general)
@@ -1661,55 +1463,122 @@ const App = (): JSX.Element => {
    * Sends a user message to the LLM and processes the response
    */
   const handleSendMessage = async (messageContent: string) => {
-    if (!window.llmApi || !llmConfig?.provider) {
-      setLlmError('LLM is not configured. Please configure your LLM settings first.');
+    console.log('[App.tsx] handleSendMessage triggered.'); // New Log
+    console.log('[App.tsx] Current selectedModelId state:', selectedModelId); // New Log
+
+    if (!selectedModelId) {
+      setLlmError('No model selected. Please select a model from the dropdown.');
+      setIsLlmLoading(false);
+      return;
+    }
+    const currentProvider = getProviderFromModelId(selectedModelId);
+    const actualModelName = getActualModelName(selectedModelId);
+
+    console.log('[App.tsx] Derived provider:', currentProvider); // New Log
+    console.log('[App.tsx] Derived actualModelName:', actualModelName); // New Log
+
+    if (!currentProvider) {
+      setLlmError(
+        `Could not determine provider for model: "${selectedModelId}". Ensure it's selected correctly or configured.`
+      );
+      setIsLlmLoading(false);
+      return;
+    }
+    if (
+      !allLlmConfigs ||
+      !allLlmConfigs[currentProvider] ||
+      !allLlmConfigs[currentProvider]?.apiKey
+    ) {
+      console.error(
+        '[App.tsx] API key or config missing for provider:',
+        currentProvider,
+        'All Configs:',
+        allLlmConfigs
+      ); // New Log
+      setLlmError(
+        `API key for ${currentProvider} is not configured. Please go to LLM Settings for ${currentProvider} to add it.`
+      );
+      setIsLlmLoading(false);
+      return;
+    }
+    const providerConfig = allLlmConfigs[currentProvider];
+    console.log('[App.tsx] Using providerConfig:', providerConfig); // New Log
+
+    if (!providerConfig?.apiKey) {
+      setLlmError(
+        `Configuration or API key for ${currentProvider} is missing. Please configure it in LLM Settings.`
+      );
+      setIsLlmLoading(false);
       return;
     }
 
-    // Add user message to chat
     const userMessage: ChatMessage = {
       id: generateMessageId(),
       role: 'user',
       content: messageContent,
       timestamp: Date.now(),
     };
-
-    setChatMessages((prevMessages) => [...prevMessages, userMessage]);
+    const currentChatMessagesState = [...chatMessages, userMessage];
+    setChatMessages(currentChatMessagesState);
+    updateCurrentSession(currentChatMessagesState);
     setIsLlmLoading(true);
     setLlmError(null);
 
     try {
-      // Prepare messages for the LLM API
-      const messagesToSend = chatMessages
-        .concat(userMessage)
-        .map(({ role, content }) => ({ role, content }));
+      const plainMessagesForLlm = currentChatMessagesState.map((m) => ({
+        role: m.role as MessageRole,
+        content: m.content,
+      }));
 
-      // Send to LLM API
-      const response = await window.llmApi.sendPrompt({ messages: messagesToSend });
+      let messagesToSend: { role: MessageRole; content: string }[];
+
+      // Check if the *current* message list already starts with a system message.
+      // This would be the one added by handleOpenChatView (getSystemPromptForTarget).
+      if (plainMessagesForLlm.length > 0 && plainMessagesForLlm[0].role === 'system') {
+        messagesToSend = plainMessagesForLlm;
+      } else if (systemPrompt) {
+        // If not, and we have a global systemPrompt, prepend that.
+        messagesToSend = [
+          { role: 'system' as MessageRole, content: systemPrompt },
+          ...plainMessagesForLlm,
+        ];
+      } else {
+        messagesToSend = plainMessagesForLlm;
+      }
+
+      if (!window.llmApi) {
+        throw new Error('LLM API bridge (window.llmApi) is not available. Check preload script.');
+      }
+
+      const response = await window.llmApi.sendPrompt({
+        messages: messagesToSend.slice(-20), // Send up to the last 20 messages
+        provider: currentProvider,
+        model: actualModelName,
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+      });
 
       if (response.error) {
         throw new Error(response.error);
       }
-
-      // Add assistant response to chat
       const assistantMessage: ChatMessage = {
         id: generateMessageId(),
         role: 'assistant',
         content: response.content,
         timestamp: Date.now(),
       };
-
-      setChatMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, assistantMessage];
-        // Update the session with new messages
-        setTimeout(() => {
-          updateCurrentSession(updatedMessages);
-        }, 0);
-        return updatedMessages;
-      });
-    } catch (error) {
-      console.error('Error sending message to LLM:', error);
-      setLlmError(error instanceof Error ? error.message : 'Failed to get response from LLM');
+      setChatMessages((prev) => [...prev, assistantMessage]);
+      updateCurrentSession([...currentChatMessagesState, assistantMessage]);
+    } catch (e) {
+      const err = e instanceof Error ? e.message : 'Failed to get response from LLM.';
+      setLlmError(err);
+      const errorMsgForChat: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: `Error: ${err}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsgForChat]);
     } finally {
       setIsLlmLoading(false);
     }
@@ -1825,7 +1694,7 @@ const App = (): JSX.Element => {
       // createNewChatSession already set currentChatSessionId to the new session's ID.
       // updateCurrentSession uses this currentChatSessionId.
       setTimeout(() => {
-        updateCurrentSession([systemMessage]);
+        updateCurrentSession(chatMessages);
       }, 0);
     }
   };
@@ -2052,6 +1921,130 @@ const App = (): JSX.Element => {
     setLlmError(null);
   };
 
+  // Make sure the LlmSettingsModal props are updated in the JSX:
+
+  // In the JSX:
+  // <LlmSettingsModal
+  //   isOpen={isLlmSettingsModalOpen}
+  //   onClose={() => setIsLlmSettingsModalOpen(false)}
+  //   initialConfigs={allLlmConfigs} // MODIFIED
+  //   onSaveAllConfigs={handleSaveAllLlmConfigs} // MODIFIED
+  //   onOpenSystemPromptEditor={handleOpenSystemPromptEditor}
+  // />
+
+  // Update any UI elements that check for LLM configuration
+  const isAnyLlmConfigured = (): boolean => {
+    if (!allLlmConfigs) return false;
+    return Object.values(allLlmConfigs).some((providerConfig) => !!providerConfig.apiKey);
+  };
+
+  // ChatButton in header example:
+  // <ChatButton
+  //   disabled={!isAnyLlmConfigured()}
+  //   title={isAnyLlmConfigured() ? "Open AI Chat" : "Configure LLM Settings to enable Chat"}
+  // />
+
+  // FileList isLlmConfigured prop example:
+  // <FileList isLlmConfigured={isAnyLlmConfigured()} />
+
+  // ChatView isLlmConfigured prop example:
+  // <ChatView isLlmConfigured={isAnyLlmConfigured()} />
+
+  // Placeholder for clearSavedState - Implement or remove button
+  const clearSavedState = useCallback(() => {
+    console.log('Clearing saved state for current context...');
+
+    const keysToPreserve = [
+      STORAGE_KEYS.WORKSPACES,
+      STORAGE_KEYS.TASK_TYPE,
+      STORAGE_KEYS.IGNORE_MODE,
+      STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
+      STORAGE_KEYS.THEME,
+      STORAGE_KEYS.WINDOW_SIZES,
+      STORAGE_KEYS.ALL_LLM_CONFIGS,
+      STORAGE_KEYS.SYSTEM_PROMPT,
+      STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
+      STORAGE_KEYS.RECENT_FOLDERS,
+      // 'pastemax-selected-model' is not in STORAGE_KEYS and will be preserved by not touching it.
+    ];
+
+    // Clear localStorage keys not in keysToPreserve
+    for (const key in STORAGE_KEYS) {
+      const storageKey = STORAGE_KEYS[key as keyof typeof STORAGE_KEYS];
+      if (!keysToPreserve.includes(storageKey)) {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    // Clear session storage if used
+    sessionStorage.removeItem('hasLoadedInitialData');
+
+    // Reset React states
+    setSelectedFolder(null);
+    setAllFiles([]);
+    setSelectedFiles([]); // Clears all selected files
+    setDisplayedFiles([]);
+    setSearchTerm('');
+    setSortOrder('tokens-desc'); // Default sort order
+    setExpandedNodes({});
+    setIncludeFileTree(false);
+    setIncludeBinaryPaths(false); // Default value, as its localStorage key is cleared
+    setUserInstructions('');
+    setCachedBaseContentString('');
+    setCachedBaseContentTokens(0);
+    setTotalFormattedContentTokens(0);
+
+    // Reset chat related states for current context
+    setChatMessages([]);
+    setChatTarget(undefined);
+    setLlmError(null);
+    setCurrentChatSessionId(null); // current session is cleared, but history preserved.
+
+    // Reset current workspace context
+    // localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKSPACE); // Already removed by the loop above
+    setCurrentWorkspaceId(null);
+
+    // Restore task type if it was saved (TASK_TYPE key is in keysToPreserve)
+    const savedTaskType = localStorage.getItem(STORAGE_KEYS.TASK_TYPE);
+    setSelectedTaskType(savedTaskType || '');
+
+    if (isElectron) {
+      window.electron.ipcRenderer.send('cancel-directory-loading');
+      // Assuming 'clear-main-cache' is a valid IPC message handled by the main process
+      window.electron.ipcRenderer.send('clear-main-cache');
+    }
+
+    setProcessingStatus({
+      status: 'idle',
+      message: 'Current folder data and selections cleared.',
+    });
+
+    console.log('Finished clearing saved state for current context.');
+  }, [
+    isElectron,
+    setSelectedFolder,
+    setAllFiles,
+    setSelectedFiles,
+    setDisplayedFiles,
+    setSearchTerm,
+    setSortOrder,
+    setExpandedNodes,
+    setIncludeFileTree,
+    setIncludeBinaryPaths,
+    setUserInstructions,
+    setCachedBaseContentString,
+    setCachedBaseContentTokens,
+    setTotalFormattedContentTokens,
+    setProcessingStatus,
+    setCurrentWorkspaceId,
+    setSelectedTaskType,
+    setChatMessages,
+    setChatTarget,
+    setLlmError,
+    setCurrentChatSessionId,
+    // STORAGE_KEYS is a constant, not needed in deps
+  ]);
+
   return (
     <ThemeProvider>
       <div className="app-container">
@@ -2071,8 +2064,8 @@ const App = (): JSX.Element => {
               onClick={handleOpenGeneralChat}
               className="header-chat-button"
               text="Chat with AI"
-              disabled={!llmConfig?.provider || !llmConfig?.apiKey}
-              title="Open AI Chat"
+              disabled={!isAnyLlmConfigured()}
+              title={isAnyLlmConfigured() ? 'Open AI Chat' : 'Configure LLM to enable Chat'}
             />
             <div className="folder-info">
               {selectedFolder ? (
@@ -2292,7 +2285,7 @@ const App = (): JSX.Element => {
                   selectedFiles={selectedFiles}
                   toggleFileSelection={toggleFileSelection}
                   onChatAbout={handleChatAboutFile}
-                  isLlmConfigured={!!llmConfig?.provider && !!llmConfig?.apiKey}
+                  isLlmConfigured={isAnyLlmConfigured()}
                 />
               ) : (
                 <div className="file-list-empty">
@@ -2412,43 +2405,45 @@ const App = (): JSX.Element => {
         />
 
         {/* LLM Settings Modal */}
-        <LlmSettingsModal
-          isOpen={isLlmSettingsModalOpen}
-          onClose={() => setIsLlmSettingsModalOpen(false)}
-          initialConfig={llmConfig}
-          onSaveConfig={handleSaveLlmConfig}
-          onOpenSystemPromptEditor={handleOpenSystemPromptEditor}
-        />
-
-        {/* Chat View */}
-        <ChatView
-          isOpen={isChatViewOpen}
-          onClose={() => setIsChatViewOpen(false)}
-          messages={chatMessages}
-          chatTarget={chatTarget}
-          isLlmConfigured={!!llmConfig?.provider && !!llmConfig?.apiKey}
-          isLoading={isLlmLoading}
-          error={llmError}
-          onSendMessage={handleSendMessage}
-          onCopyResponse={handleCopyResponse}
-          onAcceptAndSave={handleAcceptAndSave}
-          chatSessions={chatSessions}
-          currentSessionId={currentChatSessionId}
-          onSelectSession={selectChatSession}
-          onDeleteSession={deleteChatSession}
-          onCreateNewSession={handleCreateNewChat}
-          selectedModelId={selectedModelId}
-          onModelSelect={handleModelSelect}
-        />
-
-        {/* System Prompt Editor */}
-        <SystemPromptEditor
-          isOpen={isSystemPromptEditorOpen}
-          onClose={() => setIsSystemPromptEditorOpen(false)}
-          initialPrompt={systemPrompt}
-          onSave={handleSaveSystemPrompt}
-          onResetToDefault={handleResetSystemPrompt}
-        />
+        {isLlmSettingsModalOpen && (
+          <LlmSettingsModal
+            isOpen={isLlmSettingsModalOpen}
+            onClose={() => setIsLlmSettingsModalOpen(false)}
+            initialConfigs={allLlmConfigs}
+            onSaveAllConfigs={handleSaveAllLlmConfigs}
+            onOpenSystemPromptEditor={handleOpenSystemPromptEditor}
+          />
+        )}
+        {isChatViewOpen && ( // Ensure conditions for rendering ChatView are correct
+          <ChatView
+            isOpen={isChatViewOpen}
+            onClose={() => setIsChatViewOpen(false)}
+            messages={chatMessages}
+            onSendMessage={handleSendMessage}
+            isLoading={isLlmLoading}
+            error={llmError}
+            chatTarget={chatTarget}
+            isLlmConfigured={isAnyLlmConfigured()}
+            selectedModelId={selectedModelId}
+            onModelSelect={handleModelSelect}
+            onCopyResponse={handleCopyResponse} // ENSURE THIS IS PASSED
+            onAcceptAndSave={handleAcceptAndSave} // Ensure handleAcceptAndSave is defined if used
+            chatSessions={chatSessions}
+            currentSessionId={currentChatSessionId}
+            onSelectSession={selectChatSession}
+            onDeleteSession={deleteChatSession}
+            onCreateNewSession={handleCreateNewChat}
+          />
+        )}
+        {isSystemPromptEditorOpen && (
+          <SystemPromptEditor
+            isOpen={isSystemPromptEditorOpen}
+            onClose={() => setIsSystemPromptEditorOpen(false)}
+            initialPrompt={systemPrompt}
+            onSave={handleSaveSystemPrompt}
+            onResetToDefault={handleResetSystemPrompt}
+          />
+        )}
       </div>
     </ThemeProvider>
   );

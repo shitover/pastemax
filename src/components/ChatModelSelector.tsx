@@ -25,21 +25,23 @@ const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({ onModelSelect, cu
         const parsedModels = JSON.parse(savedModels) as { [provider: string]: string[] };
         setRecentModels(parsedModels);
 
-        // Convert the provider -> models map to a flat array of ModelInfo objects
         const models: ModelInfo[] = [];
         Object.entries(parsedModels).forEach(([provider, modelNames]) => {
           (modelNames as string[]).forEach((modelName: string) => {
-            models.push({
-              id: modelName, // Use the model name as the ID
-              name: modelName, // Format as "Provider: Model"
-              context_length: 0, // We don't have this information from localStorage
-            });
+            // Ensure modelName is not empty and provider is valid before pushing
+            if (provider && modelName) {
+              models.push({
+                id: `${provider}/${modelName}`, // MODIFIED: Composite ID
+                name: modelName, // RETAINED: Display name is just model name
+                context_length: 0, // This info isn't in recentModels, default to 0
+                // No explicit 'provider' field in ModelTypes.ModelInfo, it's part of ID
+              });
+            }
           });
         });
 
         setFlattenedModels(models);
 
-        // If we have a currentModelId, use it, otherwise use the first model
         if (currentModelId && models.some((model) => model.id === currentModelId)) {
           setSelectedModelId(currentModelId);
         } else if (models.length > 0) {
@@ -52,7 +54,7 @@ const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({ onModelSelect, cu
       setError('Failed to load models');
       setIsLoading(false);
     }
-  }, [currentModelId]);
+  }, [currentModelId]); // currentModelId is the full 'provider/modelName'
 
   // Sync with external model ID if provided
   useEffect(() => {

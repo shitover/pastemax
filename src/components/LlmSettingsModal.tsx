@@ -1,32 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { LlmConfig, LlmProvider } from '../types/llmTypes';
+import React, { useState, useEffect, useRef } from 'react';
+import { LlmProvider, ProviderSpecificConfig, AllLlmConfigs } from '../types/llmTypes';
 import { Edit, X } from 'lucide-react';
 
 interface LlmSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialConfig: LlmConfig | null;
-  onSaveConfig: (config: LlmConfig) => Promise<void>;
+  initialConfigs: AllLlmConfigs | null;
+  onSaveAllConfigs: (configs: AllLlmConfigs) => Promise<void>;
   onOpenSystemPromptEditor?: () => void;
 }
 
 const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   isOpen,
   onClose,
-  initialConfig,
-  onSaveConfig,
+  initialConfigs,
+  onSaveAllConfigs,
   onOpenSystemPromptEditor,
 }) => {
-  const [provider, setProvider] = useState<LlmProvider | ''>('');
+  const [allConfigs, setAllConfigs] = useState<AllLlmConfigs>(initialConfigs || {});
+  const [currentProvider, setCurrentProvider] = useState<LlmProvider | ''>('');
   const [apiKey, setApiKey] = useState<string>('');
-  const [modelName, setModelName] = useState<string>('');
+  const [defaultModelName, setDefaultModelName] = useState<string>('');
   const [baseUrl, setBaseUrl] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [recentModels, setRecentModels] = useState<{ [key: string]: string[] }>({});
 
-  // Load user's recent models from localStorage
+  const lastActiveProviderRef = useRef<LlmProvider | ''>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setAllConfigs(initialConfigs || {});
+      let providerToSet: LlmProvider | '' = '';
+
+      if (
+        lastActiveProviderRef.current &&
+        initialConfigs &&
+        initialConfigs[lastActiveProviderRef.current]
+      ) {
+        providerToSet = lastActiveProviderRef.current;
+      } else if (initialConfigs && Object.keys(initialConfigs).length > 0) {
+        const providerWithApiKey = Object.entries(initialConfigs).find(
+          ([, config]) => !!config.apiKey
+        ) as [LlmProvider, ProviderSpecificConfig] | undefined;
+        if (providerWithApiKey) {
+          providerToSet = providerWithApiKey[0];
+        } else {
+          providerToSet = Object.keys(initialConfigs)[0] as LlmProvider;
+        }
+      }
+      setCurrentProvider(providerToSet);
+      if (providerToSet) {
+        lastActiveProviderRef.current = providerToSet;
+      }
+    } else {
+      // Optional: Reset specific states when modal closes if desired, e.g., error messages
+      // setErrorMessage(null); // Already handled by another useEffect
+    }
+  }, [initialConfigs, isOpen]);
+
+  useEffect(() => {
+    if (currentProvider && allConfigs[currentProvider]) {
+      const config = allConfigs[currentProvider];
+      setApiKey(config.apiKey || '');
+      setDefaultModelName(config.defaultModel || '');
+      setBaseUrl(config.baseUrl || '');
+    } else if (currentProvider) {
+      setApiKey('');
+      setDefaultModelName('');
+      setBaseUrl('');
+    } else {
+      setApiKey('');
+      setDefaultModelName('');
+      setBaseUrl('');
+    }
+  }, [currentProvider, allConfigs]);
+
   useEffect(() => {
     try {
       const savedModels = localStorage.getItem('pastemax-recent-models');
@@ -38,17 +88,6 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   }, []);
 
-  // Populate form from initialConfig
-  useEffect(() => {
-    if (initialConfig) {
-      setProvider(initialConfig.provider || '');
-      setApiKey(initialConfig.apiKey || '');
-      setModelName(initialConfig.modelName || '');
-      setBaseUrl(initialConfig.baseUrl || '');
-    }
-  }, [initialConfig, isOpen]);
-
-  // Reset form state when modal is closed
   useEffect(() => {
     if (!isOpen) {
       setErrorMessage(null);
@@ -56,7 +95,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   }, [isOpen]);
 
   const getProviderPlaceholder = () => {
-    switch (provider) {
+    switch (currentProvider) {
       case 'openai':
         return 'Enter OpenAI API Key (sk-...)';
       case 'anthropic':
@@ -65,8 +104,6 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'Enter Google AI API Key';
       case 'groq':
         return 'Enter Groq API Key';
-      case 'deepseek':
-        return 'Enter DeepSeek API Key';
       case 'qwen':
         return 'Enter Qwen API Key';
       case 'grok':
@@ -80,32 +117,19 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   };
 
-  // Get recent models for the selected provider
   const getRecentModelsForProvider = () => {
-    return recentModels[provider] || [];
+    return recentModels[currentProvider] || [];
   };
 
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as LlmProvider | '';
-    setProvider(value);
-
-    // Clear model name when changing provider
-    setModelName('');
+    const newProvider = e.target.value as LlmProvider | '';
+    setCurrentProvider(newProvider);
+    lastActiveProviderRef.current = newProvider;
   };
 
   const handleSave = async () => {
-    if (!provider) {
-      setErrorMessage('Please select a provider');
-      return;
-    }
-
-    if (!apiKey) {
-      setErrorMessage('Please enter an API key');
-      return;
-    }
-
-    if (!modelName) {
-      setErrorMessage('Please enter a model name');
+    if (!currentProvider) {
+      setErrorMessage('Please select a provider to configure.');
       return;
     }
 
@@ -113,28 +137,33 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const config: LlmConfig = {
-        provider,
-        apiKey,
-        modelName: modelName.trim(),
+      const updatedProviderConfig: ProviderSpecificConfig = {
+        apiKey: apiKey.trim() || null,
+        defaultModel: defaultModelName.trim() || null,
         baseUrl: baseUrl.trim() || null,
       };
 
-      await onSaveConfig(config);
+      const newAllConfigs = {
+        ...allConfigs,
+        [currentProvider]: updatedProviderConfig,
+      };
 
-      // Save this model to recent models for this provider
-      const updatedRecentModels = { ...recentModels };
-      const providerModels = updatedRecentModels[provider] || [];
+      setAllConfigs(newAllConfigs);
+      await onSaveAllConfigs(newAllConfigs);
+      lastActiveProviderRef.current = currentProvider;
 
-      // Only add if it's not already in the list
-      if (!providerModels.includes(modelName)) {
-        // Add to the beginning of the array, limit to 5 recent models
-        updatedRecentModels[provider] = [modelName, ...providerModels].slice(0, 5);
-        setRecentModels(updatedRecentModels);
-        localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
+      if (defaultModelName.trim()) {
+        const trimmedModelName = defaultModelName.trim();
+        const updatedRecentModels = { ...recentModels };
+        const providerModels = updatedRecentModels[currentProvider] || [];
+        if (!providerModels.includes(trimmedModelName)) {
+          updatedRecentModels[currentProvider] = [trimmedModelName, ...providerModels].slice(0, 5);
+          setRecentModels(updatedRecentModels);
+          localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
+        }
       }
-
-      onClose();
+      setErrorMessage('Settings saved successfully for ' + currentProvider + '!');
+      setTimeout(() => setErrorMessage(null), 3000);
     } catch (error) {
       console.error('Error saving LLM config:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save configuration');
@@ -143,19 +172,17 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   };
 
-  // Handle selecting a recent model
   const handleSelectRecentModel = (model: string) => {
-    setModelName(model);
+    setDefaultModelName(model);
   };
 
   const handleDeleteRecentModel = (modelToDelete: string) => {
-    if (!provider) return;
-
+    if (!currentProvider) return;
     const updatedRecentModels = { ...recentModels };
-    const providerModels = updatedRecentModels[provider] || [];
-
-    updatedRecentModels[provider] = providerModels.filter((model) => model !== modelToDelete);
-
+    const providerModels = updatedRecentModels[currentProvider] || [];
+    updatedRecentModels[currentProvider] = providerModels.filter(
+      (model) => model !== modelToDelete
+    );
     setRecentModels(updatedRecentModels);
     localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
   };
@@ -177,7 +204,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             <label htmlFor="llm-provider">LLM Provider</label>
             <select
               id="llm-provider"
-              value={provider}
+              value={currentProvider}
               onChange={handleProviderChange}
               className="provider-select"
               disabled={isSaving}
@@ -187,7 +214,6 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               <option value="anthropic">Anthropic</option>
               <option value="gemini">Google Gemini</option>
               <option value="groq">Groq</option>
-              <option value="deepseek">DeepSeek</option>
               <option value="qwen">Qwen</option>
               <option value="grok">Grok</option>
               <option value="openrouter">OpenRouter</option>
@@ -204,24 +230,25 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={getProviderPlaceholder()}
               className="api-key-input"
-              disabled={isSaving || !provider}
+              disabled={isSaving || !currentProvider}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="model-name">Model Name</label>
+            <label htmlFor="model-name">Default Model Name (Optional)</label>
             <input
               id="model-name"
               type="text"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
+              value={defaultModelName}
+              onChange={(e) => setDefaultModelName(e.target.value)}
+              placeholder="e.g., gpt-4o, gemini-1.5-pro-latest"
               className="model-name-input"
-              disabled={isSaving || !provider}
+              disabled={isSaving || !currentProvider}
             />
 
-            {provider && getRecentModelsForProvider().length > 0 && (
+            {currentProvider && getRecentModelsForProvider().length > 0 && (
               <div className="recent-models">
-                <small className="help-text">Recently used models:</small>
+                <small className="help-text">Recently used models for {currentProvider}:</small>
                 <div className="recent-models-list">
                   {getRecentModelsForProvider().map((model, index) => (
                     <button
@@ -235,7 +262,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
                         size={14}
                         className="delete-recent-model-button"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent model selection
+                          e.stopPropagation();
                           handleDeleteRecentModel(model);
                         }}
                       />
@@ -246,8 +273,10 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             )}
           </div>
 
-          {/* Minimal advanced options toggle */}
-          <div className="form-group" style={{ marginBottom: showAdvanced ? 0 : 18 }}>
+          <div
+            className="form-group"
+            style={{ marginBottom: showAdvanced ? 'var(--space-sm)' : 'var(--space-lg)' }}
+          >
             <button
               type="button"
               className="advanced-toggle"
@@ -260,25 +289,22 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
 
           {showAdvanced && (
             <div className="form-group">
-              <label htmlFor="base-url">
-                Base URL <span className="optional">(Optional)</span>
-              </label>
+              <label htmlFor="base-url">Base URL (Optional)</label>
               <input
                 id="base-url"
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="Custom API endpoint URL"
+                placeholder="Custom API endpoint URL (if needed)"
                 className="base-url-input"
-                disabled={isSaving || !provider}
+                disabled={isSaving || !currentProvider}
               />
               <small className="help-text">
-                Only set this if you're using a custom API endpoint or proxy.
+                Only set this if you're using a proxy or non-standard API endpoint.
               </small>
             </div>
           )}
 
-          {/* System Prompt Section */}
           {onOpenSystemPromptEditor && (
             <div className="form-group system-prompt-section">
               <div className="system-prompt-header">
@@ -294,12 +320,18 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
                 </button>
               </div>
               <small className="help-text">
-                Customize how the AI behaves by editing the system prompt that guides its responses.
+                Customize how the AI behaves by editing the system prompt.
               </small>
             </div>
           )}
 
-          {errorMessage && <div className="error-message">{errorMessage}</div>}
+          {errorMessage && (
+            <div
+              className={`message ${errorMessage.startsWith('Settings saved') ? 'message-success' : 'error-message'}`}
+            >
+              {errorMessage}
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">
@@ -309,9 +341,9 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           <button
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={isSaving || !provider || !apiKey || !modelName}
+            disabled={isSaving || !currentProvider}
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </div>
