@@ -20,7 +20,7 @@ interface ChatViewProps {
   error: string | null;
   onSendMessage: (message: string) => void;
   onCopyResponse: (messageId: string) => void;
- // onAcceptAndSave?: (messageId: string) => void; // this feature will be implemeted in the future
+  // onAcceptAndSave?: (messageId: string) => void; // this feature will be implemeted in the future
   chatSessions: ChatSession[];
   currentSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
@@ -49,7 +49,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   error,
   onSendMessage,
   onCopyResponse,
- // onAcceptAndSave,
+  // onAcceptAndSave,
   chatSessions,
   currentSessionId,
   onSelectSession,
@@ -325,7 +325,7 @@ const ChatView: React.FC<ChatViewProps> = ({
               ))}
 
               {/* Loading indicator */}
-              {isLoading && (
+              {isLoading && !error && (
                 <div className="chat-loading">
                   <div className="loading-spinner"></div>
                   <p>AI is thinking...</p>

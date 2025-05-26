@@ -1584,6 +1584,7 @@ const App = (): JSX.Element => {
     }
 
     setLlmError(null);
+    setIsLlmLoading(false); // Add this line
     setIsChatViewOpen(true);
   };
 
@@ -2019,6 +2020,9 @@ const App = (): JSX.Element => {
     const session = chatSessions.find((s) => s.id === sessionId);
     if (!session) return;
 
+    setIsLlmLoading(false); // Add this line
+    setLlmError(null); // Add this line
+
     setCurrentChatSessionId(sessionId);
 
     // Reconstruct chatMessages from session messages
@@ -2106,6 +2110,7 @@ const App = (): JSX.Element => {
     setChatMessages([]);
     setChatTarget({ type: 'general', content: '' });
     setLlmError(null);
+    setIsLlmLoading(false); // Add this line
   };
 
   // Make sure the LlmSettingsModal props are updated in the JSX:
