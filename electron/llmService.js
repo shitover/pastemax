@@ -150,20 +150,20 @@ async function setAllLlmConfigsInStore(configs) {
  * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI|ChatGroq>}
  */
 async function getChatModel(provider, modelName, apiKey, baseUrl) {
-  if (!provider || !apiKey) {
-    throw new Error('LLM provider or API key not provided to getChatModel.');
+  if (!provider || !apiKey || !modelName) {
+    throw new Error('LLM provider, API key, and Model Name are required to getChatModel.');
   }
 
-  console.log(`[LLM Service] Creating chat model for provider: ${provider}`);
+  console.log(`[LLM Service] Creating chat model for provider: ${provider}, model: ${modelName}`);
 
   try {
     switch (provider) {
       case 'openai': {
-        console.log(`[LLM Service] Using OpenAI model: ${modelName || 'Default (gpt-3.5-turbo)'}`);
+        console.log(`[LLM Service] Using OpenAI model: ${modelName}`);
         const options = {
           apiKey: apiKey,
           temperature: 0.7,
-          modelName: modelName || 'gpt-3.5-turbo',
+          modelName: modelName,
         };
         if (baseUrl) {
           options.configuration = { baseURL: baseUrl };
@@ -172,24 +172,22 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       }
 
       case 'anthropic': {
-        console.log(`[LLM Service] Using Anthropic model: ${modelName || 'Default (claude-2)'}`);
+        console.log(`[LLM Service] Using Anthropic model: ${modelName}`);
         const options = {
           apiKey: apiKey,
           temperature: 0.7,
-          modelName: modelName || 'claude-2',
+          modelName: modelName,
         };
         return new ChatAnthropic(options);
       }
 
       case 'gemini': {
-        console.log(
-          `[LLM Service] Using Google Gemini model: ${modelName || 'Default (gemini-pro)'}`
-        );
+        console.log(`[LLM Service] Using Google Gemini model: ${modelName}`);
         const options = {
           apiKey: apiKey,
           maxOutputTokens: 2048,
           temperature: 0.7,
-          modelName: modelName || 'gemini-pro',
+          modelName: modelName,
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -201,13 +199,11 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       }
 
       case 'mistral': {
-        console.log(
-          `[LLM Service] Using Mistral model: ${modelName || 'Default (mistral-small-latest)'}`
-        );
+        console.log(`[LLM Service] Using Mistral model: ${modelName}`);
         const options = {
           apiKey: apiKey,
           temperature: 0.7,
-          modelName: modelName || 'mistral-small-latest',
+          modelName: modelName,
         };
         if (baseUrl) {
           options.baseUrl = baseUrl;
@@ -217,9 +213,6 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
 
       case 'groq': {
         console.log(`[LLM Service] Using Groq model: ${modelName}`);
-        if (!modelName) {
-          throw new Error('Model name is required for Groq provider.');
-        }
         const options = {
           apiKey: apiKey,
           temperature: 0.7,
@@ -230,9 +223,6 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
 
       case 'openrouter': {
         console.log(`[LLM Service] Using OpenRouter via OpenAI client. Model: ${modelName}`);
-        if (!modelName) {
-          throw new Error('Model name (e.g., deepseek/deepseek-chat) is required for OpenRouter.');
-        }
         const options = {
           apiKey: apiKey,
           temperature: 0.7,

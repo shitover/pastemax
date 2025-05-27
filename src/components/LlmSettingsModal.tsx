@@ -22,6 +22,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
 }) => {
   const [allConfigs, setAllConfigs] = useState<AllLlmConfigs>(initialConfigs || {});
   const [currentProvider, setCurrentProvider] = useState<LlmProvider | ''>('');
+  const [currentConfig, setCurrentConfig] = useState<ProviderSpecificConfig | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
   const [defaultModelName, setDefaultModelName] = useState<string>('');
   const [baseUrl, setBaseUrl] = useState<string>('');
@@ -29,6 +30,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [recentModels, setRecentModels] = useState<{ [key: string]: string[] }>({});
+  const [recentModelsForProvider, setRecentModelsForProvider] = useState<string[]>([]);
 
   const lastActiveProviderRef = useRef<LlmProvider | ''>('');
 
@@ -87,6 +89,26 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       // setErrorMessage(null); // Already handled by another useEffect
     }
   }, [initialConfigs, isOpen]);
+
+  useEffect(() => {
+    if (currentProvider) {
+      const existingConfig = allConfigs[currentProvider];
+      setCurrentConfig(
+        existingConfig || {
+          apiKey: '',
+          defaultModel: '',
+          baseUrl: '',
+        }
+      );
+      setRecentModelsForProvider(
+        JSON.parse(localStorage.getItem(`recentModels_${currentProvider}`) || '[]')
+      );
+    } else {
+      setCurrentConfig(null);
+      setRecentModelsForProvider([]);
+    }
+    setErrorMessage(null); // Clear error when provider changes
+  }, [currentProvider, allConfigs]);
 
   useEffect(() => {
     if (currentProvider && allConfigs[currentProvider]) {
@@ -155,22 +177,43 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     lastActiveProviderRef.current = newProvider; // Keep this for correctly setting the ref when user changes dropdown
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCurrentConfig((prevConfig) => ({
+      ...(prevConfig || { apiKey: '', defaultModel: '', baseUrl: '' }), // Ensure prevConfig is an object
+      [name]: value,
+    }));
+  };
+
   const handleSave = async () => {
-    if (!currentProvider) {
-      setErrorMessage('Please select a provider to configure.');
+    if (!currentProvider || !currentConfig) {
+      setErrorMessage('Provider and configuration must be set.');
       return;
     }
+
+    if (!currentConfig.apiKey) {
+      setErrorMessage(`API Key is required for ${currentProvider}.`);
+      return;
+    }
+
+    if (!currentConfig.defaultModel) {
+      setErrorMessage(`Default Model Name is required for ${currentProvider}.`);
+      return;
+    }
+
+    // Clear error if validation passes
+    setErrorMessage(null);
 
     const providerBeingSaved = currentProvider; // Capture the provider being saved
 
     setIsSaving(true);
-    setErrorMessage(null);
 
     try {
+      // Use currentConfig directly for saving, as it reflects the form inputs
       const updatedProviderConfig: ProviderSpecificConfig = {
-        apiKey: apiKey.trim() || null,
-        defaultModel: defaultModelName.trim() || null,
-        baseUrl: baseUrl.trim() || null,
+        apiKey: currentConfig.apiKey ? currentConfig.apiKey.trim() : null,
+        defaultModel: currentConfig.defaultModel ? currentConfig.defaultModel.trim() : null,
+        baseUrl: currentConfig.baseUrl ? currentConfig.baseUrl.trim() : null,
       };
 
       const newAllConfigs = {
@@ -189,8 +232,9 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       localStorage.setItem(LAST_SAVED_PROVIDER_KEY, providerBeingSaved);
       lastActiveProviderRef.current = providerBeingSaved; // Reflect the save here too
 
-      if (defaultModelName.trim()) {
-        const trimmedModelName = defaultModelName.trim();
+      // Use currentConfig.defaultModel for recent models logic
+      if (currentConfig.defaultModel && currentConfig.defaultModel.trim()) {
+        const trimmedModelName = currentConfig.defaultModel.trim();
         const updatedRecentModels = { ...recentModels };
         const providerModels = updatedRecentModels[providerBeingSaved] || [];
         if (!providerModels.includes(trimmedModelName)) {
@@ -213,7 +257,11 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   };
 
   const handleSelectRecentModel = (model: string) => {
-    setDefaultModelName(model);
+    // When a recent model is selected, update the currentConfig state
+    setCurrentConfig((prevConfig) => ({
+      ...(prevConfig || { apiKey: '', defaultModel: '', baseUrl: '' }),
+      defaultModel: model,
+    }));
   };
 
   const handleDeleteRecentModel = (modelToDelete: string) => {
@@ -266,8 +314,9 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
             <input
               id="api-key"
               type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              name="apiKey"
+              value={currentConfig?.apiKey || ''}
+              onChange={handleInputChange}
               placeholder={getProviderPlaceholder()}
               className="api-key-input"
               disabled={isSaving || !currentProvider}
@@ -275,13 +324,14 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="model-name">Default Model Name (Optional)</label>
+            <label htmlFor="defaultModel">Default Model Name</label>
             <input
-              id="model-name"
+              id="defaultModel"
+              name="defaultModel"
               type="text"
-              value={defaultModelName}
-              onChange={(e) => setDefaultModelName(e.target.value)}
-              placeholder="e.g., gpt-4o, gemini-1.5-pro-latest"
+              placeholder="e.g., gpt-4o or gemini-1.5-pro-latest"
+              value={currentConfig?.defaultModel || ''}
+              onChange={handleInputChange}
               className="model-name-input"
               disabled={isSaving || !currentProvider}
             />
@@ -332,10 +382,11 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               <label htmlFor="base-url">Base URL (Optional)</label>
               <input
                 id="base-url"
+                name="baseUrl"
                 type="text"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="Custom API endpoint URL (if needed)"
+                placeholder="Optional: Custom API endpoint"
+                value={currentConfig?.baseUrl || ''}
+                onChange={handleInputChange}
                 className="base-url-input"
                 disabled={isSaving || !currentProvider}
               />
