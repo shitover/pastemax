@@ -265,16 +265,31 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
  */
 function convertToLangchainMessages(messages) {
   return messages.map((msg) => {
+    let messageInstance;
     switch (msg.role) {
       case 'system':
-        return new SystemMessage(msg.content);
-      case 'user':
-        return new HumanMessage(msg.content);
-      case 'assistant':
-        return new AIMessage(msg.content);
+        messageInstance = new SystemMessage(msg.content);
+        break;
+      case 'user': // Typically maps to HumanMessage for Langchain
+        messageInstance = new HumanMessage(msg.content);
+        break;
+      case 'assistant': // Typically maps to AIMessage for Langchain
+        messageInstance = new AIMessage(msg.content);
+        break;
       default:
-        throw new Error(`Unsupported message role: ${msg.role}`);
+        console.warn(
+          `[LLM Service] Unsupported message role encountered: ${msg.role}. Treating as HumanMessage.`
+        );
+        messageInstance = new HumanMessage(msg.content); // Fallback
+        break;
     }
+    // Add the getType method as a workaround for the Mistral library
+    if (messageInstance && typeof messageInstance._getType === 'function') {
+      messageInstance.getType = function () {
+        return this._getType();
+      };
+    }
+    return messageInstance;
   });
 }
 
