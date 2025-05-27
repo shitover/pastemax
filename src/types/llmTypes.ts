@@ -15,12 +15,6 @@ export type LlmProvider =
  * OLD Interface for LLM configuration - Used by existing IPC, to be phased out.
  * The new LlmSettingsModal uses ProviderSpecificConfig and AllLlmConfigs.
  */
-export interface LlmConfig {
-  provider: LlmProvider | null;
-  apiKey: string | null;
-  modelName?: string | null;
-  baseUrl?: string | null; // For custom endpoints
-}
 
 /**
  * Configuration for a specific LLM provider (NEW)
@@ -76,8 +70,8 @@ export interface ProviderEndpoints {
  */
 export interface LlmApiWindow {
   llmApi: {
-    getConfig: () => Promise<LlmConfig>; // Still uses old LlmConfig for now due to existing IPC
-    setConfig: (config: LlmConfig) => Promise<{ success: boolean; error?: string }>; // Still uses old LlmConfig
+    getAllConfigs: () => Promise<AllLlmConfigs>;
+    setAllConfigs: (configs: AllLlmConfigs) => Promise<{ success: boolean; error?: string }>;
     sendPrompt: (params: {
       messages: { role: MessageRole; content: string }[];
       // Backend will also need provider, model, apiKey, baseUrl for the new flow

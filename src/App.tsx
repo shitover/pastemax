@@ -1,5 +1,5 @@
 /* ============================== IMPORTS ============================== */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ConfirmUseFolderModal from './components/ConfirmUseFolderModal';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
@@ -33,13 +33,14 @@ import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
 import {
   AllLlmConfigs,
-  LlmConfig,
+  // LlmConfig, // REMOVED: No longer used
   ChatMessage,
   ChatTarget,
   LlmProvider,
   ProviderSpecificConfig,
   LlmApiWindow,
   MessageRole,
+  ModelInfo as LlmModelInfo, // Renaming to avoid conflict if any other ModelInfo exists
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
@@ -74,7 +75,6 @@ const STORAGE_KEYS = {
   WINDOW_SIZES: 'pastemax-window-sizes',
   TASK_TYPE: 'pastemax-task-type',
   COPY_HISTORY: 'pastemax-copy-history',
-  ALL_LLM_CONFIGS: 'pastemax-all-llm-configs',
   SYSTEM_PROMPT: 'pastemax-system-prompt',
   CHAT_HISTORY: 'pastemax-chat-history',
   CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
@@ -295,16 +295,16 @@ const App = (): JSX.Element => {
 
   const loadAllLlmConfigs = async () => {
     try {
-      const savedConfigs = localStorage.getItem(STORAGE_KEYS.ALL_LLM_CONFIGS);
-      if (savedConfigs) {
-        setAllLlmConfigs(JSON.parse(savedConfigs) as AllLlmConfigs);
-        console.log('All LLM configs loaded:', JSON.parse(savedConfigs));
+      if (window.llmApi) {
+        const configsFromBackend = await window.llmApi.getAllConfigs(); // MODIFIED: Renamed function call
+        setAllLlmConfigs(configsFromBackend || {}); // Ensure it defaults to an empty object if null/undefined
+        console.log('All LLM configs loaded from backend:', configsFromBackend);
       } else {
-        setAllLlmConfigs({}); // Initialize with an empty object if nothing is saved
-        console.log('No LLM configs found in localStorage, initialized empty.');
+        console.warn('window.llmApi not available. Cannot load LLM configs from backend.');
+        setAllLlmConfigs({}); // Initialize with an empty object if API is not available
       }
     } catch (error) {
-      console.error('Error loading LLM configurations:', error);
+      console.error('Error loading LLM configurations from backend:', error);
       setAllLlmConfigs({}); // Initialize on error
     }
   };
@@ -1498,34 +1498,22 @@ const App = (): JSX.Element => {
   };
 
   const handleSaveAllLlmConfigs = async (configs: AllLlmConfigs) => {
-    // NEW
     try {
-      localStorage.setItem(STORAGE_KEYS.ALL_LLM_CONFIGS, JSON.stringify(configs));
-      setAllLlmConfigs(configs);
-      console.log('All LLM configurations saved.');
+      if (window.llmApi) {
+        const result = await window.llmApi.setAllConfigs(configs); // MODIFIED: Renamed function call
+        if (result.success) {
+          setAllLlmConfigs(configs); // Update local state on successful save
+          console.log('All LLM configurations saved to backend.');
+        } else {
+          console.error('Failed to save LLM configurations to backend:', result.error);
+          // Optionally, set an error state here to inform the user
+        }
+      } else {
+        console.warn('window.llmApi not available. Cannot save LLM configs to backend.');
+      }
     } catch (error) {
-      console.error('Error saving LLM configurations:', error);
-    }
-  };
-
-  // OLD handleSaveLlmConfig - to be deprecated or refactored if IPC still uses it.
-  // For now, the modal will use handleSaveAllLlmConfigs.
-  const handleSaveLlmConfig = async (config: LlmConfig) => {
-    console.warn("Old 'handleSaveLlmConfig' called. Adapting to new structure.", config);
-    if (config.provider && allLlmConfigs) {
-      const providerKey = config.provider as LlmProvider; // Cast to LlmProvider
-      const newProviderConfig: ProviderSpecificConfig = {
-        apiKey: config.apiKey,
-        defaultModel: config.modelName,
-        baseUrl: config.baseUrl,
-      };
-      const updatedConfigs = {
-        ...allLlmConfigs,
-        [providerKey]: newProviderConfig,
-      };
-      await handleSaveAllLlmConfigs(updatedConfigs);
-    } else {
-      console.error('Cannot adapt old LLM config save: provider or allLlmConfigs missing.');
+      console.error('Error saving LLM configurations to backend:', error);
+      // Optionally, set an error state here to inform the user
     }
   };
 
@@ -2153,7 +2141,7 @@ const App = (): JSX.Element => {
       STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
       STORAGE_KEYS.THEME,
       STORAGE_KEYS.WINDOW_SIZES,
-      STORAGE_KEYS.ALL_LLM_CONFIGS,
+      // STORAGE_KEYS.ALL_LLM_CONFIGS, // REMOVED: Backend is source of truth now
       STORAGE_KEYS.SYSTEM_PROMPT,
       STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
       STORAGE_KEYS.RECENT_FOLDERS,

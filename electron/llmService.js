@@ -56,27 +56,31 @@ function initializeStore() {
 
       // Create a new store instance with error handling
       store = new Store({
-        name: 'pastemax-llm-config',
+        name: 'pastemax-llm-configs',
         encryptionKey,
-        // Optional: add schema validation
         schema: {
-          llmConfig: {
+          allLlmConfigs: {
             type: 'object',
-            properties: {
-              provider: { type: ['string', 'null'] },
-              apiKey: { type: ['string', 'null'] },
-              modelName: { type: ['string', 'null'] },
-              baseUrl: { type: ['string', 'null'] },
+            additionalProperties: {
+              type: 'object',
+              properties: {
+                apiKey: { type: ['string', 'null'] },
+                defaultModel: { type: ['string', 'null'] },
+                baseUrl: { type: ['string', 'null'] },
+              },
+              required: ['apiKey'],
             },
           },
         },
-        // Add clearInvalidConfig option to handle corrupted data
+        defaults: {
+          allLlmConfigs: {},
+        },
         clearInvalidConfig: true,
       });
 
-      console.log('LLM configuration store initialized with secure encryption');
+      console.log('LLM configurations store initialized with secure encryption');
     } catch (error) {
-      console.error('Error initializing LLM configuration store:', error);
+      console.error('Error initializing LLM configurations store:', error);
 
       // If there's an error, attempt to recover by creating a store with no encryption
       // and no pre-existing data (will reset user settings but allow the app to work)
@@ -88,7 +92,7 @@ function initializeStore() {
 
         // Try to locate and remove the config file
         const userDataPath = (electron.app || electron.remote.app).getPath('userData');
-        const storePath = path.join(userDataPath, 'pastemax-llm-config.json');
+        const storePath = path.join(userDataPath, 'pastemax-llm-configs.json');
 
         if (fs.existsSync(storePath)) {
           console.log('Removing corrupted config file:', storePath);
@@ -97,23 +101,18 @@ function initializeStore() {
 
         // Create a new store with default values and no encryption
         store = new Store({
-          name: 'pastemax-llm-config-new',
+          name: 'pastemax-llm-configs-new',
           defaults: {
-            llmConfig: {
-              provider: null,
-              apiKey: null,
-              modelName: null,
-              baseUrl: null,
-            },
+            allLlmConfigs: {},
           },
         });
 
-        console.log('Created fallback LLM configuration store without encryption');
+        console.log('Created fallback LLM configurations store without encryption');
       } catch (fallbackError) {
         console.error('Failed to create fallback store:', fallbackError);
         // Last resort - in-memory store that won't persist
         store = {
-          get: () => ({ provider: null, apiKey: null, modelName: null, baseUrl: null }),
+          get: () => ({ allLlmConfigs: {} }),
           set: () => {},
         };
         console.log('Using in-memory (non-persistent) store as last resort');
@@ -123,26 +122,22 @@ function initializeStore() {
 }
 
 /**
- * Retrieves the stored LLM configuration
- * @returns {Promise<{provider: string|null, apiKey: string|null, modelName: string|null, baseUrl: string|null}>}
+ * Retrieves the stored AllLlmConfigs object
+ * @returns {Promise<AllLlmConfigs>}
  */
-async function getLlmConfig() {
+async function getAllLlmConfigsFromStore() {
   initializeStore();
-  return store.get('llmConfig', { provider: null, apiKey: null, modelName: null, baseUrl: null });
+  return store.get('allLlmConfigs', {});
 }
 
 /**
- * Saves the LLM configuration
- * @param {Object} config - The LLM configuration
- * @param {string} config.provider - The LLM provider
- * @param {string} config.apiKey - The API key for the provider
- * @param {string} config.modelName - The model name to use
- * @param {string} config.baseUrl - Optional base URL for the API
+ * Saves the AllLlmConfigs object
+ * @param {AllLlmConfigs} configs - The AllLlmConfigs object
  * @returns {Promise<void>}
  */
-async function setLlmConfig({ provider, apiKey, modelName, baseUrl }) {
+async function setAllLlmConfigsInStore(configs) {
   initializeStore();
-  store.set('llmConfig', { provider, apiKey, modelName, baseUrl });
+  store.set('allLlmConfigs', configs);
 }
 
 /**
@@ -353,8 +348,8 @@ async function saveContentToFile({ filePath, content }) {
 
 module.exports = {
   initializeStore,
-  getLlmConfig,
-  setLlmConfig,
+  getAllLlmConfigsFromStore,
+  setAllLlmConfigsInStore,
   sendPromptToLlm,
   saveContentToFile,
 };

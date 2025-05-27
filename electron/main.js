@@ -6,7 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const watcher = require('./watcher.js');
 const { getUpdateStatus, resetUpdateSessionState } = require('./update-manager');
-const { getLlmConfig, setLlmConfig, sendPromptToLlm, saveContentToFile } = require('./llmService');
+const {
+  getAllLlmConfigsFromStore,
+  setAllLlmConfigsInStore,
+  sendPromptToLlm,
+  saveContentToFile,
+} = require('./llmService');
 // GlobalModeExclusion is now in ignore-manager.js
 
 // Configuration constants
@@ -121,20 +126,20 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // LLM Service Handlers
 ipcMain.handle('llm:get-config', async () => {
   try {
-    const config = await getLlmConfig();
-    return config;
+    const configs = await getAllLlmConfigsFromStore();
+    return configs;
   } catch (error) {
-    console.error('Error getting LLM config:', error);
+    console.error('Error getting LLM configs:', error);
     return { error: error.message };
   }
 });
 
-ipcMain.handle('llm:set-config', async (_event, config) => {
+ipcMain.handle('llm:set-config', async (_event, configs) => {
   try {
-    await setLlmConfig(config);
+    await setAllLlmConfigsInStore(configs);
     return { success: true };
   } catch (error) {
-    console.error('Error setting LLM config:', error);
+    console.error('Error setting LLM configs:', error);
     return { success: false, error: error.message };
   }
 });

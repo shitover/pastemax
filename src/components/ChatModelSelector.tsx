@@ -22,14 +22,33 @@ const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({ onModelSelect, cu
     try {
       const savedModels = localStorage.getItem('pastemax-recent-models');
       if (savedModels) {
-        const parsedModels = JSON.parse(savedModels) as { [provider: string]: string[] };
-        setRecentModels(parsedModels);
+        const parsedModels = JSON.parse(savedModels) as { [provider: string]: string[] | string }; // Allow string for graceful handling
+        setRecentModels(parsedModels as { [provider: string]: string[] }); // Keep state as expected
 
         const models: ModelInfo[] = [];
-        Object.entries(parsedModels).forEach(([provider, modelNames]) => {
-          (modelNames as string[]).forEach((modelName: string) => {
+        Object.entries(parsedModels).forEach(([provider, modelNamesValue]) => {
+          let modelNameArray: string[] = [];
+          if (Array.isArray(modelNamesValue)) {
+            modelNameArray = modelNamesValue;
+          } else if (typeof modelNamesValue === 'string') {
+            // If it's a string, wrap it in an array to handle older/malformed data
+            modelNameArray = [modelNamesValue];
+            console.warn(
+              `[ChatModelSelector] Corrected modelNames for provider ${provider} from string to array.`
+            );
+          } else {
+            // If it's neither an array nor a string, skip this provider
+            console.warn(
+              `[ChatModelSelector] modelNames for provider ${provider} is not an array or string, skipping. Value:`,
+              modelNamesValue
+            );
+            return; // Skip to the next provider
+          }
+
+          modelNameArray.forEach((modelName: string) => {
             // Ensure modelName is not empty and provider is valid before pushing
-            if (provider && modelName) {
+            if (provider && modelName && typeof modelName === 'string') {
+              // Extra check for modelName type
               models.push({
                 id: `${provider}/${modelName}`, // MODIFIED: Composite ID
                 name: modelName, // RETAINED: Display name is just model name

@@ -132,20 +132,16 @@ contextBridge.exposeInMainWorld('electron', {
 contextBridge.exposeInMainWorld('llmApi', {
   /**
    * Gets the current LLM configuration
-   * @returns {Promise<{provider: string|null, apiKey: string|null, modelName: string|null, baseUrl: string|null}>}
+   * @returns {Promise<import('../src/types/llmTypes').AllLlmConfigs>}
    */
-  getConfig: () => ipcRenderer.invoke('llm:get-config'),
+  getAllConfigs: () => ipcRenderer.invoke('llm:get-config'),
 
   /**
    * Sets the LLM configuration
-   * @param {Object} config - The LLM configuration
-   * @param {string} config.provider - The LLM provider (openai, anthropic, gemini, etc.)
-   * @param {string} config.apiKey - The API key for the provider
-   * @param {string} config.modelName - Optional model name
-   * @param {string} config.baseUrl - Optional base URL for the API
+   * @param {import('../src/types/llmTypes').AllLlmConfigs} configs - The AllLlmConfigs object
    * @returns {Promise<{success: boolean, error?: string}>}
    */
-  setConfig: (config) => ipcRenderer.invoke('llm:set-config', ensureSerializable(config)),
+  setAllConfigs: (configs) => ipcRenderer.invoke('llm:set-config', ensureSerializable(configs)),
 
   /**
    * Sends a prompt to the LLM
