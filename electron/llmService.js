@@ -3,10 +3,6 @@ const { ChatAnthropic } = require('@langchain/anthropic');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { ChatMistralAI } = require('@langchain/mistralai');
 const { ChatGroq } = require('@langchain/groq');
-// implement later
-// const { ChatQwen } = require('@langchain/qwen'); //
-// const { ChatGrok } = require('@langchain/xai');
-// const { ChatOpenRouter } = require('@langchain/openrouter');
 const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
 const Store = require('electron-store');
 const fs = require('fs').promises;
@@ -154,7 +150,21 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
     throw new Error('LLM provider, API key, and Model Name are required to getChatModel.');
   }
 
-  console.log(`[LLM Service] Creating chat model for provider: ${provider}, model: ${modelName}`);
+  console.log(
+    `[LLM Service] Creating chat model for provider: ${provider}, model: ${modelName}, Base URL from settings: ${baseUrl || 'Not provided'}`
+  );
+  // Diagnostic log to inspect the provider string before the switch
+  console.log(
+    `[LLM Service] DIAGNOSTIC: Provider string before switch: "${provider}", Length: ${provider?.length}`
+  );
+  if (typeof provider === 'string') {
+    console.log(
+      `[LLM Service] DIAGNOSTIC: Character codes: ${provider
+        .split('')
+        .map((char) => char.charCodeAt(0))
+        .join(', ')}`
+    );
+  }
 
   try {
     switch (provider) {
@@ -182,12 +192,13 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       }
 
       case 'gemini': {
-        console.log(`[LLM Service] Using Google Gemini model: ${modelName}`);
-        const options = {
+        console.log(`[LLM Service] Initializing Google Gemini model: ${modelName}`);
+
+        const finalChatGoogleOptions = {
           apiKey: apiKey,
+          modelName: modelName,
           maxOutputTokens: 2048,
           temperature: 0.7,
-          modelName: modelName,
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -195,7 +206,47 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           ],
         };
-        return new ChatGoogleGenerativeAI(options);
+
+        const clientInitOps = {};
+
+        // Heuristic to determine if model likely requires v1beta.
+        // Gemini 1.5 models and anything with "preview" typically use v1beta.
+        // Standard "gemini-pro" (Gemini 1.0 Pro) typically uses v1.
+        const isLikelyV1BetaModel =
+          modelName.toLowerCase().includes('preview') || modelName.toLowerCase().includes('1.5');
+
+        if (baseUrl) {
+          clientInitOps.baseUrl = baseUrl;
+          if (isLikelyV1BetaModel) {
+            clientInitOps.apiVersion = 'v1beta';
+            console.log(
+              `[LLM Service] Using user-provided Base URL: ${clientInitOps.baseUrl}. API Version: v1beta (explicitly set for model ${modelName}).`
+            );
+          } else {
+            // When model is not explicitly beta and baseUrl is provided,
+            // we don't set apiVersion in clientInitOps, relying on ChatGoogleGenerativeAI's internal default (which is 'v1beta').
+            console.log(
+              `[LLM Service] Using user-provided Base URL: ${clientInitOps.baseUrl}. API Version: Relying on Langchain's default (typically v1beta). Model: ${modelName}.`
+            );
+          }
+        } else {
+          // Simple fallback - force v1beta for all Gemini models if no baseUrl
+          clientInitOps.apiVersion = 'v1beta';
+          console.log(
+            `[LLM Service] No baseUrl provided. Model: ${modelName}. Forcing apiVersion: 'v1beta' for default Google AI endpoint.`
+          );
+        }
+
+        // Only add clientInit if it has properties (like baseUrl or apiVersion)
+        if (Object.keys(clientInitOps).length > 0) {
+          finalChatGoogleOptions.clientInit = clientInitOps;
+        }
+
+        console.log(
+          '[LLM Service] Final ChatGoogleGenerativeAI options:',
+          JSON.stringify(finalChatGoogleOptions, null, 2)
+        );
+        return new ChatGoogleGenerativeAI(finalChatGoogleOptions);
       }
 
       case 'mistral': {
@@ -212,11 +263,13 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       }
 
       case 'groq': {
+        console.log("[LLM Service] DIAGNOSTIC: Entered 'groq' case.");
         console.log(`[LLM Service] Using Groq model: ${modelName}`);
         const options = {
           apiKey: apiKey,
           temperature: 0.7,
           modelName: modelName,
+          model: modelName,
         };
         return new ChatGroq(options);
       }
@@ -224,7 +277,7 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       case 'openrouter': {
         console.log(`[LLM Service] Using OpenRouter via OpenAI client. Model: ${modelName}`);
         const options = {
-          apiKey: apiKey,
+          openAIApiKey: apiKey,
           temperature: 0.7,
           modelName: modelName,
           configuration: {

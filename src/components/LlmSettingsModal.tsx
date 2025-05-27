@@ -154,10 +154,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'Enter Google AI API Key';
       case 'groq':
         return 'Enter Groq API Key';
-      case 'qwen':
-        return 'Enter Qwen API Key';
-      case 'grok':
-        return 'Enter Grok API Key';
+   
       case 'openrouter':
         return 'Enter OpenRouter API Key';
       case 'mistral':
@@ -302,8 +299,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               <option value="anthropic">Anthropic</option>
               <option value="gemini">Google Gemini</option>
               <option value="groq">Groq</option>
-              <option value="qwen">Qwen</option>
-              <option value="grok">Grok</option>
+             
               <option value="openrouter">OpenRouter</option>
               <option value="mistral">Mistral</option>
             </select>

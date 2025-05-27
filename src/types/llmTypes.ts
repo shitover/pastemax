@@ -1,15 +1,7 @@
 /**
  * Type for LLM provider
  */
-export type LlmProvider =
-  | 'openai'
-  | 'anthropic'
-  | 'gemini'
-  | 'groq'
-  | 'qwen'
-  | 'grok'
-  | 'openrouter'
-  | 'mistral';
+export type LlmProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral';
 
 /**
  * OLD Interface for LLM configuration - Used by existing IPC, to be phased out.

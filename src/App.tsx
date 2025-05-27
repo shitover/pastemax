@@ -343,10 +343,16 @@ const App = (): JSX.Element => {
 
   // Helper to get just the model name (e.g., "mistral/mistral-small-latest" -> "mistral-small-latest")
   const getActualModelName = (modelIdWithProvider: string): string => {
-    if (!modelIdWithProvider || !modelIdWithProvider.includes('/')) {
-      return modelIdWithProvider; // Return as is if not in expected format
+    if (!modelIdWithProvider) return '';
+    if (modelIdWithProvider.startsWith('openrouter/')) {
+      return modelIdWithProvider.substring('openrouter/'.length);
     }
-    return modelIdWithProvider.split('/')[1];
+    // For other providers, assume format "provider/model-name"
+    const parts = modelIdWithProvider.split('/');
+    if (parts.length > 1) {
+      return parts.slice(1).join('/');
+    }
+    return modelIdWithProvider; // Fallback if no provider prefix is found
   };
 
   /**
