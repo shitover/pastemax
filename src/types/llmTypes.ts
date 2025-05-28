@@ -91,3 +91,10 @@ export interface ModelInfo {
   pricing?: string;
   available?: boolean;
 }
+
+export interface SystemPrompt {
+  id: string;
+  name: string;
+  content: string;
+  isDefault?: boolean; // Optional: to identify if it's a non-deletable/non-editable-name default prompt
+}

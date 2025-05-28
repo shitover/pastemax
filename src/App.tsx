@@ -33,7 +33,6 @@ import ChatView from './components/ChatView';
 import ChatButton from './components/ChatButton';
 import {
   AllLlmConfigs,
-  // LlmConfig, // REMOVED: No longer used
   ChatMessage,
   ChatTarget,
   LlmProvider,
@@ -41,6 +40,7 @@ import {
   LlmApiWindow,
   MessageRole,
   ModelInfo as LlmModelInfo, // Renaming to avoid conflict if any other ModelInfo exists
+  SystemPrompt, // ADDED
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
@@ -48,6 +48,7 @@ import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUt
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 import { isChatSession, isWorkspace } from './utils/typeguards'; // Added isWorkspace
+import { DEFAULT_SYSTEM_PROMPTS, CODE_EDIT_AGENT_PROMPT_ID } from './config/defaultSystemPrompts'; // ADDED
 
 // Augment the Window interface
 declare global {
@@ -75,48 +76,11 @@ const STORAGE_KEYS = {
   WINDOW_SIZES: 'pastemax-window-sizes',
   TASK_TYPE: 'pastemax-task-type',
   COPY_HISTORY: 'pastemax-copy-history',
-  SYSTEM_PROMPT: 'pastemax-system-prompt',
   CHAT_HISTORY: 'pastemax-chat-history',
   CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
+  SYSTEM_PROMPTS: 'pastemax-system-prompts', // ADDED
+  SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id', // ADDED
 };
-
-export const DEFAULT_SYSTEM_PROMPT = `## System Prompt for Code/File Edit Agent
-
-You are a specialized file and code editing assistant. Your primary function is to help users analyze, modify, and manage their code files with efficiency and precision.
-
-### Core Capabilities:
-
-- Analyze code files across multiple programming languages
-- Suggest improvements to code quality, structure, and performance
-- Make targeted edits to files as requested by the user
-- Explain code functionality and identify potential issues
-- Help refactor and optimize existing code
-
-### Working Process:
-
-1. When presented with code files, first analyze the structure and content
-2. Understand the user's editing or analysis request clearly
-3. Provide concise, practical solutions or edits
-4. When making changes, highlight exactly what was modified and why
-5. Offer explanations in plain language that both novice and expert programmers can understand
-
-### Response Format:
-
-- Be direct and efficient in your communication
-- Use markdown formatting for code blocks with appropriate language syntax highlighting
-- For complex edits, show "before" and "after" code snippets
-- Include brief explanations for why specific changes were made
-
-### Usage Guidelines:
-
-- Focus on solving the specific editing task at hand
-- Prioritize practical solutions over theoretical discussions
-- When suggesting multiple approaches, clearly indicate which you recommend and why
-- Clarify any ambiguous requests before proceeding with significant code changes
-
-You have permission to access and modify files when explicitly requested. Always confirm important changes before implementing them. If a requested edit could cause errors or issues, warn the user and suggest alternatives.
-
-Remember that you are a tool to enhance the user's coding experience - aim to save them time and improve their code quality with every interaction.`;
 
 const App = (): JSX.Element => {
   const savedFolder = localStorage.getItem(STORAGE_KEYS.SELECTED_FOLDER);
@@ -281,9 +245,44 @@ const App = (): JSX.Element => {
       return null;
     }
   });
-  const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
+  const [systemPrompts, setSystemPrompts] = useState<SystemPrompt[]>(() => {
+    try {
+      const savedSystemPrompts = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPTS);
+      if (savedSystemPrompts) {
+        const parsed = JSON.parse(savedSystemPrompts);
+        // Basic validation: check if it's an array and if items have id, name, content
+        if (
+          Array.isArray(parsed) &&
+          parsed.every(
+            (p) =>
+              p &&
+              typeof p.id === 'string' &&
+              typeof p.name === 'string' &&
+              typeof p.content === 'string'
+          )
+        ) {
+          return parsed as SystemPrompt[];
+        }
+      }
+    } catch (error) {
+      console.error('Error loading system prompts from localStorage:', error);
+    }
+    return DEFAULT_SYSTEM_PROMPTS; // Fallback to defaults
+  });
+  const [selectedSystemPromptId, setSelectedSystemPromptId] = useState<string | null>(() => {
+    const savedId = localStorage.getItem(STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID);
+    // Ensure the systemPrompts state (which might have just been initialized from localStorage or defaults) is used for finding
+    const availablePrompts = systemPrompts || DEFAULT_SYSTEM_PROMPTS;
+    if (savedId && availablePrompts.find((p) => p.id === savedId)) {
+      return savedId;
+    }
+    // Fallback to the first default prompt if selected one isn't valid or available
+    const firstDefault = DEFAULT_SYSTEM_PROMPTS.length > 0 ? DEFAULT_SYSTEM_PROMPTS[0].id : null;
+    // Or if there are custom prompts but no default, select the first custom one
+    return firstDefault || (availablePrompts.length > 0 ? availablePrompts[0].id : null);
+  });
+
   const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -313,11 +312,22 @@ const App = (): JSX.Element => {
   useEffect(() => {
     loadAllLlmConfigs();
     // ... any other initial loading logic like system prompt, etc.
-    const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
-    if (savedSystemPrompt) {
-      setSystemPrompt(savedSystemPrompt);
-    }
   }, []);
+
+  // Persist systemPrompts to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPTS, JSON.stringify(systemPrompts));
+  }, [systemPrompts]);
+
+  // Persist selectedSystemPromptId to localStorage
+  useEffect(() => {
+    if (selectedSystemPromptId) {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID, selectedSystemPromptId);
+    } else {
+      // If null, remove it to avoid storing 'null' as a string
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID);
+    }
+  }, [selectedSystemPromptId]);
 
   // Helper to extract provider from model ID (e.g., "mistral/mistral-small-latest" -> "mistral")
   const getProviderFromModelId = (modelId: string): LlmProvider | null => {
@@ -1588,12 +1598,14 @@ const App = (): JSX.Element => {
    */
   const getSystemPromptForTarget = (target: ChatTarget): string => {
     let contextInfo = '';
+    const currentSelectedPrompt = systemPrompts.find((p) => p.id === selectedSystemPromptId);
+    const basePromptContent = currentSelectedPrompt
+      ? currentSelectedPrompt.content
+      : DEFAULT_SYSTEM_PROMPTS[0].content; // Fallback
 
     switch (target.type) {
       case 'file':
-        contextInfo = `\n\n## Context\nYou are discussing the following file: ${
-          target.fileName || 'Unnamed file'
-        }. Here is its content:\n\n\`\`\`\n${target.content}\n\`\`\``;
+        contextInfo = `\n\n## Context\nYou are discussing the following file: ${target.fileName || 'Unnamed file'}. Here is its content:\n\n\`\`\`\n${target.content}\n\`\`\``;
         break;
       case 'selection':
         contextInfo = `\n\n## Context\nYou are discussing the following code/text selection:\n\n\`\`\`\n${target.content}\n\`\`\``;
@@ -1604,8 +1616,7 @@ const App = (): JSX.Element => {
         break;
     }
 
-    // Return the custom system prompt with context appended
-    return systemPrompt + contextInfo;
+    return basePromptContent + contextInfo;
   };
 
   /**
@@ -1735,16 +1746,15 @@ const App = (): JSX.Element => {
       let messagesToSend: { role: MessageRole; content: string }[];
       if (messagesForLlm.length > 0 && messagesForLlm[0].role === 'system') {
         messagesToSend = messagesForLlm;
-      } else if (systemPrompt) {
-        // If the session doesn't start with a system message, prepend the global/default one.
-        // This logic might need adjustment if targeted system prompts are added directly to session messages.
-        const baseSystemPrompt = chatTarget ? getSystemPromptForTarget(chatTarget) : systemPrompt;
+      } else {
+        const baseSystemPrompt = chatTarget
+          ? getSystemPromptForTarget(chatTarget)
+          : systemPrompts.find((p) => p.id === selectedSystemPromptId)?.content ||
+            DEFAULT_SYSTEM_PROMPTS[0].content;
         messagesToSend = [
           { role: 'system' as MessageRole, content: baseSystemPrompt },
           ...messagesForLlm,
         ];
-      } else {
-        messagesToSend = messagesForLlm;
       }
 
       if (!window.llmApi) {
@@ -1943,7 +1953,7 @@ const App = (): JSX.Element => {
         throw new Error('Session disappeared during retry preparation.');
       }
 
-      let messagesForLlm = updatedSessionForRequest.messages.map((m) => ({
+      const messagesForLlm = updatedSessionForRequest.messages.map((m) => ({
         role: m.role as MessageRole,
         content: m.content,
       }));
@@ -1953,15 +1963,15 @@ const App = (): JSX.Element => {
       const sessionSystemPrompt = messagesForLlm.find((m) => m.role === 'system');
 
       if (sessionSystemPrompt) {
-        // If a system prompt from the session exists (e.g. target-specific), use it.
-        // Ensure it's at the start and remove other instances if any (though unlikely).
         messagesToSend = [
           sessionSystemPrompt,
           ...messagesForLlm.filter((m) => m.role !== 'system'),
         ];
       } else {
-        // No session-specific system prompt, use the global/target-based one.
-        const baseSystemPrompt = chatTarget ? getSystemPromptForTarget(chatTarget) : systemPrompt;
+        const baseSystemPrompt = chatTarget
+          ? getSystemPromptForTarget(chatTarget)
+          : systemPrompts.find((p) => p.id === selectedSystemPromptId)?.content ||
+            DEFAULT_SYSTEM_PROMPTS[0].content;
         messagesToSend = [
           { role: 'system' as MessageRole, content: baseSystemPrompt },
           ...messagesForLlm.filter((m) => m.role !== 'system'), // Ensure no other system messages sneak in
@@ -2242,14 +2252,14 @@ const App = (): JSX.Element => {
 
   // Add after other useEffects
   /**
-   * Loads the system prompt from localStorage
+   * Loads the system prompt from localStorage - REMOVED as new system handles this.
    */
-  useEffect(() => {
-    const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
-    if (savedSystemPrompt) {
-      setSystemPrompt(savedSystemPrompt);
-    }
-  }, []);
+  // useEffect(() => {
+  //   const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
+  //   if (savedSystemPrompt) {
+  //     setSystemPrompt(savedSystemPrompt);
+  //   }
+  // }, []);
 
   // Add handler functions
   /**
@@ -2260,19 +2270,84 @@ const App = (): JSX.Element => {
   };
 
   /**
-   * Saves the system prompt and updates localStorage
+   * Saves a new system prompt or updates an existing one.
+   * Also selects the saved prompt.
    */
-  const handleSaveSystemPrompt = (newSystemPrompt: string) => {
-    setSystemPrompt(newSystemPrompt);
-    localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, newSystemPrompt);
+  const handleSaveSystemPrompt = (promptToSave: SystemPrompt) => {
+    setSystemPrompts((prevPrompts) => {
+      const existingIndex = prevPrompts.findIndex((p) => p.id === promptToSave.id);
+      if (existingIndex > -1) {
+        // Update existing
+        const updatedPrompts = [...prevPrompts];
+        updatedPrompts[existingIndex] = promptToSave;
+        return updatedPrompts;
+      } else {
+        // Add new
+        return [...prevPrompts, promptToSave];
+      }
+    });
+    setSelectedSystemPromptId(promptToSave.id); // Select the newly saved/updated prompt
+    // setIsSystemPromptEditorOpen(false); // Close editor after saving - handled by editor itself
+  };
+
+  /**
+   * Deletes a system prompt if it's not a default one.
+   * Selects a fallback prompt if the deleted one was active.
+   */
+  const handleDeleteSystemPrompt = (promptIdToDelete: string) => {
+    const promptToDelete = systemPrompts.find((p) => p.id === promptIdToDelete);
+    if (promptToDelete && promptToDelete.isDefault) {
+      console.warn('Cannot delete a default system prompt.');
+      // Optionally, show a user notification here
+      return;
+    }
+
+    setSystemPrompts((prevPrompts) => prevPrompts.filter((p) => p.id !== promptIdToDelete));
+
+    if (selectedSystemPromptId === promptIdToDelete) {
+      // If the deleted prompt was selected, select the first default, or the first available.
+      const firstDefault =
+        systemPrompts.find((p) => p.isDefault && p.id !== promptIdToDelete) ||
+        DEFAULT_SYSTEM_PROMPTS.find((p) => p.id !== promptIdToDelete);
+      const firstAvailable = systemPrompts.find((p) => p.id !== promptIdToDelete);
+      setSelectedSystemPromptId(firstDefault?.id || firstAvailable?.id || null);
+    }
+  };
+
+  /**
+   * Creates a new system prompt object, adds it to state, selects it, and prepares for editing.
+   */
+  const handleAddNewSystemPrompt = () => {
+    const newPromptId = generateId('system-prompt_');
+    const newPrompt: SystemPrompt = {
+      id: newPromptId,
+      name: 'New System Prompt',
+      content: '', // Start with empty content
+      isDefault: false,
+    };
+    setSystemPrompts((prev) => [...prev, newPrompt]);
+    setSelectedSystemPromptId(newPromptId);
+    // The SystemPromptEditor will typically open when a new prompt is selected for editing or creation.
+    // If it's not already open, this is a good place to open it:
+    // setIsSystemPromptEditorOpen(true); // This will be handled by the editor's open logic based on selection
   };
 
   /**
    * Resets the system prompt to the default value
    */
   const handleResetSystemPrompt = () => {
-    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
-    localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT);
+    // This function's behavior changes. It should reset the *currently selected*
+    // system prompt in the editor to its default state if it IS a default prompt.
+    // The actual saving will be handled by handleSaveSystemPrompt.
+    // The SystemPromptEditor will manage this local reset within its own state.
+    // If the user wants to reset a *custom* prompt, they might just clear its content or delete it.
+    // This function is now primarily a signal to the editor for default prompts.
+    // For now, App.tsx doesn't need to do much other than perhaps re-fetch defaults
+    // if they were to be modified in-memory (which they aren't currently).
+    console.log(
+      'Resetting system prompt (delegated to editor for UI changes, save for persistence).'
+    );
+    // If the editor needs access to original defaults, it can import DEFAULT_SYSTEM_PROMPTS.
   };
 
   // Save chat sessions to localStorage when they change
@@ -2528,7 +2603,9 @@ const App = (): JSX.Element => {
       STORAGE_KEYS.THEME,
       STORAGE_KEYS.WINDOW_SIZES,
       // STORAGE_KEYS.ALL_LLM_CONFIGS, // REMOVED: Backend is source of truth now
-      STORAGE_KEYS.SYSTEM_PROMPT,
+      // STORAGE_KEYS.SYSTEM_PROMPT, // REMOVED
+      STORAGE_KEYS.SYSTEM_PROMPTS, // KEEP
+      STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID, // KEEP
       STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
       STORAGE_KEYS.RECENT_FOLDERS,
       // 'pastemax-selected-model' is not in STORAGE_KEYS and will be preserved by not touching it.
@@ -3026,9 +3103,16 @@ const App = (): JSX.Element => {
           <SystemPromptEditor
             isOpen={isSystemPromptEditorOpen}
             onClose={() => setIsSystemPromptEditorOpen(false)}
-            initialPrompt={systemPrompt}
-            onSave={handleSaveSystemPrompt}
-            onResetToDefault={handleResetSystemPrompt}
+            // Pass all system prompts and the selected ID
+            systemPrompts={systemPrompts}
+            selectedSystemPromptId={selectedSystemPromptId}
+            onSaveSystemPrompt={handleSaveSystemPrompt}
+            onDeleteSystemPrompt={handleDeleteSystemPrompt}
+            onSelectSystemPrompt={setSelectedSystemPromptId} // Allow editor to change selection
+            onAddNewSystemPrompt={handleAddNewSystemPrompt} // Allow editor to trigger add new
+            // initialPrompt={systemPrompt} // REMOVED - Editor handles current prompt based on ID
+            // onSave={handleSaveSystemPrompt} // REMOVED - Replaced by onSaveSystemPrompt
+            // onResetToDefault={handleResetSystemPrompt} // REMOVED - Editor handles reset logic internally for its UI
           />
         )}
       </div>
