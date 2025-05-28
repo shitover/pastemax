@@ -7,7 +7,7 @@ const Store = require('electron-store');
 const fs = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
-const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 /**
  * Store instance for persisting LLM configuration
@@ -197,27 +197,6 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
         // Using @google/generative-ai directly
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Prepare safety settings for Google's SDK
-        // These were previously in finalChatGoogleOptions, now adapting for direct SDK use.
-        // Keeping them commented out if user previously removed them, but showing structure.
-        const safetySettings = [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-        ];
 
         // Note: The @google/generative-ai SDK uses 'generationConfig' for temperature, maxOutputTokens etc.
         // The 'baseUrl' for this SDK is typically configured during GoogleGenerativeAI instantiation if needed for a proxy,
@@ -244,7 +223,7 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
             // takes history which can include alternating user/model. System prompt is often prepended to the first user message.
 
             let systemInstruction = null;
-            const history = [];
+            // const history = [];
             const messagesForGoogle = [];
 
             for (const lcMsg of langchainMessages) {

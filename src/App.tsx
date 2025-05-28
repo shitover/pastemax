@@ -1,5 +1,5 @@
 /* ============================== IMPORTS ============================== */
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ConfirmUseFolderModal from './components/ConfirmUseFolderModal';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
@@ -283,6 +283,7 @@ const App = (): JSX.Element => {
   });
   const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
   const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -1800,36 +1801,88 @@ const App = (): JSX.Element => {
   /**
    * Opens a general chat (not specific to any file)
    */
-  const handleOpenGeneralChat = () => {
-    // Try to find an existing general chat session that is current, or any general chat if none is current
-    let generalSession = chatSessions.find(
-      (s) => s.id === currentChatSessionId && (s.targetType === 'general' || !s.targetType)
-    );
-    if (!generalSession) {
-      generalSession = chatSessions.find((s) => s.targetType === 'general' || !s.targetType);
+  const handleOpenGeneralChat = useCallback(() => {
+    console.log('[App.tsx] handleOpenGeneralChat called');
+    const generalSessionId = 'general-chat-session'; // Used for managing session state logic
+
+    if (currentChatSessionId !== generalSessionId) {
+      setCurrentChatSessionId(generalSessionId);
+      setChatMessages([]);
+      setChatTarget({ type: 'general', content: '' }); // Correct: type and content are required
+    }
+    setIsChatViewOpen(true); // This controls the visibility of the main ChatView
+  }, [
+    currentChatSessionId,
+    setCurrentChatSessionId,
+    setChatMessages,
+    setChatTarget,
+    setIsChatViewOpen,
+  ]);
+
+  
+  const createNewChatSession = (target?: ChatTarget) => {
+    const sessionId = generateId('session_');
+    let sessionTitle: string;
+    const userPreview: string | undefined = undefined; // Always undefined for a brand new chat
+
+    if (target?.type === 'file') {
+      sessionTitle = target.fileName ? `File: ${target.fileName}` : 'File Chat';
+    } else if (target?.type === 'selection') {
+      sessionTitle = 'Selection Chat';
+    } else {
+      sessionTitle = 'New Chat'; // Default for general new chats
     }
 
-    if (generalSession) {
-      console.log(`[App.tsx] Resuming general session: ${generalSession.id}`);
-      selectChatSession(generalSession.id);
-    } else {
-      console.log('[App.tsx] No existing general session, creating new one.');
-      const newSessionId = createNewChatSession({ type: 'general', content: '' });
-      // selectChatSession will be called indirectly by createNewChatSession setting currentChatSessionId
-      // and subsequent useEffect. For immediate UI, set messages and target.
-      const systemMessage: ChatMessage = {
-        id: generateMessageId(),
-        role: 'system',
-        content: getSystemPromptForTarget({ type: 'general', content: '' }),
-        timestamp: Date.now(),
-      };
-      setChatMessages([systemMessage]);
-      setChatTarget({ type: 'general', content: '' });
-      // updateCurrentSession will be triggered by useEffect on chatMessages change.
-    }
-    setLlmError(null);
-    setIsChatViewOpen(true);
+    const newSession: ChatSession = {
+      id: sessionId,
+      title: sessionTitle,
+      lastUpdated: Date.now(),
+      messages: [], // New session starts with no messages
+      targetType: target?.type,
+      targetName: target?.fileName || undefined,
+      userPreview: userPreview,
+    };
+
+    setChatSessions((prevSessions) => [newSession, ...prevSessions]);
+    setCurrentChatSessionId(sessionId);
+
+    return sessionId;
   };
+
+  
+  
+  
+  
+  
+  const handleSendInstructionsToAI = useCallback(
+    async (instructionsContent: string) => {
+      console.log(
+        `[App.tsx] handleSendInstructionsToAI called with: ${instructionsContent.substring(0, 100)}...`
+      );
+
+      if (!selectedModelId) {
+        console.warn('[App.tsx] No model selected. Cannot send instructions to AI.');
+        return;
+      }
+
+      const newSessionId = createNewChatSession({ type: 'general', content: '' });
+      console.log(`[App.tsx] Created new session for instructions: ${newSessionId}`);
+      setIsChatViewOpen(true);
+
+      setTimeout(async () => {
+        console.log(
+          `[App.tsx] Sending instructions to new session ${newSessionId} using model ${selectedModelId}`
+        );
+        await handleSendMessage(instructionsContent);
+      }, 50);
+    },
+    [
+      selectedModelId,
+      createNewChatSession, // This is correct if createNewChatSession is defined above
+      handleSendMessage,
+      setIsChatViewOpen,
+    ]
+  );
 
   /* ============================== RENDER FUNCTIONS ============================== */
 
@@ -1978,35 +2031,7 @@ const App = (): JSX.Element => {
   /**
    * Creates a new chat session and sets it as the current session
    */
-  const createNewChatSession = (target?: ChatTarget) => {
-    const sessionId = generateId('session_');
-    let sessionTitle: string;
-    const userPreview: string | undefined = undefined; // Always undefined for a brand new chat
-
-    if (target?.type === 'file') {
-      sessionTitle = target.fileName ? `File: ${target.fileName}` : 'File Chat';
-    } else if (target?.type === 'selection') {
-      sessionTitle = 'Selection Chat';
-    } else {
-      sessionTitle = 'New Chat'; // Default for general new chats
-    }
-
-    const newSession: ChatSession = {
-      id: sessionId,
-      title: sessionTitle,
-      lastUpdated: Date.now(),
-      messages: [], // New session starts with no messages
-      targetType: target?.type,
-      targetName: target?.fileName || undefined,
-      userPreview: userPreview,
-    };
-
-    setChatSessions((prevSessions) => [newSession, ...prevSessions]);
-    setCurrentChatSessionId(sessionId);
-
-    return sessionId;
-  };
-
+  
   /**
    * Selects an existing chat session
    */
@@ -2505,6 +2530,7 @@ const App = (): JSX.Element => {
               instructions={userInstructions}
               setInstructions={setUserInstructions}
               selectedTaskType={selectedTaskType}
+              onSendToAIClicked={handleSendInstructionsToAI} // Ensure this is correctly passed
             />
 
             {/* Model selection dropdown */}
@@ -2620,7 +2646,7 @@ const App = (): JSX.Element => {
             onOpenSystemPromptEditor={handleOpenSystemPromptEditor}
           />
         )}
-        {isChatViewOpen && ( // Ensure conditions for rendering ChatView are correct
+        {isChatViewOpen && (
           <ChatView
             isOpen={isChatViewOpen}
             onClose={() => setIsChatViewOpen(false)}
@@ -2632,8 +2658,7 @@ const App = (): JSX.Element => {
             isLlmConfigured={isAnyLlmConfigured()}
             selectedModelId={selectedModelId}
             onModelSelect={handleModelSelect}
-            onCopyResponse={handleCopyResponse} // ENSURE THIS IS PASSED
-            //  onAcceptAndSave={handleAcceptAndSave} // this feature will be implemented in the future
+            onCopyResponse={handleCopyResponse}
             chatSessions={chatSessions}
             currentSessionId={currentChatSessionId}
             onSelectSession={selectChatSession}
