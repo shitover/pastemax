@@ -1819,7 +1819,6 @@ const App = (): JSX.Element => {
     setIsChatViewOpen,
   ]);
 
-  
   const createNewChatSession = (target?: ChatTarget) => {
     const sessionId = generateId('session_');
     let sessionTitle: string;
@@ -1849,38 +1848,88 @@ const App = (): JSX.Element => {
     return sessionId;
   };
 
-  
-  
-  
-  
-  
   const handleSendInstructionsToAI = useCallback(
-    async (instructionsContent: string) => {
+    async (currentLocalUserInstructions: string) => {
       console.log(
-        `[App.tsx] handleSendInstructionsToAI called with: ${instructionsContent.substring(0, 100)}...`
+        `[App.tsx] handleSendInstructionsToAI called. User instructions: ${currentLocalUserInstructions.substring(
+          0,
+          100
+        )}...`
       );
 
       if (!selectedModelId) {
         console.warn('[App.tsx] No model selected. Cannot send instructions to AI.');
+        setLlmError('No model selected. Please select a model first.');
+        // To show this error, we might need to open the chat view if it's not already open
+        // However, the main ChatButton itself is usually disabled if no model is configured at all.
+        // For this specific flow, if no model is selected, it's an early exit.
         return;
       }
 
-      const newSessionId = createNewChatSession({ type: 'general', content: '' });
-      console.log(`[App.tsx] Created new session for instructions: ${newSessionId}`);
+      // Pre-flight check for the selected model's provider configuration
+      const providerForSelectedModel = getProviderFromModelId(selectedModelId);
+      if (!providerForSelectedModel || !allLlmConfigs?.[providerForSelectedModel]?.apiKey) {
+        const errorMsg = `API key for ${providerForSelectedModel || "the selected model's provider"} is not configured. Please go to LLM Settings to add it.`;
+        console.warn(`[App.tsx] Configuration check failed: ${errorMsg}`);
+        setLlmError(errorMsg);
+
+        // Open a new, clean chat view to display this configuration error
+        const newSessionId = createNewChatSession({ type: 'general', content: '' }); // Create session for context
+        setCurrentChatSessionId(newSessionId); // Set it as current
+        setChatMessages([]); // Ensure messages are clear
+        setChatTarget({ type: 'general', content: '' }); // Set general target
+        setIsLlmLoading(false); // Ensure loading is false
+        setIsChatViewOpen(true); // Open the chat view to show the error
+        return; // Stop further processing
+      }
+
+      const fullContentToSend =
+        cachedBaseContentString +
+        (cachedBaseContentString && currentLocalUserInstructions.trim() ? '\n\n' : '') +
+        formatUserInstructionsBlock(currentLocalUserInstructions);
+
+      if (!fullContentToSend.trim()) {
+        console.warn(
+          '[App.tsx] No content to send to AI (base content and instructions are empty).'
+        );
+        setLlmError('No content to send. Please select files or write instructions.');
+        // Similar to above, ensure chat view is open if we want to show this error there.
+        // If already in chat view, this error will appear. If not, we might need to open it.
+        return;
+      }
+
+      // If configuration is present, proceed to set up for sending
+      const newSessionIdAfterConfigCheck = createNewChatSession({ type: 'general', content: '' });
+      console.log(
+        `[App.tsx] Config check passed. Created new session for full context AI send: ${newSessionIdAfterConfigCheck}`
+      );
+
+      setChatMessages([]);
+      setChatTarget({ type: 'general', content: '' });
+      setLlmError(null);
+      setIsLlmLoading(false);
       setIsChatViewOpen(true);
 
       setTimeout(async () => {
         console.log(
-          `[App.tsx] Sending instructions to new session ${newSessionId} using model ${selectedModelId}`
+          `[App.tsx] Sending full context to new session ${newSessionIdAfterConfigCheck} using model ${selectedModelId}. Content length: ${fullContentToSend.length}`
         );
-        await handleSendMessage(instructionsContent);
+        await handleSendMessage(fullContentToSend);
       }, 50);
     },
     [
       selectedModelId,
-      createNewChatSession, // This is correct if createNewChatSession is defined above
+      cachedBaseContentString,
+      createNewChatSession,
       handleSendMessage,
       setIsChatViewOpen,
+      setChatMessages,
+      setChatTarget,
+      setLlmError,
+      setIsLlmLoading,
+      allLlmConfigs, // Added dependency for the pre-flight configuration check
+      setCurrentChatSessionId, // Added: used in the pre-flight error path
+      // getProviderFromModelId is a stable utility, formatUserInstructionsBlock too
     ]
   );
 
@@ -2031,7 +2080,7 @@ const App = (): JSX.Element => {
   /**
    * Creates a new chat session and sets it as the current session
    */
-  
+
   /**
    * Selects an existing chat session
    */
