@@ -11,6 +11,8 @@ export interface ChatSession {
   targetType?: 'file' | 'selection' | 'general';
   targetName?: string;
   userPreview?: string;
+  isLoading?: boolean;
+  llmError?: string | null;
 }
 
 interface ChatHistorySidebarProps {

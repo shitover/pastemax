@@ -20,6 +20,7 @@ interface ChatViewProps {
   isLoading: boolean;
   error: string | null;
   onSendMessage: (message: string) => void;
+  onRetry?: (messageIdToRetry: string) => void;
   onCopyResponse: (messageId: string) => void;
   // onAcceptAndSave?: (messageId: string) => void; // this feature will be implemeted in the future
   chatSessions: ChatSession[];
@@ -49,6 +50,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   isLoading,
   error,
   onSendMessage,
+  onRetry,
   onCopyResponse,
   // onAcceptAndSave,
   chatSessions,
@@ -333,17 +335,21 @@ const ChatView: React.FC<ChatViewProps> = ({
                       >
                         Copy
                       </button>
+                      {/* Future "Accept & Save" button can go here */}
+                    </div>
+                  )}
 
-                      {/* Only show Accept & Save button for file targets
-                      {chatTarget?.type === 'file' && onAcceptAndSave && (
-                        <button
-                          className="save-button"
-                          onClick={() => onAcceptAndSave(message.id)}
-                          title="Save to file"
-                        >
-                          Accept & Save
-                        </button>
-                      )} */}
+                  {/* Retry button for user messages */}
+                  {message.role === 'user' && onRetry && (
+                    <div className="message-actions">
+                      <button
+                        className="retry-button"
+                        onClick={() => onRetry(message.id)}
+                        disabled={isLoading}
+                        title="Retry this prompt"
+                      >
+                        Retry
+                      </button>
                     </div>
                   )}
                 </div>
@@ -357,10 +363,11 @@ const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               )}
 
-              {/* Error message */}
-              {error && (
+              {/* Global Error message for the session (e.g., config errors, not per-message retry) */}
+              {error && !isLoading && (
                 <div className="chat-error">
                   <p>{error}</p>
+                  {/* The old global retry button is removed. Retries are per-message now. */}
                 </div>
               )}
 

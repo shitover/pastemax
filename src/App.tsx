@@ -1612,52 +1612,86 @@ const App = (): JSX.Element => {
    * Sends a user message to the LLM and processes the response
    */
   const handleSendMessage = async (messageContent: string) => {
-    console.log('[App.tsx] handleSendMessage triggered.');
+    const requestSessionId = currentChatSessionId; // Capture session ID at the start of the request
+
+    if (!requestSessionId) {
+      console.error(
+        '[App.tsx] handleSendMessage: No currentChatSessionId. This should not happen.'
+      );
+      setLlmError('An internal error occurred: No active chat session.');
+      return;
+    }
+
+    console.log(`[App.tsx] handleSendMessage for session: ${requestSessionId}`);
     console.log('[App.tsx] Current selectedModelId state:', selectedModelId);
 
     if (!selectedModelId) {
-      setLlmError('No model selected. Please select a model from the dropdown.');
-      setIsLlmLoading(false);
+      const noModelError = 'No model selected. Please select a model from the dropdown.';
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: noModelError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(noModelError);
+        setIsLlmLoading(false);
+      }
       return;
     }
+
     const currentProvider = getProviderFromModelId(selectedModelId);
     const actualModelName = getActualModelName(selectedModelId);
 
-    console.log('[App.tsx] Derived provider:', currentProvider);
-    console.log('[App.tsx] Derived actualModelName:', actualModelName);
-
     if (!currentProvider) {
-      setLlmError(
-        `Could not determine provider for model: "${selectedModelId}". Ensure it's selected correctly or configured.`
+      const noProviderError = `Could not determine provider for model: "${selectedModelId}". Ensure it's selected correctly or configured.`;
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: noProviderError, isLoading: false } : s
+        )
       );
-      setIsLlmLoading(false);
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(noProviderError);
+        setIsLlmLoading(false);
+      }
       return;
     }
+
     if (
       !allLlmConfigs ||
       !allLlmConfigs[currentProvider] ||
       !allLlmConfigs[currentProvider]?.apiKey
     ) {
+      const apiKeyError = `API key for ${currentProvider} is not configured. Please go to LLM Settings for ${currentProvider} to add it.`;
       console.error(
         '[App.tsx] API key or config missing for provider:',
         currentProvider,
         'All Configs:',
         allLlmConfigs
       );
-      setLlmError(
-        `API key for ${currentProvider} is not configured. Please go to LLM Settings for ${currentProvider} to add it.`
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: apiKeyError, isLoading: false } : s
+        )
       );
-      setIsLlmLoading(false);
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(apiKeyError);
+        setIsLlmLoading(false);
+      }
       return;
     }
-    const providerConfig = allLlmConfigs[currentProvider];
-    console.log('[App.tsx] Using providerConfig:', providerConfig);
 
+    const providerConfig = allLlmConfigs[currentProvider];
     if (!providerConfig?.apiKey) {
-      setLlmError(
-        `Configuration or API key for ${currentProvider} is missing. Please configure it in LLM Settings.`
+      const missingConfigError = `Configuration or API key for ${currentProvider} is missing. Please configure it in LLM Settings.`;
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: missingConfigError, isLoading: false } : s
+        )
       );
-      setIsLlmLoading(false);
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(missingConfigError);
+        setIsLlmLoading(false);
+      }
       return;
     }
 
@@ -1667,33 +1701,277 @@ const App = (): JSX.Element => {
       content: messageContent,
       timestamp: Date.now(),
     };
-    const currentChatMessagesState = [...chatMessages, userMessage];
-    setChatMessages(currentChatMessagesState);
-    updateCurrentSession(currentChatMessagesState);
-    setIsLlmLoading(true);
-    setLlmError(null);
+
+    // Update per-session state and global state if the session is active
+    setChatSessions((prevSessions) =>
+      prevSessions.map((s) =>
+        s.id === requestSessionId
+          ? {
+              ...s,
+              messages: [...s.messages, userMessage],
+              isLoading: true,
+              llmError: null, // Clear previous error for this session
+            }
+          : s
+      )
+    );
+
+    if (currentChatSessionId === requestSessionId) {
+      setChatMessages((prev) => [...prev, userMessage]);
+      setIsLlmLoading(true);
+      setLlmError(null);
+    }
 
     try {
-      const plainMessagesForLlm = currentChatMessagesState.map((m) => ({
-        role: m.role as MessageRole,
-        content: m.content,
-      }));
+      // Use the messages from the specific session for the API call
+      const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+      const messagesForLlm = sessionForRequest
+        ? sessionForRequest.messages.map((m) => ({
+            role: m.role as MessageRole,
+            content: m.content,
+          }))
+        : []; // Fallback, though sessionForRequest should always be found
 
       let messagesToSend: { role: MessageRole; content: string }[];
-
-      if (plainMessagesForLlm.length > 0 && plainMessagesForLlm[0].role === 'system') {
-        messagesToSend = plainMessagesForLlm;
+      if (messagesForLlm.length > 0 && messagesForLlm[0].role === 'system') {
+        messagesToSend = messagesForLlm;
       } else if (systemPrompt) {
+        // If the session doesn't start with a system message, prepend the global/default one.
+        // This logic might need adjustment if targeted system prompts are added directly to session messages.
+        const baseSystemPrompt = chatTarget ? getSystemPromptForTarget(chatTarget) : systemPrompt;
         messagesToSend = [
-          { role: 'system' as MessageRole, content: systemPrompt },
-          ...plainMessagesForLlm,
+          { role: 'system' as MessageRole, content: baseSystemPrompt },
+          ...messagesForLlm,
         ];
       } else {
-        messagesToSend = plainMessagesForLlm;
+        messagesToSend = messagesForLlm;
       }
 
       if (!window.llmApi) {
         throw new Error('LLM API bridge (window.llmApi) is not available. Check preload script.');
+      }
+
+      const paramsForSendPrompt = {
+        messages: messagesToSend.slice(-20), // Consider message history length
+        provider: currentProvider,
+        model: actualModelName,
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+      };
+
+      const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      const assistantMessage: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: response.content,
+        timestamp: Date.now(),
+      };
+
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId
+            ? {
+                ...s,
+                messages: [...s.messages, assistantMessage],
+                isLoading: false,
+                llmError: null,
+              }
+            : s
+        )
+      );
+
+      if (currentChatSessionId === requestSessionId) {
+        setChatMessages((prev) => [...prev, assistantMessage]);
+        setIsLlmLoading(false);
+        setLlmError(null);
+      }
+    } catch (e) {
+      const err = e instanceof Error ? e.message : 'Failed to get response from LLM.';
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(err);
+        setIsLlmLoading(false);
+      }
+    }
+  };
+
+  const handleRetrySendMessage = async (messageIdToRetry: string) => {
+    const requestSessionId = currentChatSessionId;
+
+    if (!requestSessionId) {
+      console.error(
+        '[App.tsx] handleRetrySendMessage: No currentChatSessionId. This should not happen.'
+      );
+      // Update session-specific error, not global llmError directly here
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId
+            ? { ...s, llmError: 'Internal error: No active chat for retry.', isLoading: false }
+            : s
+        )
+      );
+      // If it was the active session, also update global error for immediate UI feedback
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError('Internal error: No active chat for retry.');
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    console.log(
+      `[App.tsx] handleRetrySendMessage for message ${messageIdToRetry} in session: ${requestSessionId}`
+    );
+
+    const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+    if (!sessionForRequest) {
+      const sessionNotFoundError = 'Internal error: Chat session not found for retry.';
+      console.error(`[App.tsx] ${sessionNotFoundError}`);
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: sessionNotFoundError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(sessionNotFoundError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    const messageToRetryIndex = sessionForRequest.messages.findIndex(
+      (msg) => msg.id === messageIdToRetry
+    );
+    if (
+      messageToRetryIndex === -1 ||
+      sessionForRequest.messages[messageToRetryIndex].role !== 'user'
+    ) {
+      const messageNotFoundError = 'Internal error: User message to retry not found or invalid.';
+      console.error(`[App.tsx] ${messageNotFoundError}`);
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: messageNotFoundError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(messageNotFoundError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    if (!selectedModelId) {
+      const noModelError = 'No model selected. Please select a model from the dropdown to retry.';
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: noModelError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(noModelError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    const currentProvider = getProviderFromModelId(selectedModelId);
+    const actualModelName = getActualModelName(selectedModelId);
+
+    if (!currentProvider) {
+      const noProviderError = `Could not determine provider for model: "${selectedModelId}".`;
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: noProviderError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(noProviderError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    const providerConfig = allLlmConfigs?.[currentProvider];
+    if (!providerConfig?.apiKey) {
+      const missingConfigError = `API key for ${currentProvider} is missing. Please configure it in LLM Settings.`;
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: missingConfigError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(missingConfigError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    // Set loading state for the session and globally if active
+    // Remove any subsequent messages from the point of retry in the session state
+    setChatSessions((prevSessions) =>
+      prevSessions.map((s) =>
+        s.id === requestSessionId
+          ? {
+              ...s,
+              messages: s.messages.slice(0, messageToRetryIndex + 1), // Keep messages up to and including the one retried
+              isLoading: true,
+              llmError: null,
+            }
+          : s
+      )
+    );
+
+    if (currentChatSessionId === requestSessionId) {
+      setChatMessages((prevMessages) => prevMessages.slice(0, messageToRetryIndex + 1));
+      setIsLlmLoading(true);
+      setLlmError(null);
+    }
+
+    try {
+      // Re-fetch sessionForRequest to get the sliced messages for the API call
+      const updatedSessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+      if (!updatedSessionForRequest) {
+        // Should not happen if previous logic is correct
+        throw new Error('Session disappeared during retry preparation.');
+      }
+
+      let messagesForLlm = updatedSessionForRequest.messages.map((m) => ({
+        role: m.role as MessageRole,
+        content: m.content,
+      }));
+
+      // Ensure system prompt is at the beginning
+      let messagesToSend: { role: MessageRole; content: string }[];
+      const sessionSystemPrompt = messagesForLlm.find((m) => m.role === 'system');
+
+      if (sessionSystemPrompt) {
+        // If a system prompt from the session exists (e.g. target-specific), use it.
+        // Ensure it's at the start and remove other instances if any (though unlikely).
+        messagesToSend = [
+          sessionSystemPrompt,
+          ...messagesForLlm.filter((m) => m.role !== 'system'),
+        ];
+      } else {
+        // No session-specific system prompt, use the global/target-based one.
+        const baseSystemPrompt = chatTarget ? getSystemPromptForTarget(chatTarget) : systemPrompt;
+        messagesToSend = [
+          { role: 'system' as MessageRole, content: baseSystemPrompt },
+          ...messagesForLlm.filter((m) => m.role !== 'system'), // Ensure no other system messages sneak in
+        ];
+      }
+
+      // The user message to be retried is already the last one in messagesToSend due to slicing.
+
+      if (!window.llmApi) {
+        throw new Error('LLM API bridge (window.llmApi) is not available.');
       }
 
       const paramsForSendPrompt = {
@@ -1709,19 +1987,44 @@ const App = (): JSX.Element => {
       if (response.error) {
         throw new Error(response.error);
       }
+
       const assistantMessage: ChatMessage = {
         id: generateMessageId(),
         role: 'assistant',
         content: response.content,
         timestamp: Date.now(),
       };
-      setChatMessages((prev) => [...prev, assistantMessage]);
-      updateCurrentSession([...currentChatMessagesState, assistantMessage]);
+
+      // Append only the new assistant message to the (already sliced) session messages
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId
+            ? {
+                ...s,
+                messages: [...s.messages, assistantMessage],
+                isLoading: false,
+                llmError: null,
+              }
+            : s
+        )
+      );
+
+      if (currentChatSessionId === requestSessionId) {
+        setChatMessages((prev) => [...prev, assistantMessage]);
+        setIsLlmLoading(false);
+        setLlmError(null);
+      }
     } catch (e) {
-      const err = e instanceof Error ? e.message : 'Failed to get response from LLM.';
-      setLlmError(err); // Keep this to show the red banner error
-    } finally {
-      setIsLlmLoading(false);
+      const err = e instanceof Error ? e.message : 'Failed to get response from LLM on retry.';
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(err);
+        setIsLlmLoading(false);
+      }
     }
   };
 
@@ -1840,6 +2143,8 @@ const App = (): JSX.Element => {
       targetType: target?.type,
       targetName: target?.fileName || undefined,
       userPreview: userPreview,
+      isLoading: false, // Initialize isLoading
+      llmError: null, // Initialize llmError
     };
 
     setChatSessions((prevSessions) => [newSession, ...prevSessions]);
@@ -2088,20 +2393,21 @@ const App = (): JSX.Element => {
     const session = chatSessions.find((s) => s.id === sessionId);
     if (!session) return;
 
-    setIsLlmLoading(false); // Add this line
-    setLlmError(null); // Add this line
-
     setCurrentChatSessionId(sessionId);
 
     // Reconstruct chatMessages from session messages
+    // Ensure new IDs are generated for React keys if needed, but roles, content, timestamp come from session
     const reconstructedMessages = session.messages.map((msg) => ({
-      id: generateMessageId(),
+      id: msg.id || generateMessageId(), // Use existing ID or generate if missing
       role: msg.role,
       content: msg.content,
       timestamp: msg.timestamp,
     }));
-
     setChatMessages(reconstructedMessages);
+
+    // Set global loading and error states from the selected session
+    setIsLlmLoading(session.isLoading || false);
+    setLlmError(session.llmError || null);
 
     // Recreate the chat target if it exists
     if (session.targetType) {
@@ -2713,6 +3019,7 @@ const App = (): JSX.Element => {
             onSelectSession={selectChatSession}
             onDeleteSession={deleteChatSession}
             onCreateNewSession={handleCreateNewChat}
+            onRetry={handleRetrySendMessage} // Pass the new retry handler
           />
         )}
         {isSystemPromptEditorOpen && (

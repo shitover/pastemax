@@ -474,3 +474,29 @@
   background-color: var(--bg-color-disabled);
   cursor: not-allowed;
 }
+
+.retry-button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  background-color: var(--color-button-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: var(--color-button-secondary-hover);
+}
+
+.dark-mode .retry-button {
+  color: var(--text-primary);
+  background-color: var(--color-background-higher);
+  border-color: var(--border-color-dark);
+}
+
+.dark-mode .retry-button:hover {
+  background-color: var(--color-background-highest);
+}
