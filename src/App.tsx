@@ -246,11 +246,11 @@ const App = (): JSX.Element => {
     }
   });
   const [systemPrompts, setSystemPrompts] = useState<SystemPrompt[]>(() => {
+    let loadedPrompts: SystemPrompt[] = [];
     try {
-      const savedSystemPrompts = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPTS);
-      if (savedSystemPrompts) {
-        const parsed = JSON.parse(savedSystemPrompts);
-        // Basic validation: check if it's an array and if items have id, name, content
+      const savedSystemPromptsJson = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPTS);
+      if (savedSystemPromptsJson) {
+        const parsed = JSON.parse(savedSystemPromptsJson);
         if (
           Array.isArray(parsed) &&
           parsed.every(
@@ -261,13 +261,43 @@ const App = (): JSX.Element => {
               typeof p.content === 'string'
           )
         ) {
-          return parsed as SystemPrompt[];
+          loadedPrompts = parsed as SystemPrompt[];
         }
       }
     } catch (error) {
       console.error('Error loading system prompts from localStorage:', error);
+      // If error, loadedPrompts remains empty, defaults will be used by the merging logic below.
     }
-    return DEFAULT_SYSTEM_PROMPTS; // Fallback to defaults
+
+    const finalPromptsMap = new Map<string, SystemPrompt>();
+
+    // 1. Add/update all default prompts from DEFAULT_SYSTEM_PROMPTS
+    // This ensures all defaults are present and their `isDefault` and `name` are canonical.
+    DEFAULT_SYSTEM_PROMPTS.forEach((defaultPrompt) => {
+      const loadedVersion = loadedPrompts.find((p) => p.id === defaultPrompt.id);
+      if (loadedVersion) {
+        // If found in localStorage, use its content but enforce default name and isDefault status
+        finalPromptsMap.set(defaultPrompt.id, {
+          ...loadedVersion, // Keeps potentially user-modified content for a default
+          name: defaultPrompt.name, // Enforce original name
+          isDefault: true, // Enforce default status
+        });
+      } else {
+        // If not in localStorage, add the pristine default prompt
+        finalPromptsMap.set(defaultPrompt.id, defaultPrompt);
+      }
+    });
+
+    // 2. Add custom prompts from localStorage (those not identified as defaults by ID)
+    loadedPrompts.forEach((loadedPrompt) => {
+      if (!DEFAULT_SYSTEM_PROMPTS.some((dp) => dp.id === loadedPrompt.id)) {
+        finalPromptsMap.set(loadedPrompt.id, { ...loadedPrompt, isDefault: false });
+      }
+    });
+
+    const uniquePrompts = Array.from(finalPromptsMap.values());
+
+    return uniquePrompts.length > 0 ? uniquePrompts : DEFAULT_SYSTEM_PROMPTS; // Fallback just in case map is empty
   });
   const [selectedSystemPromptId, setSelectedSystemPromptId] = useState<string | null>(() => {
     const savedId = localStorage.getItem(STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID);

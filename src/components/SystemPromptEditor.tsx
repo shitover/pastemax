@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SystemPrompt } from '../types/llmTypes';
-import { DEFAULT_SYSTEM_PROMPTS } from '../config/defaultSystemPrompts'; // For reset
+import { DEFAULT_SYSTEM_PROMPTS, NONE_PROMPT_ID } from '../config/defaultSystemPrompts'; // For reset and NONE_PROMPT_ID
 import '../styles/modals/SystemPromptEditor.css';
 
 interface SystemPromptEditorProps {
@@ -71,7 +71,7 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({
       setError('Prompt name cannot be empty.');
       return;
     }
-    if (!currentContent.trim()) {
+    if (selectedPrompt.id !== NONE_PROMPT_ID && !currentContent.trim()) {
       setError('Prompt content cannot be empty.');
       return;
     }
@@ -231,7 +231,11 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({
             <button
               onClick={handleSave}
               className="system-prompt-button save-button"
-              disabled={!selectedPrompt || !currentName.trim() || !currentContent.trim()}
+              disabled={
+                !selectedPrompt ||
+                !currentName.trim() ||
+                (selectedPrompt.id !== NONE_PROMPT_ID && !currentContent.trim()) // Allow empty content only for NONE_PROMPT_ID
+              }
             >
               Save Changes
             </button>
