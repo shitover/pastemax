@@ -134,6 +134,7 @@
     "vite": "^6.3.4"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@langchain/anthropic": "^0.1.21",
     "@langchain/community": "^0.0.32",
     "@langchain/core": "^0.1.63",

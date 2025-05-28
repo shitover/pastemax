@@ -1,6 +1,5 @@
 const { ChatOpenAI } = require('@langchain/openai');
 const { ChatAnthropic } = require('@langchain/anthropic');
-const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { ChatMistralAI } = require('@langchain/mistralai');
 const { ChatGroq } = require('@langchain/groq');
 const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/messages');
@@ -8,6 +7,7 @@ const Store = require('electron-store');
 const fs = require('fs').promises;
 const os = require('os');
 const crypto = require('crypto');
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 
 /**
  * Store instance for persisting LLM configuration
@@ -192,61 +192,123 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
       }
 
       case 'gemini': {
-        console.log(`[LLM Service] Initializing Google Gemini model: ${modelName}`);
+        console.log(`[LLM Service] Initializing Google Gemini model directly: ${modelName}`);
 
-        const finalChatGoogleOptions = {
-          apiKey: apiKey,
-          modelName: modelName,
-          maxOutputTokens: 2048,
-          temperature: 0.7,
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          ],
+        // Using @google/generative-ai directly
+        const genAI = new GoogleGenerativeAI(apiKey);
+
+        // Prepare safety settings for Google's SDK
+        // These were previously in finalChatGoogleOptions, now adapting for direct SDK use.
+        // Keeping them commented out if user previously removed them, but showing structure.
+        const safetySettings = [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+        ];
+
+        // Note: The @google/generative-ai SDK uses 'generationConfig' for temperature, maxOutputTokens etc.
+        // The 'baseUrl' for this SDK is typically configured during GoogleGenerativeAI instantiation if needed for a proxy,
+        // or model names might need specific paths if not using the default endpoint.
+        // The direct curl test used the default endpoint successfully.
+
+        // The model name for Google's SDK should be just the identifier like 'gemini-2.5-flash-preview-05-20'
+        // It internally knows to use v1beta for preview models.
+        const modelInstance = genAI.getGenerativeModel({
+          model: modelName,
+          // safetySettings, // Uncomment if you want to re-enable safety settings
+          // generationConfig: { // Optional: map temperature, maxOutputTokens if needed
+          //   temperature: 0.7,
+          //   maxOutputTokens: 2048,
+          // }
+        });
+
+        // Adapter to make it compatible with the existing sendPromptToLlm structure
+        return {
+          async invoke(langchainMessages) {
+            // Convert Langchain messages to Google AI SDK format
+            // Google SDK expects: { role: "user" | "model", parts: [{ text: "..." }] }
+            // System messages need to be handled carefully. Google's SDK's chat.sendMessage
+            // takes history which can include alternating user/model. System prompt is often prepended to the first user message.
+
+            let systemInstruction = null;
+            const history = [];
+            const messagesForGoogle = [];
+
+            for (const lcMsg of langchainMessages) {
+              if (lcMsg._getType() === 'system') {
+                // Google's GenerativeModel.startChat doesn't directly take a system message in the same way OpenAI does.
+                // It can be part of the initial message or set in `startChat({ systemInstruction: ... })` for newer models/features.
+                // For `generateContent`, it's often prepended to the first user message content.
+                // Let's store it and prepend it to the first "user" message.
+                systemInstruction = lcMsg.content;
+              } else if (lcMsg._getType() === 'human') {
+                messagesForGoogle.push({ role: 'user', parts: [{ text: lcMsg.content }] });
+              } else if (lcMsg._getType() === 'ai') {
+                messagesForGoogle.push({ role: 'model', parts: [{ text: lcMsg.content }] });
+              }
+            }
+
+            // Prepend system instruction to the content of the first user message if available
+            if (systemInstruction && messagesForGoogle.length > 0) {
+              let firstUserMessageIndex = -1;
+              for (let i = 0; i < messagesForGoogle.length; i++) {
+                if (messagesForGoogle[i].role === 'user') {
+                  firstUserMessageIndex = i;
+                  break;
+                }
+              }
+              if (firstUserMessageIndex !== -1) {
+                messagesForGoogle[firstUserMessageIndex].parts[0].text =
+                  systemInstruction +
+                  '\n\n' +
+                  messagesForGoogle[firstUserMessageIndex].parts[0].text;
+              } else {
+                // If no user message, create one with system instruction (edge case)
+                messagesForGoogle.unshift({ role: 'user', parts: [{ text: systemInstruction }] });
+              }
+            }
+
+            // If using `startChat` and `sendMessage` (for conversational history)
+            // const chat = modelInstance.startChat({ history: googleHistory, systemInstruction: { parts: [{text: systemInstructionContent}], role: "system" } });
+            // const result = await chat.sendMessage(currentUserMessageContent);
+
+            // Using generateContent for simplicity, as it takes full message sequence
+            console.log(
+              '[LLM Service Direct SDK] Sending to Google with messages:',
+              JSON.stringify(messagesForGoogle, null, 2)
+            );
+            try {
+              const result = await modelInstance.generateContent({ contents: messagesForGoogle });
+              const response = result.response;
+              const text = response.text(); // Helper function to get full text
+              return new AIMessage(text); // Return as a Langchain AIMessage
+            } catch (error) {
+              console.error('[LLM Service Direct SDK] Error invoking Google model:', error);
+              // Check if the error has specific Gemini API error structure
+              if (error.response && error.response.promptFeedback) {
+                throw new Error(
+                  `Google API Error: ${error.message}, Feedback: ${JSON.stringify(error.response.promptFeedback)}`
+                );
+              }
+              throw error; // rethrow original error if not a specific API feedback error
+            }
+          },
+          // Add _isChatModel property to satisfy Langchain checks if any part of your code relies on it.
+          _isChatModel: true,
         };
-
-        const clientInitOps = {};
-
-        // Heuristic to determine if model likely requires v1beta.
-        // Gemini 1.5 models and anything with "preview" typically use v1beta.
-        // Standard "gemini-pro" (Gemini 1.0 Pro) typically uses v1.
-        const isLikelyV1BetaModel =
-          modelName.toLowerCase().includes('preview') || modelName.toLowerCase().includes('1.5');
-
-        if (baseUrl) {
-          clientInitOps.baseUrl = baseUrl;
-          if (isLikelyV1BetaModel) {
-            clientInitOps.apiVersion = 'v1beta';
-            console.log(
-              `[LLM Service] Using user-provided Base URL: ${clientInitOps.baseUrl}. API Version: v1beta (explicitly set for model ${modelName}).`
-            );
-          } else {
-            // When model is not explicitly beta and baseUrl is provided,
-            // we don't set apiVersion in clientInitOps, relying on ChatGoogleGenerativeAI's internal default (which is 'v1beta').
-            console.log(
-              `[LLM Service] Using user-provided Base URL: ${clientInitOps.baseUrl}. API Version: Relying on Langchain's default (typically v1beta). Model: ${modelName}.`
-            );
-          }
-        } else {
-          // Simple fallback - force v1beta for all Gemini models if no baseUrl
-          clientInitOps.apiVersion = 'v1beta';
-          console.log(
-            `[LLM Service] No baseUrl provided. Model: ${modelName}. Forcing apiVersion: 'v1beta' for default Google AI endpoint.`
-          );
-        }
-
-        // Only add clientInit if it has properties (like baseUrl or apiVersion)
-        if (Object.keys(clientInitOps).length > 0) {
-          finalChatGoogleOptions.clientInit = clientInitOps;
-        }
-
-        console.log(
-          '[LLM Service] Final ChatGoogleGenerativeAI options:',
-          JSON.stringify(finalChatGoogleOptions, null, 2)
-        );
-        return new ChatGoogleGenerativeAI(finalChatGoogleOptions);
       }
 
       case 'mistral': {
