@@ -1638,14 +1638,19 @@ const App = (): JSX.Element => {
 
     switch (target.type) {
       case 'file':
-        contextInfo = `\\n\\n## Context\\nYou are discussing the following file: ${target.fileName || 'Unnamed file'}. Here is its content:\\n\\n\`\`\`\\n${target.content}\\n\`\`\``;
+        // Content will now be in the user message for file-specific queries.
+        // System prompt now just sets the general context of discussing a file.
+        contextInfo = `\\n\\n## Context\\nYou are discussing the file: ${target.fileName || 'Unnamed file'}. The file content and the specific question will be provided in the user's message.`;
         break;
       case 'selection':
+        // For selections, we can keep embedding the content in the system prompt if it's usually smaller
+        // or adopt the same strategy as files if preferred for consistency.
+        // For now, keeping existing behavior for selection to minimize changes unless specified.
         contextInfo = `\\n\\n## Context\\nYou are discussing the following code/text selection:\\n\\n\`\`\`\\n${target.content}\\n\`\`\``;
         break;
       case 'general':
       default:
-        contextInfo = ''; 
+        contextInfo = '';
         break;
     }
 
@@ -1746,11 +1751,36 @@ const App = (): JSX.Element => {
       return;
     }
 
+    let finalMessageContent = messageContent;
+    let userFileContext: ChatMessage['fileContext'] | undefined = undefined;
+
+    const VERY_LONG_CONTENT_THRESHOLD = 20000; // Characters
+    const PREVIEW_LENGTH = 1500; // Characters
+
+    if (chatTarget?.type === 'file' && chatTarget.content && chatTarget.fileName) {
+      const originalContent = chatTarget.content;
+      finalMessageContent = `The user is asking about the file named "${chatTarget.fileName}".\n\nFile Content:\n\`\`\`\n${originalContent}\n\`\`\`\n\nUser's Question:\n${messageContent}`;
+
+      userFileContext = {
+        name: chatTarget.fileName,
+        content: originalContent, // Always store the full original content
+        language: chatTarget.fileName?.split('.').pop() || 'plaintext',
+        isVeryLong: false, // Default to false
+      };
+
+      if (originalContent.length > VERY_LONG_CONTENT_THRESHOLD) {
+        userFileContext.isVeryLong = true;
+        userFileContext.previewContent = `${originalContent.substring(0, PREVIEW_LENGTH)}...\n\n[File content truncated for display. Click 'Show more' to view full content.]`;
+      }
+    }
+
     const userMessage: ChatMessage = {
       id: generateMessageId(),
       role: 'user',
-      content: messageContent,
+      content: finalMessageContent, // Full content for LLM
       timestamp: Date.now(),
+      originalUserQuestion: messageContent, // Raw user question
+      fileContext: userFileContext, // Attached file context, if any
     };
 
     // Update per-session state and global state if the session is active
@@ -2221,10 +2251,12 @@ const App = (): JSX.Element => {
       lastUpdated: Date.now(),
       messages: [], // New session starts with no messages
       targetType: target?.type,
-      targetName: target?.fileName || undefined,
-      userPreview: userPreview,
-      isLoading: false, // Initialize isLoading
-      llmError: null, // Initialize llmError
+      targetName:
+        target?.fileName || (target?.type === 'selection' ? 'Selection Snippet' : undefined),
+      targetContent: target?.content, // Store the actual content for context persistence
+      userPreview: userPreview, // Will be undefined for new chats
+      isLoading: false,
+      llmError: null,
     };
 
     setChatSessions((prevSessions) => [newSession, ...prevSessions]);
@@ -2542,72 +2574,46 @@ const App = (): JSX.Element => {
    * Selects an existing chat session
    */
   const selectChatSession = (sessionId: string) => {
+    console.log(`[App.tsx] selectChatSession called with ID: ${sessionId}`);
     const session = chatSessions.find((s) => s.id === sessionId);
-    if (!session) return;
 
-    setCurrentChatSessionId(sessionId);
+    if (session) {
+      setCurrentChatSessionId(session.id);
+      setChatMessages(session.messages || []); // Ensure messages is always an array
+      setLlmError(session.llmError || null);
+      setIsLlmLoading(session.isLoading || false);
 
-    // Reconstruct chatMessages from session messages
-    // Ensure new IDs are generated for React keys if needed, but roles, content, timestamp come from session
-    const reconstructedMessages = session.messages.map((msg) => ({
-      id: msg.id || generateMessageId(), // Use existing ID or generate if missing
-      role: msg.role,
-      content: msg.content,
-      timestamp: msg.timestamp,
-    }));
-    setChatMessages(reconstructedMessages);
-
-    // Set global loading and error states from the selected session
-    setIsLlmLoading(session.isLoading || false);
-    setLlmError(session.llmError || null);
-
-    // Recreate the chat target if it exists
-    if (session.targetType) {
-      const target: ChatTarget = {
-        type: session.targetType,
-        content: '',
-        fileName: session.targetName,
-      };
-
-      // If it's a file chat, try to find file content
-      if (session.targetType === 'file' && session.targetName) {
-        const file = allFiles.find((f) => f.name === session.targetName);
-        if (file) {
-          target.filePath = file.path;
-          target.content = file.content || '';
+      // Reconstruct chatTarget from session information
+      if (session.targetType && (session.targetName || session.targetType === 'general')) {
+        if (session.targetType === 'file') {
+          // Try to find the file in allFiles for its path, but prioritize session.targetContent
+          const fileForSession = allFiles.find(
+            (f) => f.name === session.targetName || f.path === session.targetName
+          );
+          setChatTarget({
+            type: 'file',
+            filePath: fileForSession?.path || session.targetName, // Fallback to targetName if no full path found
+            fileName: session.targetName || 'File',
+            content: session.targetContent || fileForSession?.content || '', // Prioritize session.targetContent
+          });
+        } else if (session.targetType === 'selection') {
+          setChatTarget({
+            type: 'selection',
+            content: session.targetContent || '', // Use stored content
+            fileName: session.targetName, // Optional: keep fileName if it was stored
+          });
+        } else if (session.targetType === 'general') {
+          setChatTarget({ type: 'general', content: session.targetContent || '' }); // General might also have initial context
         }
+      } else {
+        // Default to general if no specific target info in session, or if it's an older session type
+        setChatTarget({ type: 'general', content: '' });
       }
-
-      setChatTarget(target);
+      setIsChatViewOpen(true); // Open chat view when a session is selected
     } else {
-      setChatTarget(undefined); // Clear target if session is general
-    }
-
-    // Ensure system prompt is consistent if it's a targeted chat being selected
-    if (
-      session.targetType &&
-      session.targetType !== 'general' &&
-      reconstructedMessages.length > 0 &&
-      reconstructedMessages[0].role !== 'system'
-    ) {
-      const recreatedTarget: ChatTarget = {
-        type: session.targetType,
-        content: reconstructedMessages.find((m) => m.role === 'user')?.content || '', // approximate content for prompt
-        fileName: session.targetName,
-        filePath:
-          session.targetType === 'file'
-            ? allFiles.find((f) => f.name === session.targetName)?.path
-            : undefined,
-      };
-      const systemMessage: ChatMessage = {
-        id: generateMessageId(),
-        role: 'system',
-        content: getSystemPromptForTarget(recreatedTarget),
-        timestamp: Date.now(),
-      };
-      setChatMessages([systemMessage, ...reconstructedMessages]);
-    } else {
-      setChatMessages(reconstructedMessages);
+      console.warn(`[App.tsx] Session with ID ${sessionId} not found during selection.`);
+      // Optionally, clear current session or handle as error
+      // For now, just log and don't change current session if not found
     }
   };
 

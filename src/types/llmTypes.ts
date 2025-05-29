@@ -38,6 +38,16 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   timestamp: number;
+  originalUserQuestion?: string;
+  fileContext?: {
+    name: string;
+    content: string;
+    previewContent?: string;
+    isVeryLong?: boolean;
+    language?: string;
+  };
+  previewDisplayContent?: string;
+  isContentTruncated?: boolean;
 }
 
 /**

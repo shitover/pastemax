@@ -237,11 +237,11 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
                 // It can be part of the initial message or set in `startChat({ systemInstruction: ... })` for newer models/features.
                 // For `generateContent`, it's often prepended to the first user message content.
                 // Let's store it and prepend it to the first "user" message.
-                systemInstruction = lcMsg.content;
+                systemInstruction = lcMsg.content || ''; // Ensure systemInstruction is at least an empty string
               } else if (lcMsg._getType() === 'human') {
-                messagesForGoogle.push({ role: 'user', parts: [{ text: lcMsg.content }] });
+                messagesForGoogle.push({ role: 'user', parts: [{ text: lcMsg.content || '' }] }); // Ensure text key exists
               } else if (lcMsg._getType() === 'ai') {
-                messagesForGoogle.push({ role: 'model', parts: [{ text: lcMsg.content }] });
+                messagesForGoogle.push({ role: 'model', parts: [{ text: lcMsg.content || '' }] }); // Ensure text key exists
               }
             }
 
@@ -254,41 +254,87 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
                   break;
                 }
               }
+
               if (firstUserMessageIndex !== -1) {
                 messagesForGoogle[firstUserMessageIndex].parts[0].text =
                   systemInstruction +
                   '\n\n' +
                   messagesForGoogle[firstUserMessageIndex].parts[0].text;
+              } else if (messagesForGoogle.length > 0) {
+                // If no user message, prepend to the first model message (less ideal)
+                messagesForGoogle[0].parts[0].text =
+                  systemInstruction + '\n\n' + messagesForGoogle[0].parts[0].text;
               } else {
-                // If no user message, create one with system instruction (edge case)
-                messagesForGoogle.unshift({ role: 'user', parts: [{ text: systemInstruction }] });
+                // Only a system message was provided. Convert it to a user message.
+                messagesForGoogle.push({ role: 'user', parts: [{ text: systemInstruction }] });
               }
+            } else if (systemInstruction && messagesForGoogle.length === 0) {
+              // Only a system message was provided in langchainMessages and messagesForGoogle is still empty.
+              messagesForGoogle.push({ role: 'user', parts: [{ text: systemInstruction }] });
             }
 
-            // If using `startChat` and `sendMessage` (for conversational history)
-            // const chat = modelInstance.startChat({ history: googleHistory, systemInstruction: { parts: [{text: systemInstructionContent}], role: "system" } });
-            // const result = await chat.sendMessage(currentUserMessageContent);
-
-            // Using generateContent for simplicity, as it takes full message sequence
-            console.log(
-              '[LLM Service Direct SDK] Sending to Google with messages:',
-              JSON.stringify(messagesForGoogle, null, 2)
+            // Final check: if after all processing, messagesForGoogle is empty, or contains only messages with empty text parts,
+            // the API will likely fail. The Google API requires at least one part with non-empty text.
+            const hasAnyActualContent = messagesForGoogle.some((msg) =>
+              msg.parts.some((part) => part.text && part.text.trim() !== '')
             );
-            try {
-              const result = await modelInstance.generateContent({ contents: messagesForGoogle });
-              const response = result.response;
-              const text = response.text(); // Helper function to get full text
-              return new AIMessage(text); // Return as a Langchain AIMessage
-            } catch (error) {
-              console.error('[LLM Service Direct SDK] Error invoking Google model:', error);
-              // Check if the error has specific Gemini API error structure
-              if (error.response && error.response.promptFeedback) {
-                throw new Error(
-                  `Google API Error: ${error.message}, Feedback: ${JSON.stringify(error.response.promptFeedback)}`
-                );
-              }
-              throw error; // rethrow original error if not a specific API feedback error
+
+            if (!hasAnyActualContent) {
+              console.warn(
+                '[LLM Service] Gemini: No actual text content found in messages for Google. Sending a placeholder to avoid API error.'
+              );
+              // Replace messagesForGoogle with a single placeholder user message
+              messagesForGoogle.splice(0, messagesForGoogle.length, {
+                role: 'user',
+                parts: [{ text: '(No meaningful content to send)' }],
+              });
+            } else {
+              // Ensure all parts have text, even if it was originally empty string from lcMsg.content
+              messagesForGoogle.forEach((msg) => {
+                msg.parts.forEach((part) => {
+                  if (typeof part.text !== 'string') {
+                    part.text = ''; // Ensure text property exists and is a string
+                  }
+                });
+              });
             }
+
+            // The last message in messagesForGoogle is the current user prompt
+            const lastMessage = messagesForGoogle[messagesForGoogle.length - 1];
+
+            // Ensure lastMessage and its parts are defined and have text content
+            let promptText = '';
+            if (
+              lastMessage &&
+              lastMessage.parts &&
+              lastMessage.parts[0] &&
+              typeof lastMessage.parts[0].text === 'string'
+            ) {
+              promptText = lastMessage.parts[0].text;
+            } else {
+              console.error(
+                '[LLM Service] Gemini: Last message for sending is invalid or has no text content.',
+                lastMessage
+              );
+              // If it's somehow still empty, use a non-empty placeholder to avoid API error,
+              // though this indicates a deeper logic issue upstream.
+              promptText = '(No content provided for this message)';
+            }
+
+            if (!promptText.trim()) {
+              console.warn(
+                '[LLM Service] Gemini: Attempting to send an empty or whitespace-only message. Using placeholder.'
+              );
+              promptText = '(User sent an empty message)';
+            }
+
+            // console.log('[LLM Service] Gemini: Sending to API. History:', messagesForGoogle.slice(0, -1));
+            // console.log('[LLM Service] Gemini: Sending to API. Current prompt:', promptText);
+
+            const result = await modelInstance.generateContent({ contents: messagesForGoogle });
+            const response = result.response;
+            const text = response.text(); // Helper function to get full text
+            return new AIMessage(text); // Return as a Langchain AIMessage
           },
           // Add _isChatModel property to satisfy Langchain checks if any part of your code relies on it.
           _isChatModel: true,

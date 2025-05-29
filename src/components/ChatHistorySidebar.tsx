@@ -10,6 +10,7 @@ export interface ChatSession {
   messages: ChatMessage[];
   targetType?: 'file' | 'selection' | 'general';
   targetName?: string;
+  targetContent?: string;
   userPreview?: string;
   isLoading?: boolean;
   llmError?: string | null;

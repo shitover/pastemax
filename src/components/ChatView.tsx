@@ -72,22 +72,13 @@ const ChatView: React.FC<ChatViewProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const [isMaximized, setIsMaximized] = useState(false);
+  const [expandedFileContexts, setExpandedFileContexts] = useState<Record<string, boolean>>({});
 
-  // State for expanded messages and truncation limits
-  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
-  const MAX_CHARS_TRUNCATE = 700;
-  const MAX_LINES_TRUNCATE = 15;
-
-  const toggleMessageExpansion = (messageId: string) => {
-    setExpandedMessageIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(messageId)) {
-        newSet.delete(messageId);
-      } else {
-        newSet.add(messageId);
-      }
-      return newSet;
-    });
+  const toggleFileContextExpansion = (messageId: string) => {
+    setExpandedFileContexts((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
   };
 
   // Auto-focus the input when the chat opens
@@ -172,68 +163,11 @@ const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const getDisplayableMessageContent = (message: ChatMessage) => {
-    const isExpanded = expandedMessageIds.has(message.id);
-    const lines = message.content.split('\n');
-    const charCount = message.content.length;
-
-    const needsTruncationByChars = charCount > MAX_CHARS_TRUNCATE;
-    const needsTruncationByLines = lines.length > MAX_LINES_TRUNCATE;
-    const needsTruncation = needsTruncationByChars || needsTruncationByLines;
-
-    if (!needsTruncation || isExpanded) {
-      return (
-        <>
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={commonMarkdownComponents}>
-            {message.content}
-          </ReactMarkdown>
-          {needsTruncation && (
-            <button
-              onClick={() => toggleMessageExpansion(message.id)}
-              className="toggle-message-button"
-            >
-              Show less
-            </button>
-          )}
-        </>
-      );
-    }
-
-    let truncatedContent = message.content;
-    if (needsTruncationByLines && lines.length > MAX_LINES_TRUNCATE) {
-      truncatedContent = lines.slice(0, MAX_LINES_TRUNCATE).join('\n');
-    }
-
-    if (truncatedContent.length > MAX_CHARS_TRUNCATE) {
-      truncatedContent = truncatedContent.substring(0, MAX_CHARS_TRUNCATE);
-    }
-
-    // Basic check to avoid cutting in the middle of a code block for the preview
-    // This could be made more robust.
-    const lastCodeBlockStart = truncatedContent.lastIndexOf('```');
-    if (lastCodeBlockStart > -1) {
-      const subsequentCodeBlockEnd = truncatedContent.indexOf('```', lastCodeBlockStart + 3);
-      if (subsequentCodeBlockEnd === -1) {
-        // Unclosed code block in truncated view
-        // If the start of an unclosed code block is too close to the end, truncate before it
-        if (truncatedContent.length - lastCodeBlockStart < 100) {
-          truncatedContent = truncatedContent.substring(0, lastCodeBlockStart);
-        }
-      }
-    }
-
-    return (
-      <>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={commonMarkdownComponents}>
-          {truncatedContent + '...'}
-        </ReactMarkdown>
-        <button
-          onClick={() => toggleMessageExpansion(message.id)}
-          className="toggle-message-button"
-        >
-          Show more
-        </button>
-      </>
-    );
+    // THIS FUNCTION WILL BE SIMPLIFIED OR ITS LOGIC MOVED
+    // For now, let's focus on the direct rendering logic in the map
+    // The existing truncation logic might need significant rework for the new structure
+    // and will be addressed if it becomes an issue after the primary rendering change.
+    return message.content; // Placeholder, actual rendering will be in the map
   };
 
   // Don't render if the modal is not open
@@ -309,61 +243,106 @@ const ChatView: React.FC<ChatViewProps> = ({
                 <div
                   key={message.id}
                   ref={index === messages.length - 1 ? messagesEndRef : null}
-                  className={`chat-message ${
-                    message.role === 'user'
-                      ? 'user-message'
-                      : message.role === 'assistant'
-                        ? 'assistant-message'
-                        : 'system-message'
-                  }`}
+                  className={`chat-message-wrapper ${message.role}-wrapper`}
                 >
-                  <div className="message-header">
-                    <span className="message-role">
-                      {message.role === 'user'
-                        ? 'You'
-                        : message.role === 'assistant'
-                          ? 'AI'
-                          : 'System'}
-                    </span>
-                    <span className="message-time">{formatTime(message.timestamp)}</span>
+                  <div className={`chat-message ${message.role}`}>
+                    <div className="chat-message-header">
+                      <span className="chat-message-role">
+                        {message.role === 'user' ? 'You' : 'AI'}
+                      </span>
+                      {(message.role === 'user' || message.role === 'assistant') && ' '}
+                      <span className="chat-message-time">{formatTime(message.timestamp)}</span>
+                    </div>
+                    <div className="chat-message-content">
+                      {message.role === 'user' && message.fileContext ? (
+                        <>
+                          <div className="file-context-display">
+                            <p className="file-context-name">
+                              Context from file: <strong>{message.fileContext.name}</strong>
+                            </p>
+                            <SyntaxHighlighter
+                              style={theme === 'dark' ? oneDark : oneLight}
+                              language={message.fileContext.language || 'plaintext'}
+                              PreTag="div"
+                              className="file-content-codeblock"
+                              wrapLines={true}
+                              lineProps={{
+                                style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
+                              }}
+                            >
+                              {
+                                message.fileContext.isVeryLong
+                                  ? expandedFileContexts[message.id]
+                                    ? String(message.fileContext.content) // Show full content if expanded
+                                    : String(message.fileContext.previewContent) // Show preview if very long and not expanded
+                                  : String(message.fileContext.content) // Show full content if not very long
+                              }
+                            </SyntaxHighlighter>
+                            {message.fileContext.isVeryLong && (
+                              <button
+                                onClick={() => toggleFileContextExpansion(message.id)}
+                                className="toggle-context-button"
+                              >
+                                {expandedFileContexts[message.id] ? 'Show less' : 'Show more'}
+                              </button>
+                            )}
+                          </div>
+                          <div className="user-question-display">
+                            <p className="user-question-header">Your Question:</p>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={commonMarkdownComponents}
+                            >
+                              {message.originalUserQuestion || message.content}
+                            </ReactMarkdown>
+                          </div>
+                        </>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={commonMarkdownComponents}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                    {message.role === 'assistant' && onCopyResponse && (
+                      <div className="message-actions">
+                        <button
+                          className="copy-button"
+                          onClick={() => onCopyResponse(message.id)}
+                          title="Copy to clipboard"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {message.role === 'user' && onRetry && (
+                      <div className="message-actions">
+                        <button
+                          className="retry-button"
+                          onClick={() => onRetry(message.id)}
+                          disabled={isLoading}
+                          title="Retry this prompt"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="message-content">{getDisplayableMessageContent(message)}</div>
-
-                  {/* Action buttons for assistant messages */}
-                  {message.role === 'assistant' && (
-                    <div className="message-actions">
-                      <button
-                        className="copy-button"
-                        onClick={() => onCopyResponse(message.id)}
-                        title="Copy to clipboard"
-                      >
-                        Copy
-                      </button>
-                      {/* Future "Accept & Save" button can go here */}
-                    </div>
-                  )}
-
-                  {/* Retry button for user messages */}
-                  {message.role === 'user' && onRetry && (
-                    <div className="message-actions">
-                      <button
-                        className="retry-button"
-                        onClick={() => onRetry(message.id)}
-                        disabled={isLoading}
-                        title="Retry this prompt"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
 
               {/* Loading indicator */}
               {isLoading && !error && (
-                <div className="chat-loading">
-                  <div className="loading-spinner"></div>
-                  <p>AI is thinking...</p>
+                <div className="chat-message-wrapper assistant-wrapper">
+                  <div className="chat-message assistant chat-loading-indicator">
+                    <div className="typing-dots">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -371,7 +350,6 @@ const ChatView: React.FC<ChatViewProps> = ({
               {error && !isLoading && (
                 <div className="chat-error">
                   <p>{error}</p>
-                  {/* The old global retry button is removed. Retries are per-message now. */}
                 </div>
               )}
 

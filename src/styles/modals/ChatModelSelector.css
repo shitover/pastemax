@@ -19,10 +19,20 @@
   max-width: 160px;
   text-overflow: ellipsis;
   overflow: hidden;
+  min-width: 80px;
 }
 
 .chat-model-selector-button:hover {
   background-color: var(--hover-color, #eaeaea);
+}
+
+.chat-model-selector-button span:not(.chat-model-dropdown-arrow) {
+  display: inline-block;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .chat-model-dropdown-arrow {
@@ -72,6 +82,11 @@
   font-weight: 500;
   font-size: 13px;
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
 }
 
 .chat-model-context {
