@@ -154,7 +154,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'Enter Google AI API Key';
       case 'groq':
         return 'Enter Groq API Key';
-   
+
       case 'openrouter':
         return 'Enter OpenRouter API Key';
       case 'mistral':
@@ -243,8 +243,10 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
           localStorage.setItem('pastemax-recent-models', JSON.stringify(updatedRecentModels));
         }
       }
-      setErrorMessage('Settings saved successfully for ' + providerBeingSaved + '!');
-      setTimeout(() => setErrorMessage(null), 3000);
+      setTimeout(() => {
+        setErrorMessage('Settings saved successfully for ' + providerBeingSaved + '!');
+        setTimeout(() => setErrorMessage(null), 3000);
+      }, 150);
     } catch (error) {
       console.error('Error saving LLM config:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save configuration');
@@ -299,7 +301,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
               <option value="anthropic">Anthropic</option>
               <option value="gemini">Google Gemini</option>
               <option value="groq">Groq</option>
-             
+
               <option value="openrouter">OpenRouter</option>
               <option value="mistral">Mistral</option>
             </select>

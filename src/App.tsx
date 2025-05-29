@@ -1597,6 +1597,7 @@ const App = (): JSX.Element => {
 
     if (sessionToOpenId) {
       selectChatSession(sessionToOpenId); // This sets currentChatSessionId, chatMessages, and chatTarget
+      // Don't clear error/loading states here - selectChatSession handles setting them from the session
     } else {
       // No existing session found for the target, or no current general session to resume, so create a new one
       const newSessionId = createNewChatSession(target); // This sets currentChatSessionId
@@ -1616,10 +1617,12 @@ const App = (): JSX.Element => {
         setChatMessages([]); // For a new general chat
       }
       setChatTarget(target); // Set target for the new session
+
+      // Only clear error/loading states for new sessions
+      setLlmError(null);
+      setIsLlmLoading(false);
     }
 
-    setLlmError(null);
-    setIsLlmLoading(false); // Add this line
     setIsChatViewOpen(true);
   };
 
@@ -1635,14 +1638,14 @@ const App = (): JSX.Element => {
 
     switch (target.type) {
       case 'file':
-        contextInfo = `\n\n## Context\nYou are discussing the following file: ${target.fileName || 'Unnamed file'}. Here is its content:\n\n\`\`\`\n${target.content}\n\`\`\``;
+        contextInfo = `\\n\\n## Context\\nYou are discussing the following file: ${target.fileName || 'Unnamed file'}. Here is its content:\\n\\n\`\`\`\\n${target.content}\\n\`\`\``;
         break;
       case 'selection':
-        contextInfo = `\n\n## Context\nYou are discussing the following code/text selection:\n\n\`\`\`\n${target.content}\n\`\`\``;
+        contextInfo = `\\n\\n## Context\\nYou are discussing the following code/text selection:\\n\\n\`\`\`\\n${target.content}\\n\`\`\``;
         break;
       case 'general':
       default:
-        contextInfo = '\n\n## Context\nThe user is working with the PasteMax application.';
+        contextInfo = ''; 
         break;
     }
 
@@ -1653,13 +1656,20 @@ const App = (): JSX.Element => {
    * Sends a user message to the LLM and processes the response
    */
   const handleSendMessage = async (messageContent: string) => {
-    const requestSessionId = currentChatSessionId; // Capture session ID at the start of the request
+    let requestSessionId = currentChatSessionId; // Capture session ID at the start of the request
 
+    // If no session exists, automatically create a new one for better UX
     if (!requestSessionId) {
-      console.error(
-        '[App.tsx] handleSendMessage: No currentChatSessionId. This should not happen.'
-      );
-      setLlmError('An internal error occurred: No active chat session.');
+      console.log('[App.tsx] No active session found. Creating new session automatically.');
+      requestSessionId = createNewChatSession({ type: 'general', content: '' });
+      // Give the UI a moment to update with the new session
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    // Safety check to ensure we have a valid session ID
+    if (!requestSessionId) {
+      console.error('[App.tsx] Failed to create or get a valid session ID.');
+      setLlmError('Failed to create chat session. Please try again.');
       return;
     }
 
@@ -1797,6 +1807,7 @@ const App = (): JSX.Element => {
         model: actualModelName,
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
+        requestId: requestSessionId as string, // Safe assertion after null checks above
       };
 
       const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
@@ -1841,50 +1852,65 @@ const App = (): JSX.Element => {
         setLlmError(err);
         setIsLlmLoading(false);
       }
+
+      // Request completed with error
     }
   };
 
   const handleRetrySendMessage = async (messageIdToRetry: string) => {
-    const requestSessionId = currentChatSessionId;
+    let requestSessionId = currentChatSessionId;
 
     if (!requestSessionId) {
-      console.error(
-        '[App.tsx] handleRetrySendMessage: No currentChatSessionId. This should not happen.'
-      );
-      // Update session-specific error, not global llmError directly here
-      setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === requestSessionId
-            ? { ...s, llmError: 'Internal error: No active chat for retry.', isLoading: false }
-            : s
-        )
-      );
-      // If it was the active session, also update global error for immediate UI feedback
-      if (currentChatSessionId === requestSessionId) {
-        setLlmError('Internal error: No active chat for retry.');
-        setIsLlmLoading(false);
+      console.log('[App.tsx] No active session for retry. Creating new session automatically.');
+      requestSessionId = createNewChatSession({ type: 'general', content: '' });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Safety check
+      if (!requestSessionId) {
+        console.error('[App.tsx] Failed to create session for retry.');
+        setLlmError('Failed to create chat session for retry. Please try again.');
+        return;
       }
-      return;
     }
 
     console.log(
       `[App.tsx] handleRetrySendMessage for message ${messageIdToRetry} in session: ${requestSessionId}`
     );
 
-    const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+    let sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
     if (!sessionForRequest) {
-      const sessionNotFoundError = 'Internal error: Chat session not found for retry.';
-      console.error(`[App.tsx] ${sessionNotFoundError}`);
-      setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === requestSessionId ? { ...s, llmError: sessionNotFoundError, isLoading: false } : s
-        )
-      );
-      if (currentChatSessionId === requestSessionId) {
+      // If session not found but we have messages, recreate the session
+      if (chatMessages.length > 0) {
+        console.log(
+          '[App.tsx] Session not found in chatSessions but messages exist. Recreating session.'
+        );
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+
+        const recreatedSession: ChatSession = {
+          id: requestSessionId,
+          title: `New Chat (${timestamp})`,
+          lastUpdated: Date.now(),
+          messages: chatMessages,
+          targetType: chatTarget?.type,
+          targetName: chatTarget?.fileName,
+          userPreview: chatMessages.find((m) => m.role === 'user')?.content.substring(0, 40),
+          isLoading: false,
+          llmError: null,
+        };
+
+        setChatSessions((prevSessions) => [recreatedSession, ...prevSessions]);
+        sessionForRequest = recreatedSession; // Assign the recreated session
+      } else {
+        const sessionNotFoundError = 'Internal error: Chat session not found for retry.';
+        console.error(`[App.tsx] ${sessionNotFoundError}`);
         setLlmError(sessionNotFoundError);
         setIsLlmLoading(false);
+        return;
       }
-      return;
     }
 
     const messageToRetryIndex = sessionForRequest.messages.findIndex(
@@ -1984,24 +2010,34 @@ const App = (): JSX.Element => {
       }
 
       const messagesForLlm = updatedSessionForRequest.messages.map((m) => ({
-        role: m.role as MessageRole,
+        role: m.role,
         content: m.content,
       }));
 
-      // Ensure system prompt is at the beginning
-      let messagesToSend: { role: MessageRole; content: string }[];
-      const sessionSystemPrompt = messagesForLlm.find((m) => m.role === 'system');
+      let messagesToSend;
 
-      if (sessionSystemPrompt) {
-        messagesToSend = [
-          sessionSystemPrompt,
-          ...messagesForLlm.filter((m) => m.role !== 'system'),
-        ];
+      if (selectedSystemPromptId) {
+        // If a system prompt is selected, find it and add to the beginning
+        const selectedPrompt = systemPrompts.find((p) => p.id === selectedSystemPromptId);
+        if (selectedPrompt) {
+          messagesToSend = [
+            { role: 'system' as MessageRole, content: selectedPrompt.content },
+            ...messagesForLlm.filter((m) => m.role !== 'system'), // Ensure no other system messages sneak in
+          ];
+        } else {
+          console.warn(`[App.tsx] Selected system prompt '${selectedSystemPromptId}' not found`);
+          // Fall back to default if not found
+          const baseSystemPrompt =
+            systemPrompts.find((p) => p.isDefault)?.content || DEFAULT_SYSTEM_PROMPTS[0].content;
+          messagesToSend = [
+            { role: 'system' as MessageRole, content: baseSystemPrompt },
+            ...messagesForLlm.filter((m) => m.role !== 'system'), // Ensure no other system messages sneak in
+          ];
+        }
       } else {
-        const baseSystemPrompt = chatTarget
-          ? getSystemPromptForTarget(chatTarget)
-          : systemPrompts.find((p) => p.id === selectedSystemPromptId)?.content ||
-            DEFAULT_SYSTEM_PROMPTS[0].content;
+        // Use default prompt if no specific prompt is selected
+        const baseSystemPrompt =
+          systemPrompts.find((p) => p.isDefault)?.content || DEFAULT_SYSTEM_PROMPTS[0].content;
         messagesToSend = [
           { role: 'system' as MessageRole, content: baseSystemPrompt },
           ...messagesForLlm.filter((m) => m.role !== 'system'), // Ensure no other system messages sneak in
@@ -2020,6 +2056,7 @@ const App = (): JSX.Element => {
         model: actualModelName,
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
+        requestId: requestSessionId as string, // Safe assertion after null checks above
       };
 
       const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
@@ -2065,6 +2102,8 @@ const App = (): JSX.Element => {
         setLlmError(err);
         setIsLlmLoading(false);
       }
+
+      // Request completed with error
     }
   };
 
@@ -2078,49 +2117,43 @@ const App = (): JSX.Element => {
       // Optionally add a toast or notification here
     }
   };
-  // this feature will be implemented in the future
-  // /**
-  //  * Accepts an AI response and saves it to the original file
-  //  */
-  // const handleAcceptAndSave = async (messageId: string) => {
-  //   if (!chatTarget?.filePath) {
-  //     setLlmError('No file target specified for saving.');
-  //     return;
-  //   }
 
-  //   const message = chatMessages.find((msg) => msg.id === messageId);
-  //   if (!message) {
-  //     setLlmError('Message not found.');
-  //     return;
-  //   }
+  /**
+   * Cancels the current LLM request
+   */
+  const handleCancelLlmRequest = async () => {
+    if (!currentChatSessionId) {
+      console.warn('[App.tsx] No current chat session to cancel');
+      return;
+    }
 
-  //   setIsLlmLoading(true);
-  //   setLlmError(null);
+    console.log(`[App.tsx] Cancelling LLM request: ${currentChatSessionId}`);
 
-  //   try {
-  //     if (window.llmApi) {
-  //       const result = await window.llmApi.saveFile({
-  //         filePath: chatTarget.filePath,
-  //         content: message.content,
-  //       });
+    try {
+      if (window.llmApi?.cancelLlmRequest) {
+        const result = await window.llmApi.cancelLlmRequest(currentChatSessionId);
+        if (result.success) {
+          console.log(`[App.tsx] Successfully cancelled request: ${currentChatSessionId}`);
+        } else {
+          console.error(`[App.tsx] Failed to cancel request: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('[App.tsx] Error cancelling LLM request:', error);
+    }
 
-  //       if (result.success) {
-  //         // Close the chat view after successful save
-  //         setIsChatViewOpen(false);
+    // Reset loading state regardless of cancellation success
+    setIsLlmLoading(false);
 
-  //         // Refresh the file list if needed
-  //         setReloadTrigger((prev) => prev + 1);
-  //       } else {
-  //         throw new Error(result.message);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Error saving file:', error);
-  //     setLlmError(error instanceof Error ? error.message : 'Failed to save file');
-  //   } finally {
-  //     setIsLlmLoading(false);
-  //   }
-  // };
+    // Update the current session state
+    if (currentChatSessionId) {
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === currentChatSessionId ? { ...s, isLoading: false, llmError: null } : s
+        )
+      );
+    }
+  };
 
   /**
    * Opens chat for a selected file
@@ -2166,13 +2199,20 @@ const App = (): JSX.Element => {
     const sessionId = generateId('session_');
     let sessionTitle: string;
     const userPreview: string | undefined = undefined; // Always undefined for a brand new chat
+    const timestamp = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
 
     if (target?.type === 'file') {
-      sessionTitle = target.fileName ? `File: ${target.fileName}` : 'File Chat';
+      sessionTitle = target.fileName
+        ? `File: ${target.fileName} (${timestamp})`
+        : `File Chat (${timestamp})`;
     } else if (target?.type === 'selection') {
-      sessionTitle = 'Selection Chat';
+      sessionTitle = `Selection Chat (${timestamp})`;
     } else {
-      sessionTitle = 'New Chat'; // Default for general new chats
+      sessionTitle = `New Chat (${timestamp})`; // Default for general new chats with timestamp
     }
 
     const newSession: ChatSession = {
@@ -2394,13 +2434,6 @@ const App = (): JSX.Element => {
     }
   }, [currentChatSessionId]);
 
-  // Update current session with new messages when chatMessages changes
-  useEffect(() => {
-    if (currentChatSessionId && chatMessages.length > 0) {
-      updateCurrentSession(chatMessages);
-    }
-  }, [chatMessages]);
-
   /**
    * Creates a unique ID for various entities
    */
@@ -2418,74 +2451,88 @@ const App = (): JSX.Element => {
   /**
    * Updates the current session with the new messages
    */
-  const updateCurrentSession = (messages: ChatMessage[]) => {
-    if (!currentChatSessionId) return;
+  const updateCurrentSession = useCallback(
+    (messages: ChatMessage[]) => {
+      if (!currentChatSessionId) return;
 
-    // Find the first user message to create a preview
-    const firstUserMessage = messages.find((msg) => msg.role === 'user');
-    let userPreview: string | undefined;
-    if (firstUserMessage?.content) {
-      userPreview = firstUserMessage.content.substring(0, 40);
-      if (firstUserMessage.content.length > 40) {
-        userPreview += '...';
-      }
-    }
-
-    setChatSessions((prevSessions) => {
-      let sessionFound = false;
-      const updatedSessions = prevSessions.map((session) => {
-        if (session.id === currentChatSessionId) {
-          sessionFound = true;
-          let title = session.title;
-
-          if (session.targetType === 'file') {
-            title = session.targetName
-              ? `File: ${session.targetName}`
-              : session.title || 'File Chat';
-          } else if (session.targetType === 'selection') {
-            title = session.title.startsWith('Selection Chat') ? session.title : 'Selection Chat';
-          } else {
-            if (userPreview) {
-              title = userPreview;
-            } else if (
-              !messages.some((m) => m.role === 'user') &&
-              !session.targetType &&
-              !session.userPreview &&
-              !session.messages.length
-            ) {
-              title = 'New Chat';
-            }
-          }
-
-          return {
-            ...session,
-            messages: messages.map((msg) => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp,
-            })),
-            lastUpdated: Date.now(),
-            userPreview: userPreview || session.userPreview, // Preserve existing preview if new one is undefined
-            title: title, // Update the title
-          } as ChatSession; // Cast the updated active session
+      // Find the first user message to create a preview
+      const firstUserMessage = messages.find((msg) => msg.role === 'user');
+      let userPreview: string | undefined;
+      if (firstUserMessage?.content) {
+        userPreview = firstUserMessage.content.substring(0, 40);
+        if (firstUserMessage.content.length > 40) {
+          userPreview += '...';
         }
-        return session as ChatSession; // Cast the non-active session
-      });
-
-      // If the currentChatSessionId was not found in prevSessions (e.g., it's a brand new session ID)
-      // and we have messages to add, this implies we should add this new session.
-      // This case should ideally be handled by createNewChatSession adding it first.
-      // For safety, if it wasn't found but we have a current ID, log a warning.
-      if (!sessionFound && currentChatSessionId) {
-        console.warn(
-          `[App.tsx] updateCurrentSession: currentChatSessionId ${currentChatSessionId} not found in prevSessions. This might indicate an issue.`
-        );
       }
 
-      return updatedSessions;
-    });
-  };
+      setChatSessions((prevSessions) => {
+        let sessionFound = false;
+        const updatedSessions = prevSessions.map((session) => {
+          if (session.id === currentChatSessionId) {
+            sessionFound = true;
+            let title = session.title;
+
+            if (session.targetType === 'file') {
+              title = session.targetName
+                ? `File: ${session.targetName} (${new Date(session.lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })})`
+                : session.title || 'File Chat';
+            } else if (session.targetType === 'selection') {
+              title = session.title.startsWith('Selection Chat') ? session.title : 'Selection Chat';
+            } else {
+              // For general chats, only update title if we have a meaningful user preview
+              // and the current title is still the default "New Chat" format
+              if (userPreview && session.title.includes('New Chat (')) {
+                title = userPreview;
+              } else if (session.title.includes('New Chat (') && !userPreview) {
+                // Keep the timestamped title if no user preview yet
+                title = session.title;
+              } else if (userPreview) {
+                // If we have user preview and it's not a timestamped title, use the preview
+                title = userPreview;
+              } else {
+                // Fallback to existing title
+                title = session.title;
+              }
+            }
+
+            return {
+              ...session,
+              messages: messages.map((msg) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp,
+              })),
+              lastUpdated: Date.now(),
+              userPreview: userPreview || session.userPreview, // Preserve existing preview if new one is undefined
+              title: title, // Update the title
+            } as ChatSession; // Cast the updated active session
+          }
+          return session as ChatSession; // Cast the non-active session
+        });
+
+        // If the currentChatSessionId was not found in prevSessions (e.g., it's a brand new session ID)
+        // and we have messages to add, this implies we should add this new session.
+        // This case should ideally be handled by createNewChatSession adding it first.
+        // For safety, if it wasn't found but we have a current ID, log a warning.
+        if (!sessionFound && currentChatSessionId) {
+          console.warn(
+            `[App.tsx] updateCurrentSession: currentChatSessionId ${currentChatSessionId} not found in prevSessions. This might indicate an issue.`
+          );
+        }
+
+        return updatedSessions;
+      });
+    },
+    [currentChatSessionId]
+  );
+
+  // Update current session with new messages when chatMessages changes
+  useEffect(() => {
+    if (currentChatSessionId) {
+      updateCurrentSession(chatMessages);
+    }
+  }, [chatMessages, currentChatSessionId, updateCurrentSession]);
 
   /**
    * Creates a new chat session and sets it as the current session
@@ -3110,6 +3157,7 @@ const App = (): JSX.Element => {
         )}
         {isChatViewOpen && (
           <ChatView
+            key={currentChatSessionId || 'no-session-active'}
             isOpen={isChatViewOpen}
             onClose={() => setIsChatViewOpen(false)}
             messages={chatMessages}
@@ -3126,7 +3174,9 @@ const App = (): JSX.Element => {
             onSelectSession={selectChatSession}
             onDeleteSession={deleteChatSession}
             onCreateNewSession={handleCreateNewChat}
-            onRetry={handleRetrySendMessage} // Pass the new retry handler
+            onRetry={handleRetrySendMessage}
+            currentLlmRequestId={currentChatSessionId}
+            onCancelLlmRequest={handleCancelLlmRequest}
           />
         )}
         {isSystemPromptEditorOpen && (

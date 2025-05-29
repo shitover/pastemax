@@ -30,6 +30,8 @@ interface ChatViewProps {
   onCreateNewSession: () => void;
   selectedModelId?: string;
   onModelSelect?: (modelId: string) => void;
+  currentLlmRequestId?: string | null;
+  onCancelLlmRequest?: () => void;
 }
 
 // Define this interface for your code renderer props
@@ -60,6 +62,8 @@ const ChatView: React.FC<ChatViewProps> = ({
   onCreateNewSession,
   selectedModelId,
   onModelSelect,
+  currentLlmRequestId,
+  onCancelLlmRequest,
 }) => {
   const [userMessage, setUserMessage] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -395,10 +399,19 @@ const ChatView: React.FC<ChatViewProps> = ({
               <button
                 type="submit"
                 className="chat-view-send-button"
-                disabled={!userMessage.trim() || !isLlmConfigured || isLoading}
+                disabled={!userMessage.trim() || isLoading || !isLlmConfigured}
               >
                 {isLoading ? 'Sending...' : 'Send'}
               </button>
+              {isLoading && currentLlmRequestId && onCancelLlmRequest && (
+                <button
+                  type="button"
+                  className="chat-view-stop-button"
+                  onClick={onCancelLlmRequest}
+                >
+                  Stop
+                </button>
+              )}
             </form>
           </div>
         </div>

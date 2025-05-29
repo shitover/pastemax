@@ -498,5 +498,30 @@
 }
 
 .dark-mode .retry-button:hover {
-  background-color: var(--color-background-highest);
+  background-color: var(--color-secondary-dark-hover);
+}
+
+.chat-view-stop-button {
+  padding: var(--space-xs) var(--space-sm);
+  background-color: var(--color-danger);
+  color: var(--color-text-light);
+  border: none;
+  border-radius: var(--border-radius-medium);
+  cursor: pointer;
+  font-weight: 500;
+  margin-left: var(--space-sm);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.chat-view-stop-button:hover {
+  background-color: var(--color-danger-hover);
+}
+
+.dark-mode .chat-view-stop-button {
+  background-color: var(--color-danger-dark);
+  color: var(--color-text-dark-mode);
+}
+
+.dark-mode .chat-view-stop-button:hover {
+  background-color: var(--color-danger-dark-hover);
 }

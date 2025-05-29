@@ -14,6 +14,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
  */
 let store;
 
+// Encryption/decryption key
+const ENCRYPTION_KEY = 'pastemax-llm-key';
+
+// Active LLM requests for cancellation support
+const activeRequests = new Map(); // requestId -> AbortController
+
 /**
  * Generates a secure encryption key based on a combination of environment variables
  * and machine-specific information
@@ -197,7 +203,6 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
         // Using @google/generative-ai directly
         const genAI = new GoogleGenerativeAI(apiKey);
 
-
         // Note: The @google/generative-ai SDK uses 'generationConfig' for temperature, maxOutputTokens etc.
         // The 'baseUrl' for this SDK is typically configured during GoogleGenerativeAI instantiation if needed for a proxy,
         // or model names might need specific paths if not using the default endpoint.
@@ -378,47 +383,97 @@ function convertToLangchainMessages(messages) {
 }
 
 /**
- * Sends the prompt to the configured LLM and returns the response.
- * MODIFIED: Accepts full configuration per call.
- * @param {Object} params - The parameters for sending the prompt.
- * @param {{ role: string, content: string }[]} params.messages - The messages to send.
- * @param {string} params.provider - The LLM provider.
- * @param {string} params.model - The model name.
- * @param {string} params.apiKey - The API key.
- * @param {string} [params.baseUrl] - Optional base URL.
- * @returns {Promise<{ content: string, provider?: string, error?: string }>}
+ * Sends a prompt to the specified LLM
+ * @param {Object} params - Parameters for the LLM request
+ * @param {Array} params.messages - Array of message objects
+ * @param {string} params.provider - LLM provider
+ * @param {string} params.model - Model name
+ * @param {string} params.apiKey - API key
+ * @param {string} [params.baseUrl] - Base URL for the API
+ * @param {string} params.requestId - Unique request ID for cancellation
+ * @returns {Promise<Object>} Response from the LLM
  */
-async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl }) {
+async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, requestId }) {
   console.log('[LLM Service] Preparing to send prompt to LLM');
 
-  const chat = await getChatModel(provider, model, apiKey, baseUrl);
-
-  const langchainMessages = convertToLangchainMessages(messages);
-
-  console.log('[LLM Service] Converted', langchainMessages.length, 'messages to Langchain format');
-  console.log(
-    '[LLM Service] Message structure:',
-    langchainMessages.map((m) => ({
-      type: m.constructor.name,
-      _type: m._getType(),
-      contentLength: m.content.length,
-    }))
-  );
+  // Create AbortController for this request
+  const abortController = new AbortController();
+  activeRequests.set(requestId, abortController);
 
   try {
+    // Get the chat model
+    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
+
+    // Convert messages to Langchain format
+    const langchainMessages = convertToLangchainMessages(messages);
+    console.log('[LLM Service] Converted', messages.length, 'messages to Langchain format');
+    console.log(
+      '[LLM Service] Message structure:',
+      langchainMessages.map((msg) => ({
+        type: msg.constructor.name,
+        _type: msg._getType(),
+        contentLength: msg.content.length,
+      }))
+    );
+
     console.log('[LLM Service] Invoking chat model');
-    const response = await chat.invoke(langchainMessages);
+
+    // Pass the abort signal to the LLM invocation
+    const response = await chatModel.invoke(langchainMessages, {
+      signal: abortController.signal,
+    });
+
     console.log('[LLM Service] Received response from LLM');
-    const responseContent =
-      typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-    console.log('[LLM Service] Response received, length:', responseContent.length, 'characters');
-    return { content: responseContent, provider: provider };
-  } catch (error) {
-    console.error('[LLM Service] Error invoking chat model:', error);
+    console.log('[LLM Service] Response received, length:', response.content.length, 'characters');
+
     return {
-      content: '',
-      error: `Failed to get response: ${error.message}`,
+      content: response.content,
+      provider: provider,
     };
+  } catch (error) {
+    console.error('[LLM Service] Error sending prompt:', error);
+
+    // Check if the error is due to abortion
+    if (error.name === 'AbortError' || error.message?.includes('abort')) {
+      console.log('[LLM Service] Request was cancelled by user');
+      return {
+        cancelled: true,
+        error: 'Request cancelled by user',
+      };
+    }
+
+    return {
+      error: error.message || 'Unknown error occurred',
+    };
+  } finally {
+    // Clean up the active request
+    activeRequests.delete(requestId);
+  }
+}
+
+/**
+ * Cancels an active LLM request
+ * @param {string} requestId - The ID of the request to cancel
+ * @returns {Promise<{success: boolean, error?: string}>} Result of the cancellation
+ */
+async function cancelLlmRequestInService(requestId) {
+  console.log('[LLM Service] Attempting to cancel request:', requestId);
+
+  try {
+    const abortController = activeRequests.get(requestId);
+
+    if (abortController) {
+      console.log('[LLM Service] Found active request, sending abort signal');
+      abortController.abort();
+      activeRequests.delete(requestId);
+      return { success: true };
+    } else {
+      console.log('[LLM Service] No active request found for ID:', requestId);
+      return { success: false, error: 'Request not found or already completed' };
+    }
+  } catch (error) {
+    console.error('[LLM Service] Error cancelling request:', error);
+    return { success: false, error: error.message || 'Failed to cancel request' };
   }
 }
 
@@ -427,7 +482,7 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl }) {
  * @param {Object} params - Parameters for saving
  * @param {string} params.filePath - Path to the file
  * @param {string} params.content - Content to save
- * @returns {Promise<{success: boolean, message: string}>}
+ * @returns {Promise<Object>} Result of the save operation
  */
 async function saveContentToFile({ filePath, content }) {
   try {
@@ -451,4 +506,5 @@ module.exports = {
   setAllLlmConfigsInStore,
   sendPromptToLlm,
   saveContentToFile,
+  cancelLlmRequestInService,
 };

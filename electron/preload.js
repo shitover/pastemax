@@ -147,7 +147,8 @@ contextBridge.exposeInMainWorld('llmApi', {
    * Sends a prompt to the LLM
    * @param {Object} params - Parameters for the prompt
    * @param {Array} params.messages - Array of message objects with role and content
-   * @returns {Promise<{content: string, error?: string}>}
+   * @param {string} params.requestId - A unique ID for this request
+   * @returns {Promise<{content: string, error?: string, cancelled?: boolean}>}
    */
   sendPrompt: (params) => ipcRenderer.invoke('llm:send-prompt', ensureSerializable(params)),
 
@@ -159,4 +160,11 @@ contextBridge.exposeInMainWorld('llmApi', {
    * @returns {Promise<{success: boolean, message: string}>}
    */
   saveFile: (params) => ipcRenderer.invoke('llm:save-file', ensureSerializable(params)),
+
+  /**
+   * Cancels an ongoing LLM request.
+   * @param requestId The ID of the request to cancel.
+   * @returns A promise that resolves to an object indicating success or failure.
+   */
+  cancelLlmRequest: (requestId) => ipcRenderer.invoke('llm:cancel-request', requestId),
 });

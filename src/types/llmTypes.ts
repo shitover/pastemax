@@ -66,16 +66,17 @@ export interface LlmApiWindow {
     setAllConfigs: (configs: AllLlmConfigs) => Promise<{ success: boolean; error?: string }>;
     sendPrompt: (params: {
       messages: { role: MessageRole; content: string }[];
-      // Backend will also need provider, model, apiKey, baseUrl for the new flow
       provider: LlmProvider;
       model: string;
       apiKey: string;
       baseUrl?: string | null;
-    }) => Promise<{ content: string; provider?: string; error?: string }>;
+      requestId: string;
+    }) => Promise<{ content: string; provider?: string; error?: string; cancelled?: boolean }>;
     saveFile: (params: {
       filePath: string;
       content: string;
     }) => Promise<{ success: boolean; message: string }>;
+    cancelLlmRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   };
 }
 
