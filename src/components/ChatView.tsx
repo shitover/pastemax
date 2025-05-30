@@ -31,7 +31,7 @@ interface ChatViewProps {
   selectedModelId?: string;
   onModelSelect?: (modelId: string) => void;
   currentLlmRequestId?: string | null;
-  onCancelLlmRequest?: () => void;
+  onCancelLlmRequest?: (requestId: string) => void;
 }
 
 // Define this interface for your code renderer props
@@ -74,6 +74,12 @@ const ChatView: React.FC<ChatViewProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [expandedFileContexts, setExpandedFileContexts] = useState<Record<string, boolean>>({});
   const [expandedMainMessages, setExpandedMainMessages] = useState<Record<string, boolean>>({});
+
+  // Determine the model ID for the current session, falling back to global if not set in session
+  const activeSession = currentSessionId
+    ? chatSessions.find((s) => s.id === currentSessionId)
+    : undefined;
+  const modelIdForThisSession = activeSession?.modelId || selectedModelId; // Use session's model, or global
 
   const toggleFileContextExpansion = (messageId: string) => {
     setExpandedFileContexts((prev) => ({
@@ -213,9 +219,9 @@ const ChatView: React.FC<ChatViewProps> = ({
                     <>AI Chat</>
                   )}
                 </h3>
-                {isLlmConfigured && onModelSelect && (
+                {isLlmConfigured && (
                   <ChatModelSelector
-                    currentModelId={selectedModelId}
+                    currentModelId={modelIdForThisSession}
                     onModelSelect={onModelSelect}
                   />
                 )}
@@ -387,7 +393,7 @@ const ChatView: React.FC<ChatViewProps> = ({
               ))}
 
               {/* Loading indicator */}
-              {isLoading && !error && (
+              {isLoading && currentLlmRequestId === currentSessionId && (
                 <div className="chat-message-wrapper assistant-wrapper">
                   <div className="chat-message assistant chat-loading-indicator">
                     <div className="typing-dots">
@@ -438,7 +444,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 <button
                   type="button"
                   className="chat-view-stop-button"
-                  onClick={onCancelLlmRequest}
+                  onClick={() => onCancelLlmRequest(currentLlmRequestId)}
                 >
                   Stop
                 </button>

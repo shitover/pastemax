@@ -14,9 +14,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
  */
 let store;
 
-// Encryption/decryption key
-const ENCRYPTION_KEY = 'pastemax-llm-key';
-
 // Active LLM requests for cancellation support
 const activeRequests = new Map(); // requestId -> AbortController
 

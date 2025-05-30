@@ -1518,10 +1518,41 @@ const App = (): JSX.Element => {
 
   // Handle model selection
   const handleModelSelect = (newModelId: string) => {
+    // Update the globally selected model ID - this is used for NEW chats or as a fallback.
     setSelectedModelId(newModelId);
     localStorage.setItem('pastemax-selected-model', newModelId);
-    setLlmError(null); // Clear previous errors on new model selection
-    console.log('Model selected in App.tsx:', newModelId);
+
+    // If there's a current active chat session, update ITS modelId and providerConfig.
+    if (currentChatSessionId) {
+      setChatSessions((prevSessions) =>
+        prevSessions.map((session) => {
+          if (session.id === currentChatSessionId) {
+            let updatedProviderConfig = session.providerConfig;
+            const provider = getProviderFromModelId(newModelId);
+            if (provider && allLlmConfigs && allLlmConfigs[provider]) {
+              updatedProviderConfig = allLlmConfigs[provider];
+            }
+            return {
+              ...session,
+              modelId: newModelId,
+              providerConfig: updatedProviderConfig,
+              // Optionally, clear llmError if model change should reset it for the session
+              // llmError: null,
+            };
+          }
+          return session;
+        })
+      );
+      // If the active chat's model is changed, clear any global/view-specific LLM error related to the old model.
+      if (currentChatSessionIdRef.current === currentChatSessionId) {
+        setLlmError(null);
+      }
+    } else {
+      // If no specific chat is active, changing the global model might still warrant clearing a global error.
+      setLlmError(null);
+    }
+
+    console.log('Model selected (globally and for active session if any):', newModelId);
   };
 
   // Persist workspaces when they change
@@ -1632,6 +1663,19 @@ const App = (): JSX.Element => {
     setIsChatViewOpen(true);
   };
 
+  const handleCloseChatView = () => {
+    setIsChatViewOpen(false);
+    // Always clear these view-specific states when the chat view overlay is closed.
+    // The active session ID (currentChatSessionId) is preserved.
+    // When the chat is re-opened:
+    // - Clicking a session in history calls selectChatSession, reloading its state.
+    // - Clicking "New Chat" or general "Chat with AI" calls handleOpenGeneralChat, creating a fresh session.
+    setChatMessages([]);
+    setLlmError(null);
+    setIsLlmLoading(false);
+    setChatTarget(undefined);
+  };
+
   /**
    * Generates an appropriate system prompt based on the chat target
    */
@@ -1674,20 +1718,44 @@ const App = (): JSX.Element => {
       explicitSessionId?: string;
     }
   ) => {
-    let requestSessionId = options?.explicitSessionId || currentChatSessionIdRef.current; // Prioritize explicit, then ref, then current state
+    let requestSessionId = options?.explicitSessionId || currentChatSessionIdRef.current;
 
-    // If no session exists (neither explicit nor from ref/state), automatically create a new one
-    if (!requestSessionId) {
+    // If no session exists (neither explicit nor from ref/state reflecting an existing session),
+    // AND this isn't an explicit full context submission (which creates its own session),
+    // it means we are sending the first message for a new general chat.
+    if (!requestSessionId && !options?.isFullContextSubmission) {
       console.log(
-        '[App.tsx] No active/explicit session. Creating new session automatically in handleSendMessage.'
+        '[App.tsx] No active/explicit session for a new message. Creating new general session now.'
       );
-      // Ensure chatTarget is appropriately set for a new general session if created here
+      // chatTarget might be undefined here if user just typed into a blank chat view.
+      // Default to general type if so.
       const newSessionTarget: ChatTarget =
-        chatTarget && chatTarget.type === 'general' ? chatTarget : { type: 'general', content: '' };
-      requestSessionId = createNewChatSession(newSessionTarget);
+        chatTarget &&
+        (chatTarget.type === 'general' ||
+          chatTarget.type === 'file' ||
+          chatTarget.type === 'selection')
+          ? chatTarget
+          : { type: 'general', content: '' };
+
+      const newSessionId = createNewChatSession(newSessionTarget);
+      // Important: Update currentChatSessionId and its ref immediately so subsequent logic uses it.
+      setCurrentChatSessionId(newSessionId);
+      currentChatSessionIdRef.current = newSessionId;
+      requestSessionId = newSessionId;
+    } else if (options?.isFullContextSubmission && !options?.explicitSessionId) {
+      // This case should ideally be handled by handleSendInstructionsToAI passing an explicitSessionId.
+      // However, as a fallback, if it is a full context submission without an explicit ID,
+      // create a session here. This is less ideal because handleSendInstructionsToAI should own this.
+      console.warn(
+        '[App.tsx] Full context submission without explicitSessionId. Creating session in handleSendMessage as fallback.'
+      );
+      const newSessionId = createNewChatSession({ type: 'general', content: '' }); // Full context is always general type
+      setCurrentChatSessionId(newSessionId);
+      currentChatSessionIdRef.current = newSessionId;
+      requestSessionId = newSessionId;
     }
 
-    // Safety check to ensure we have a valid session ID
+    // Safety check to ensure we have a valid session ID before proceeding
     if (!requestSessionId) {
       console.error('[App.tsx] Failed to create or get a valid session ID.');
       setLlmError('Failed to create chat session. Please try again.');
@@ -1695,77 +1763,86 @@ const App = (): JSX.Element => {
     }
 
     console.log(`[App.tsx] handleSendMessage for session: ${requestSessionId}`);
-    console.log('[App.tsx] Current selectedModelId state:', selectedModelId);
+    // console.log('[App.tsx] Current selectedModelId state:', selectedModelId); // Keep for debugging if needed
 
-    if (!selectedModelId) {
-      const noModelError = 'No model selected. Please select a model from the dropdown.';
+    // --- Get session-specific or global model/config ---
+    const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+    const modelIdForRequest = sessionForRequest?.modelId || selectedModelId;
+    let providerConfigForRequest = sessionForRequest?.providerConfig; // Keep as let, it might be updated below
+
+    if (!modelIdForRequest) {
+      const noModelError = 'No model selected for this session or globally. Please select a model.';
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
           s.id === requestSessionId ? { ...s, llmError: noModelError, isLoading: false } : s
         )
       );
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setLlmError(noModelError);
         setIsLlmLoading(false);
       }
       return;
     }
 
-    const currentProvider = getProviderFromModelId(selectedModelId);
-    const actualModelName = getActualModelName(selectedModelId);
+    const currentProvider = getProviderFromModelId(modelIdForRequest);
+    const actualModelName = getActualModelName(modelIdForRequest);
 
     if (!currentProvider) {
-      const noProviderError = `Could not determine provider for model: "${selectedModelId}". Ensure it's selected correctly or configured.`;
+      const noProviderError = `Could not determine provider for model: "${modelIdForRequest}".`;
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
           s.id === requestSessionId ? { ...s, llmError: noProviderError, isLoading: false } : s
         )
       );
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setLlmError(noProviderError);
         setIsLlmLoading(false);
       }
       return;
     }
 
-    if (
-      !allLlmConfigs ||
-      !allLlmConfigs[currentProvider] ||
-      !allLlmConfigs[currentProvider]?.apiKey
-    ) {
-      const apiKeyError = `API key for ${currentProvider} is not configured. Please go to LLM Settings for ${currentProvider} to add it.`;
+    // If providerConfig was not in session, get it from global configs
+    if (!providerConfigForRequest) {
+      if (allLlmConfigs && allLlmConfigs[currentProvider]) {
+        providerConfigForRequest = allLlmConfigs[currentProvider]; // This is the reassignment
+      } else {
+        // This case should be rare if a modelId was found, but handle it.
+        const noProviderConfigError = `Configuration for provider ${currentProvider} not found.`;
+        setChatSessions((prevSessions) =>
+          prevSessions.map((s) =>
+            s.id === requestSessionId
+              ? { ...s, llmError: noProviderConfigError, isLoading: false }
+              : s
+          )
+        );
+        if (currentChatSessionIdRef.current === requestSessionId) {
+          setLlmError(noProviderConfigError);
+          setIsLlmLoading(false);
+        }
+        return;
+      }
+    }
+
+    if (!providerConfigForRequest?.apiKey) {
+      const apiKeyError = `API key for ${currentProvider} is not configured. Please check LLM Settings.`;
       console.error(
-        '[App.tsx] API key or config missing for provider:',
+        '[App.tsx] API key missing for provider:',
         currentProvider,
-        'All Configs:',
-        allLlmConfigs
+        'Effective Provider Config:',
+        providerConfigForRequest
       );
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
           s.id === requestSessionId ? { ...s, llmError: apiKeyError, isLoading: false } : s
         )
       );
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setLlmError(apiKeyError);
         setIsLlmLoading(false);
       }
       return;
     }
-
-    const providerConfig = allLlmConfigs[currentProvider];
-    if (!providerConfig?.apiKey) {
-      const missingConfigError = `Configuration or API key for ${currentProvider} is missing. Please configure it in LLM Settings.`;
-      setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === requestSessionId ? { ...s, llmError: missingConfigError, isLoading: false } : s
-        )
-      );
-      if (currentChatSessionId === requestSessionId) {
-        setLlmError(missingConfigError);
-        setIsLlmLoading(false);
-      }
-      return;
-    }
+    // --- End Get session-specific or global model/config ---
 
     let finalMessageContent = messageContent;
     let userFileContext: ChatMessage['fileContext'] | undefined = undefined;
@@ -1859,7 +1936,7 @@ const App = (): JSX.Element => {
 
     try {
       // Use the messages from the specific session for the API call
-      const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
+      const updatedSessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
 
       // Determine the system prompt
       const baseSystemPromptContent = chatTarget
@@ -1871,8 +1948,8 @@ const App = (): JSX.Element => {
       // The history from sessionForRequest.messages should be added *before* the current userMessage
       // And the system prompt should be the very first message.
 
-      const historyMessages = sessionForRequest
-        ? sessionForRequest.messages
+      const historyMessages = updatedSessionForRequest
+        ? updatedSessionForRequest.messages
             .filter((m) => m.role === 'user' || m.role === 'assistant') // Only user and assistant messages for history
             .map((m) => ({ role: m.role, content: m.content }))
         : [];
@@ -1907,8 +1984,8 @@ const App = (): JSX.Element => {
         messages: messagesToSend.slice(-20), // Consider message history length
         provider: currentProvider,
         model: actualModelName,
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
+        apiKey: providerConfigForRequest.apiKey,
+        baseUrl: providerConfigForRequest.baseUrl,
         requestId: requestSessionId as string, // Safe assertion after null checks above
       };
 
@@ -2276,27 +2353,6 @@ const App = (): JSX.Element => {
     handleOpenChatView(chatTarget);
   };
 
-  /**
-   * Opens a general chat (not specific to any file)
-   */
-  const handleOpenGeneralChat = useCallback(() => {
-    console.log('[App.tsx] handleOpenGeneralChat called');
-    const generalSessionId = 'general-chat-session'; // Used for managing session state logic
-
-    if (currentChatSessionId !== generalSessionId) {
-      setCurrentChatSessionId(generalSessionId);
-      setChatMessages([]);
-      setChatTarget({ type: 'general', content: '' }); // Correct: type and content are required
-    }
-    setIsChatViewOpen(true); // This controls the visibility of the main ChatView
-  }, [
-    currentChatSessionId,
-    setCurrentChatSessionId,
-    setChatMessages,
-    setChatTarget,
-    setIsChatViewOpen,
-  ]);
-
   const createNewChatSession = (target?: ChatTarget) => {
     const sessionId = generateId('session_');
     let sessionTitle: string;
@@ -2317,6 +2373,16 @@ const App = (): JSX.Element => {
       sessionTitle = `New Chat (${timestamp})`; // Default for general new chats with timestamp
     }
 
+    // Capture current model and config for the new session
+    const currentModelIdForSession = selectedModelId;
+    let providerConfigForSession: ProviderSpecificConfig | undefined = undefined;
+    if (currentModelIdForSession && allLlmConfigs) {
+      const provider = getProviderFromModelId(currentModelIdForSession);
+      if (provider && allLlmConfigs[provider]) {
+        providerConfigForSession = allLlmConfigs[provider];
+      }
+    }
+
     const newSession: ChatSession = {
       id: sessionId,
       title: sessionTitle,
@@ -2329,6 +2395,8 @@ const App = (): JSX.Element => {
       userPreview: userPreview, // Will be undefined for new chats
       isLoading: false,
       llmError: null,
+      modelId: currentModelIdForSession, // Store the model ID
+      providerConfig: providerConfigForSession, // Store the provider config
     };
 
     setChatSessions((prevSessions) => [newSession, ...prevSessions]);
@@ -2336,6 +2404,33 @@ const App = (): JSX.Element => {
 
     return sessionId;
   };
+
+  /**
+   * Opens a general chat (not specific to any file)
+   */
+  const handleOpenGeneralChat = useCallback(() => {
+    console.log('[App.tsx] handleOpenGeneralChat called - preparing for new general chat.');
+
+    // Don't create session object yet. Set UI for a potential new chat.
+    setCurrentChatSessionId(null); // Indicate no specific session is active, ready for new general chat if message is sent
+
+    // Reset view states for the new potential chat context
+    setChatMessages([]);
+    setChatTarget({ type: 'general', content: '' });
+    setLlmError(null);
+    setIsLlmLoading(false);
+
+    setIsChatViewOpen(true); // Open the chat view
+  }, [
+    // Dependencies: setters for view state.
+    setCurrentChatSessionId,
+    setChatMessages,
+    setChatTarget,
+    setLlmError,
+    setIsLlmLoading,
+    setIsChatViewOpen,
+    // createNewChatSession is NOT a dependency here anymore
+  ]);
 
   const handleSendInstructionsToAI = useCallback(
     async (currentLocalUserInstructions: string) => {
@@ -3250,7 +3345,7 @@ const App = (): JSX.Element => {
           <ChatView
             key={currentChatSessionId || 'no-session-active'}
             isOpen={isChatViewOpen}
-            onClose={() => setIsChatViewOpen(false)}
+            onClose={handleCloseChatView}
             messages={chatMessages}
             onSendMessage={handleSendMessage}
             isLoading={isLlmLoading}

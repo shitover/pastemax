@@ -1,7 +1,7 @@
 import React from 'react';
 import { MessageSquare, Trash2, Clock } from 'lucide-react';
 import '../styles/modals/ChatHistorySidebar.css';
-import { ChatMessage } from '../types/llmTypes';
+import { ChatMessage, ProviderSpecificConfig } from '../types/llmTypes';
 
 export interface ChatSession {
   id: string;
@@ -14,6 +14,8 @@ export interface ChatSession {
   userPreview?: string;
   isLoading?: boolean;
   llmError?: string | null;
+  modelId?: string;
+  providerConfig?: ProviderSpecificConfig;
 }
 
 interface ChatHistorySidebarProps {

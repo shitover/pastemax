@@ -33,6 +33,12 @@ export function isChatSession(obj: any): obj is ChatSession {
   const hasValidTargetName = obj.targetName === undefined || typeof obj.targetName === 'string';
   const hasValidUserPreview = obj.userPreview === undefined || typeof obj.userPreview === 'string';
   const hasValidFilePath = obj.filePath === undefined || typeof obj.filePath === 'string';
+  const hasValidModelId =
+    obj.modelId === undefined || typeof obj.modelId === 'string' || obj.modelId === null;
+  const hasValidProviderConfig =
+    obj.providerConfig === undefined ||
+    typeof obj.providerConfig === 'object' ||
+    obj.providerConfig === null;
 
   return (
     hasId &&
@@ -42,7 +48,9 @@ export function isChatSession(obj: any): obj is ChatSession {
     hasValidTargetType &&
     hasValidTargetName &&
     hasValidUserPreview &&
-    hasValidFilePath
+    hasValidFilePath &&
+    hasValidModelId &&
+    hasValidProviderConfig
   );
 }
 
