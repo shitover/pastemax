@@ -20,15 +20,20 @@ const FileList = ({ files, selectedFiles, toggleFileSelection }: FileListProps) 
   );
 
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewFiles, setPreviewFiles] = useState([] as FileData[]);
   const [activePreviewFile, setActivePreviewFile] = useState('' as string); // Track active file
+
+  // Get live file data for preview instead of using stale snapshot
+  const previewFiles = useMemo(() => {
+    if (!activePreviewFile) return [];
+    const fileToPreview = files.find((f) => f.path === activePreviewFile);
+    return fileToPreview ? [fileToPreview] : [];
+  }, [files, activePreviewFile]);
 
   // Memoize the handlePreview to prevent recreation on each render
   const handlePreview = useCallback(
     (filePath: string) => {
       const fileToPreview = files.find((f) => f.path === filePath);
       if (fileToPreview) {
-        setPreviewFiles([fileToPreview]); // Set to a single file
         setActivePreviewFile(filePath);
         setPreviewModalOpen(true);
       }
@@ -39,7 +44,6 @@ const FileList = ({ files, selectedFiles, toggleFileSelection }: FileListProps) 
   // Memoize the handleClosePreview to prevent recreation on each render
   const handleClosePreview = useCallback(() => {
     setPreviewModalOpen(false);
-    setPreviewFiles([]);
     setActivePreviewFile('');
   }, []);
 
