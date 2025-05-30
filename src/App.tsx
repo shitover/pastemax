@@ -39,22 +39,21 @@ import {
   ProviderSpecificConfig,
   LlmApiWindow,
   MessageRole,
-  ModelInfo as LlmModelInfo, // Renaming to avoid conflict if any other ModelInfo exists
-  SystemPrompt, // ADDED
+  SystemPrompt, 
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
 import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUtils';
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
-import { isChatSession, isWorkspace } from './utils/typeguards'; // Added isWorkspace
-import { DEFAULT_SYSTEM_PROMPTS, CODE_EDIT_AGENT_PROMPT_ID } from './config/defaultSystemPrompts'; // ADDED
+import { isChatSession, isWorkspace } from './utils/typeguards'; 
+import { DEFAULT_SYSTEM_PROMPTS } from './config/defaultSystemPrompts'; 
 
 // Augment the Window interface
 declare global {
   interface Window {
-    electron: any; // Consider more specific typing if possible
-    llmApi: LlmApiWindow['llmApi']; // MODIFIED: Removed '?' to make it non-optional
+    electron: any; 
+    llmApi: LlmApiWindow['llmApi']; 
   }
 }
 
@@ -78,8 +77,8 @@ const STORAGE_KEYS = {
   COPY_HISTORY: 'pastemax-copy-history',
   CHAT_HISTORY: 'pastemax-chat-history',
   CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
-  SYSTEM_PROMPTS: 'pastemax-system-prompts', // ADDED
-  SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id', // ADDED
+  SYSTEM_PROMPTS: 'pastemax-system-prompts', 
+  SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id', 
 };
 
 const App = (): JSX.Element => {
@@ -2282,7 +2281,7 @@ const App = (): JSX.Element => {
         setIsLlmLoading(false);
       }
 
-      // Request completed with error
+    
     }
   };
 
@@ -2865,10 +2864,9 @@ const App = (): JSX.Element => {
       STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
       STORAGE_KEYS.THEME,
       STORAGE_KEYS.WINDOW_SIZES,
-      // STORAGE_KEYS.ALL_LLM_CONFIGS, // REMOVED: Backend is source of truth now
-      // STORAGE_KEYS.SYSTEM_PROMPT, // REMOVED
-      STORAGE_KEYS.SYSTEM_PROMPTS, // KEEP
-      STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID, // KEEP
+    
+      STORAGE_KEYS.SYSTEM_PROMPTS, 
+      STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID, 
       STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
       STORAGE_KEYS.RECENT_FOLDERS,
       // 'pastemax-selected-model' is not in STORAGE_KEYS and will be preserved by not touching it.

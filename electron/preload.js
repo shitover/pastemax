@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electron', {
       'request-file-list',
       'debug-file-selection',
       'cancel-directory-loading',
+      'set-ignore-mode',
     ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
@@ -116,7 +117,7 @@ contextBridge.exposeInMainWorld('electron', {
         'llm:get-config',
         'llm:set-config',
         'llm:send-prompt',
-        'llm:save-file',
+        'llm:cancel-request',
       ]; // Added LLM channels
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
@@ -157,15 +158,6 @@ contextBridge.exposeInMainWorld('llmApi', {
     ); // Log messages
     return ipcRenderer.invoke('llm:send-prompt', ensureSerializable(params));
   },
-
-  /**
-   * Saves content to a file
-   * @param {Object} params - Parameters for saving
-   * @param {string} params.filePath - Path to the file
-   * @param {string} params.content - Content to save
-   * @returns {Promise<{success: boolean, message: string}>}
-   */
-  saveFile: (params) => ipcRenderer.invoke('llm:save-file', ensureSerializable(params)),
 
   /**
    * Cancels an ongoing LLM request.

@@ -10,7 +10,7 @@ const {
   getAllLlmConfigsFromStore,
   setAllLlmConfigsInStore,
   sendPromptToLlm,
-  saveContentToFile,
+  cancelLlmRequestInService,
 } = require('./llmService');
 // GlobalModeExclusion is now in ignore-manager.js
 
@@ -157,12 +157,12 @@ ipcMain.handle('llm:send-prompt', async (_event, params) => {
   }
 });
 
-ipcMain.handle('llm:save-file', async (_event, { filePath, content }) => {
+ipcMain.handle('llm:cancel-request', async (_event, requestId) => {
   try {
-    return await saveContentToFile({ filePath, content });
+    return await cancelLlmRequestInService(requestId);
   } catch (error) {
-    console.error('Error saving file:', error);
-    return { success: false, message: error.message };
+    console.error('Error cancelling LLM request:', error);
+    return { success: false, error: error.message };
   }
 });
 

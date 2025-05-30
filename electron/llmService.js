@@ -532,34 +532,9 @@ async function cancelLlmRequestInService(requestId) {
   }
 }
 
-/**
- * Saves content to a file
- * @param {Object} params - Parameters for saving
- * @param {string} params.filePath - Path to the file
- * @param {string} params.content - Content to save
- * @returns {Promise<Object>} Result of the save operation
- */
-async function saveContentToFile({ filePath, content }) {
-  try {
-    await fs.writeFile(filePath, content, 'utf8');
-    return {
-      success: true,
-      message: `Content saved to ${filePath}`,
-    };
-  } catch (error) {
-    console.error('Error saving file:', error);
-    return {
-      success: false,
-      message: `Failed to save file: ${error.message}`,
-    };
-  }
-}
-
 module.exports = {
-  initializeStore,
   getAllLlmConfigsFromStore,
   setAllLlmConfigsInStore,
   sendPromptToLlm,
-  saveContentToFile,
   cancelLlmRequestInService,
 };
