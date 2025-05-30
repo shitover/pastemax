@@ -146,6 +146,10 @@ ipcMain.handle('llm:set-config', async (_event, configs) => {
 
 ipcMain.handle('llm:send-prompt', async (_event, params) => {
   try {
+    console.log(
+      '[Main IPC Handler] llm:send-prompt - received params.messages:',
+      JSON.stringify(params.messages, null, 2)
+    ); // Log messages
     return await sendPromptToLlm(params);
   } catch (error) {
     console.error('Error sending prompt to LLM:', error);

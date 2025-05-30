@@ -245,6 +245,12 @@ const App = (): JSX.Element => {
       return null;
     }
   });
+  const currentChatSessionIdRef = useRef(currentChatSessionId);
+
+  useEffect(() => {
+    currentChatSessionIdRef.current = currentChatSessionId;
+  }, [currentChatSessionId]);
+
   const [systemPrompts, setSystemPrompts] = useState<SystemPrompt[]>(() => {
     let loadedPrompts: SystemPrompt[] = [];
     try {
@@ -1660,15 +1666,25 @@ const App = (): JSX.Element => {
   /**
    * Sends a user message to the LLM and processes the response
    */
-  const handleSendMessage = async (messageContent: string) => {
-    let requestSessionId = currentChatSessionId; // Capture session ID at the start of the request
+  const handleSendMessage = async (
+    messageContent: string,
+    options?: {
+      originalQuestion?: string;
+      isFullContextSubmission?: boolean;
+      explicitSessionId?: string;
+    }
+  ) => {
+    let requestSessionId = options?.explicitSessionId || currentChatSessionIdRef.current; // Prioritize explicit, then ref, then current state
 
-    // If no session exists, automatically create a new one for better UX
+    // If no session exists (neither explicit nor from ref/state), automatically create a new one
     if (!requestSessionId) {
-      console.log('[App.tsx] No active session found. Creating new session automatically.');
-      requestSessionId = createNewChatSession({ type: 'general', content: '' });
-      // Give the UI a moment to update with the new session
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      console.log(
+        '[App.tsx] No active/explicit session. Creating new session automatically in handleSendMessage.'
+      );
+      // Ensure chatTarget is appropriately set for a new general session if created here
+      const newSessionTarget: ChatTarget =
+        chatTarget && chatTarget.type === 'general' ? chatTarget : { type: 'general', content: '' };
+      requestSessionId = createNewChatSession(newSessionTarget);
     }
 
     // Safety check to ensure we have a valid session ID
@@ -1753,34 +1769,59 @@ const App = (): JSX.Element => {
 
     let finalMessageContent = messageContent;
     let userFileContext: ChatMessage['fileContext'] | undefined = undefined;
+    let finalOriginalUserQuestion = options?.originalQuestion || messageContent;
 
-    const VERY_LONG_CONTENT_THRESHOLD = 20000; // Characters
-    const PREVIEW_LENGTH = 1500; // Characters
+    const VERY_LONG_CONTENT_THRESHOLD = 20000; // Characters for fileContext
+    const PREVIEW_LENGTH = 1500; // Characters for fileContext preview
 
-    if (chatTarget?.type === 'file' && chatTarget.content && chatTarget.fileName) {
+    // Constants for main message truncation (used if isFullContextSubmission or general long messages)
+    const MAIN_MESSAGE_VERY_LONG_THRESHOLD = 10000; // Used for isFullContextSubmission to decide if its preview is needed
+    const MAIN_MESSAGE_PREVIEW_LENGTH = 500; // Used for isFullContextSubmission preview snippet
+    const USER_INSTRUCTION_PREVIEW_LENGTH = 150; // Used for isFullContextSubmission user instruction snippet
+
+    const MAIN_MESSAGE_DISPLAY_THRESHOLD = 2000; // General threshold for truncating any long message display
+    const GENERIC_PREVIEW_LENGTH = 300; // Preview length for general long messages
+
+    if (
+      chatTarget?.type === 'file' &&
+      chatTarget.content &&
+      chatTarget.fileName &&
+      !options?.isFullContextSubmission
+    ) {
       const originalContent = chatTarget.content;
-      finalMessageContent = `The user is asking about the file named "${chatTarget.fileName}".\n\nFile Content:\n\`\`\`\n${originalContent}\n\`\`\`\n\nUser's Question:\n${messageContent}`;
+      finalMessageContent = `The user is asking about the file named "${chatTarget.fileName}".\n\nFile Content:\n\`\`\`${chatTarget.fileName?.split('.').pop() || 'text'}\n${originalContent}\n\`\`\`\n\nUser's Question:\n${messageContent}`;
+      userFileContext = undefined;
+      // For 'chat about file', make originalUserQuestion same as finalMessageContent to avoid redundant display
+      finalOriginalUserQuestion = finalMessageContent;
+    } else {
+      userFileContext = undefined;
+    }
 
-      userFileContext = {
-        name: chatTarget.fileName,
-        content: originalContent, // Always store the full original content
-        language: chatTarget.fileName?.split('.').pop() || 'plaintext',
-        isVeryLong: false, // Default to false
-      };
+    let displayPreviewContent: string | undefined = undefined;
+    let displayIsContentTruncated: boolean = false;
 
-      if (originalContent.length > VERY_LONG_CONTENT_THRESHOLD) {
-        userFileContext.isVeryLong = true;
-        userFileContext.previewContent = `${originalContent.substring(0, PREVIEW_LENGTH)}...\n\n[File content truncated for display. Click 'Show more' to view full content.]`;
-      }
+    if (options?.isFullContextSubmission) {
+      displayIsContentTruncated = true;
+      const userInstructionSnippet =
+        finalOriginalUserQuestion.length > USER_INSTRUCTION_PREVIEW_LENGTH
+          ? finalOriginalUserQuestion.substring(0, USER_INSTRUCTION_PREVIEW_LENGTH - 3) + '...'
+          : finalOriginalUserQuestion;
+      displayPreviewContent = `**User Instructions:**\n${userInstructionSnippet}`;
+    } else if (finalMessageContent.length > MAIN_MESSAGE_DISPLAY_THRESHOLD) {
+      displayIsContentTruncated = true;
+      const snippet = finalMessageContent.substring(0, GENERIC_PREVIEW_LENGTH);
+      displayPreviewContent = `Preview:\n\`\`\`text\n${snippet}...\n\`\`\``;
     }
 
     const userMessage: ChatMessage = {
       id: generateMessageId(),
       role: 'user',
-      content: finalMessageContent, // Full content for LLM
+      content: finalMessageContent,
       timestamp: Date.now(),
-      originalUserQuestion: messageContent, // Raw user question
-      fileContext: userFileContext, // Attached file context, if any
+      originalUserQuestion: finalOriginalUserQuestion, // Use the potentially adjusted version
+      fileContext: userFileContext,
+      previewDisplayContent: displayPreviewContent,
+      isContentTruncated: displayIsContentTruncated,
     };
 
     // Update per-session state and global state if the session is active
@@ -1797,7 +1838,7 @@ const App = (): JSX.Element => {
       )
     );
 
-    if (currentChatSessionId === requestSessionId) {
+    if (currentChatSessionIdRef.current === requestSessionId) {
       setChatMessages((prev) => [...prev, userMessage]);
       setIsLlmLoading(true);
       setLlmError(null);
@@ -1806,25 +1847,43 @@ const App = (): JSX.Element => {
     try {
       // Use the messages from the specific session for the API call
       const sessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
-      const messagesForLlm = sessionForRequest
-        ? sessionForRequest.messages.map((m) => ({
-            role: m.role as MessageRole,
-            content: m.content,
-          }))
-        : []; // Fallback, though sessionForRequest should always be found
 
-      let messagesToSend: { role: MessageRole; content: string }[];
-      if (messagesForLlm.length > 0 && messagesForLlm[0].role === 'system') {
-        messagesToSend = messagesForLlm;
-      } else {
-        const baseSystemPrompt = chatTarget
-          ? getSystemPromptForTarget(chatTarget)
-          : systemPrompts.find((p) => p.id === selectedSystemPromptId)?.content ||
-            DEFAULT_SYSTEM_PROMPTS[0].content;
-        messagesToSend = [
-          { role: 'system' as MessageRole, content: baseSystemPrompt },
-          ...messagesForLlm,
-        ];
+      // Determine the system prompt
+      const baseSystemPromptContent = chatTarget
+        ? getSystemPromptForTarget(chatTarget)
+        : systemPrompts.find((p) => p.id === selectedSystemPromptId)?.content ||
+          DEFAULT_SYSTEM_PROMPTS[0].content;
+
+      // Construct messages to be sent to the LLM
+      // The history from sessionForRequest.messages should be added *before* the current userMessage
+      // And the system prompt should be the very first message.
+
+      const historyMessages = sessionForRequest
+        ? sessionForRequest.messages
+            .filter((m) => m.role === 'user' || m.role === 'assistant') // Only user and assistant messages for history
+            .map((m) => ({ role: m.role, content: m.content }))
+        : [];
+
+      // The current user message that's being sent
+      const currentUserMessageForLlm = {
+        role: 'user' as MessageRole,
+        content: finalMessageContent,
+      };
+
+      let messagesToSend: { role: MessageRole; content: string }[] = [
+        { role: 'system' as MessageRole, content: baseSystemPromptContent },
+        ...historyMessages,
+        currentUserMessageForLlm,
+      ];
+
+      // Ensure we don't send an empty system prompt if baseSystemPromptContent is truly empty
+      if (
+        !baseSystemPromptContent &&
+        messagesToSend.length > 0 &&
+        messagesToSend[0].role === 'system' &&
+        messagesToSend[0].content === ''
+      ) {
+        messagesToSend = messagesToSend.slice(1); // Remove empty system message
       }
 
       if (!window.llmApi) {
@@ -1866,7 +1925,7 @@ const App = (): JSX.Element => {
         )
       );
 
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setChatMessages((prev) => [...prev, assistantMessage]);
         setIsLlmLoading(false);
         setLlmError(null);
@@ -1878,7 +1937,7 @@ const App = (): JSX.Element => {
           s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
         )
       );
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setLlmError(err);
         setIsLlmLoading(false);
       }
@@ -2025,7 +2084,7 @@ const App = (): JSX.Element => {
       )
     );
 
-    if (currentChatSessionId === requestSessionId) {
+    if (currentChatSessionIdRef.current === requestSessionId) {
       setChatMessages((prevMessages) => prevMessages.slice(0, messageToRetryIndex + 1));
       setIsLlmLoading(true);
       setLlmError(null);
@@ -2116,7 +2175,7 @@ const App = (): JSX.Element => {
         )
       );
 
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setChatMessages((prev) => [...prev, assistantMessage]);
         setIsLlmLoading(false);
         setLlmError(null);
@@ -2128,7 +2187,7 @@ const App = (): JSX.Element => {
           s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
         )
       );
-      if (currentChatSessionId === requestSessionId) {
+      if (currentChatSessionIdRef.current === requestSessionId) {
         setLlmError(err);
         setIsLlmLoading(false);
       }
@@ -2302,7 +2361,7 @@ const App = (): JSX.Element => {
 
       const fullContentToSend =
         cachedBaseContentString +
-        (cachedBaseContentString && currentLocalUserInstructions.trim() ? '\n\n' : '') +
+        (cachedBaseContentString && currentLocalUserInstructions.trim() ? '\\n\\n' : '') +
         formatUserInstructionsBlock(currentLocalUserInstructions);
 
       if (!fullContentToSend.trim()) {
@@ -2321,17 +2380,26 @@ const App = (): JSX.Element => {
         `[App.tsx] Config check passed. Created new session for full context AI send: ${newSessionIdAfterConfigCheck}`
       );
 
+      // Set the new session as active for chat view state updates
+      setCurrentChatSessionId(newSessionIdAfterConfigCheck);
       setChatMessages([]);
       setChatTarget({ type: 'general', content: '' });
       setLlmError(null);
       setIsLlmLoading(false);
       setIsChatViewOpen(true);
 
+      // Use a short timeout to ensure state updates for currentChatSessionId propagate
+      // before handleSendMessage potentially reads it (though explicitSessionId makes this safer)
       setTimeout(async () => {
         console.log(
           `[App.tsx] Sending full context to new session ${newSessionIdAfterConfigCheck} using model ${selectedModelId}. Content length: ${fullContentToSend.length}`
         );
-        await handleSendMessage(fullContentToSend);
+        // Pass the original short instructions and flag it as a full context submission
+        await handleSendMessage(fullContentToSend, {
+          originalQuestion: currentLocalUserInstructions,
+          isFullContextSubmission: true,
+          explicitSessionId: newSessionIdAfterConfigCheck, // Pass the explicitly created session ID
+        });
       }, 50);
     },
     [
@@ -2534,6 +2602,10 @@ const App = (): JSX.Element => {
                 role: msg.role,
                 content: msg.content,
                 timestamp: msg.timestamp,
+                originalUserQuestion: msg.originalUserQuestion, // Preserve originalUserQuestion
+                fileContext: msg.fileContext ? { ...msg.fileContext } : undefined, // Preserve and deep copy fileContext
+                previewDisplayContent: msg.previewDisplayContent, // Preserve previewDisplayContent
+                isContentTruncated: msg.isContentTruncated, // Preserve isContentTruncated
               })),
               lastUpdated: Date.now(),
               userPreview: userPreview || session.userPreview, // Preserve existing preview if new one is undefined

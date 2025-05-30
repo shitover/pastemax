@@ -222,6 +222,10 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
         // Adapter to make it compatible with the existing sendPromptToLlm structure
         return {
           async invoke(langchainMessages) {
+            console.log(
+              '[LLM Service] Gemini invoke adapter - received langchainMessages:',
+              JSON.stringify(langchainMessages, null, 2)
+            ); // Log received langchainMessages
             // Convert Langchain messages to Google AI SDK format
             // Google SDK expects: { role: "user" | "model", parts: [{ text: "..." }] }
             // System messages need to be handled carefully. Google's SDK's chat.sendMessage
@@ -331,6 +335,10 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
             // console.log('[LLM Service] Gemini: Sending to API. History:', messagesForGoogle.slice(0, -1));
             // console.log('[LLM Service] Gemini: Sending to API. Current prompt:', promptText);
 
+            console.log(
+              '[LLM Service] Gemini: Final messagesForGoogle before API call:',
+              JSON.stringify(messagesForGoogle, null, 2)
+            ); // Log final payload
             const result = await modelInstance.generateContent({ contents: messagesForGoogle });
             const response = result.response;
             const text = response.text(); // Helper function to get full text
@@ -453,6 +461,10 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);
     console.log('[LLM Service] Converted', messages.length, 'messages to Langchain format');
+    console.log(
+      '[LLM Service] langchainMessages (in sendPromptToLlm):',
+      JSON.stringify(langchainMessages, null, 2)
+    );
     console.log(
       '[LLM Service] Message structure:',
       langchainMessages.map((msg) => ({

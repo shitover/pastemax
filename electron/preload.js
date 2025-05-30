@@ -150,7 +150,13 @@ contextBridge.exposeInMainWorld('llmApi', {
    * @param {string} params.requestId - A unique ID for this request
    * @returns {Promise<{content: string, error?: string, cancelled?: boolean}>}
    */
-  sendPrompt: (params) => ipcRenderer.invoke('llm:send-prompt', ensureSerializable(params)),
+  sendPrompt: (params) => {
+    console.log(
+      '[Preload] llmApi.sendPrompt - params.messages:',
+      JSON.stringify(params.messages, null, 2)
+    ); // Log messages
+    return ipcRenderer.invoke('llm:send-prompt', ensureSerializable(params));
+  },
 
   /**
    * Saves content to a file

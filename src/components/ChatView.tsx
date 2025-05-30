@@ -73,9 +73,17 @@ const ChatView: React.FC<ChatViewProps> = ({
   const { theme } = useTheme();
   const [isMaximized, setIsMaximized] = useState(false);
   const [expandedFileContexts, setExpandedFileContexts] = useState<Record<string, boolean>>({});
+  const [expandedMainMessages, setExpandedMainMessages] = useState<Record<string, boolean>>({});
 
   const toggleFileContextExpansion = (messageId: string) => {
     setExpandedFileContexts((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
+  const toggleMainMessageExpansion = (messageId: string) => {
+    setExpandedMainMessages((prev) => ({
       ...prev,
       [messageId]: !prev[messageId],
     }));
@@ -254,48 +262,93 @@ const ChatView: React.FC<ChatViewProps> = ({
                       <span className="chat-message-time">{formatTime(message.timestamp)}</span>
                     </div>
                     <div className="chat-message-content">
-                      {message.role === 'user' && message.fileContext ? (
+                      {message.role === 'user' ? (
                         <>
-                          <div className="file-context-display">
-                            <p className="file-context-name">
-                              Context from file: <strong>{message.fileContext.name}</strong>
-                            </p>
-                            <SyntaxHighlighter
-                              style={theme === 'dark' ? oneDark : oneLight}
-                              language={message.fileContext.language || 'plaintext'}
-                              PreTag="div"
-                              className="file-content-codeblock"
-                              wrapLines={true}
-                              lineProps={{
-                                style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
-                              }}
-                            >
-                              {
-                                message.fileContext.isVeryLong
-                                  ? expandedFileContexts[message.id]
-                                    ? String(message.fileContext.content) // Show full content if expanded
-                                    : String(message.fileContext.previewContent) // Show preview if very long and not expanded
-                                  : String(message.fileContext.content) // Show full content if not very long
-                              }
-                            </SyntaxHighlighter>
-                            {message.fileContext.isVeryLong && (
+                          {message.isContentTruncated && !expandedMainMessages[message.id] ? (
+                            <>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={commonMarkdownComponents}
+                              >
+                                {message.previewDisplayContent || ''}
+                              </ReactMarkdown>
                               <button
-                                onClick={() => toggleFileContextExpansion(message.id)}
+                                onClick={() => toggleMainMessageExpansion(message.id)}
                                 className="toggle-context-button"
                               >
-                                {expandedFileContexts[message.id] ? 'Show less' : 'Show more'}
+                                Show more
                               </button>
+                            </>
+                          ) : (
+                            <>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={commonMarkdownComponents}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
+                              {message.isContentTruncated && (
+                                <button
+                                  onClick={() => toggleMainMessageExpansion(message.id)}
+                                  className="toggle-context-button"
+                                >
+                                  Show less
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {message.fileContext && (
+                            <div className="file-context-display separated-file-context">
+                              <p className="file-context-name">
+                                Attached File Context: <strong>{message.fileContext.name}</strong>
+                              </p>
+                              <SyntaxHighlighter
+                                key={`${message.id}-filecontext-${theme}-${message.fileContext.language}`}
+                                style={theme === 'dark' ? oneDark : oneLight}
+                                language={message.fileContext.language || 'plaintext'}
+                                PreTag="div"
+                                className="file-content-codeblock"
+                                wrapLines={true}
+                                lineProps={{
+                                  style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
+                                }}
+                              >
+                                {
+                                  message.fileContext.isVeryLong
+                                    ? expandedFileContexts[message.id]
+                                      ? String(message.fileContext.content) // Show full content if expanded
+                                      : String(message.fileContext.previewContent) // Show preview if very long and not expanded
+                                    : String(message.fileContext.content) // Show full content if not very long
+                                }
+                              </SyntaxHighlighter>
+                              {message.fileContext.isVeryLong && (
+                                <button
+                                  onClick={() => toggleFileContextExpansion(message.id)}
+                                  className="toggle-context-button"
+                                >
+                                  {expandedFileContexts[message.id]
+                                    ? 'Show less file context'
+                                    : 'Show more file context'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {!message.isContentTruncated &&
+                            message.originalUserQuestion &&
+                            message.originalUserQuestion !== message.content &&
+                            !message.fileContext && (
+                              <div className="user-question-display separated-user-question">
+                                <p className="user-question-header">Your Original Question:</p>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={commonMarkdownComponents}
+                                >
+                                  {message.originalUserQuestion}
+                                </ReactMarkdown>
+                              </div>
                             )}
-                          </div>
-                          <div className="user-question-display">
-                            <p className="user-question-header">Your Question:</p>
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={commonMarkdownComponents}
-                            >
-                              {message.originalUserQuestion || message.content}
-                            </ReactMarkdown>
-                          </div>
                         </>
                       ) : (
                         <ReactMarkdown

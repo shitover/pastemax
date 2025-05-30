@@ -793,11 +793,28 @@
 }
 
 .dark-mode .toggle-context-button:hover {
-  background-color: var(--vscode-inputOption-hoverBackground, #4a4a4a);
+  background-color: var(--vscode-inputOption-activeBackground, #3a3a3a);
 }
 /* === End Toggle Context Button Styling === */
 
 /* Adjustments for the ChatModelSelector component when inside the header */
 .chat-view-header-title-area .chat-model-selector {
   flex-shrink: 0;
+}
+
+/* Styling for when file context or original question is shown with truncated main content */
+.separated-file-context,
+.separated-user-question {
+  margin-top: 15px; /* Add space above when it follows a truncated main message */
+  padding-top: 10px;
+  border-top: 1px dashed var(--vscode-editorWidget-border, var(--vscode-disabledForeground));
+}
+
+.file-context-display .toggle-context-button,
+.chat-message-content > .toggle-context-button {
+  /* Styles for the main show/less button for the primary prompt */
+  display: block; /* Make it block to take full width available in its context */
+  margin-left: 0;
+  margin-right: 0;
+  width: auto; /* Or width: 100%; if you want it to span the whole message bubble padding */
 }
