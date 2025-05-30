@@ -189,6 +189,20 @@
   margin-bottom: 0;
 }
 
+.chat-message-content ul,
+.chat-message-content ol {
+  margin-top: 0.5em;
+  padding-left: 20px;
+}
+
+.chat-message-content li {
+  margin-bottom: 0.5em;
+}
+
+.chat-message-content li:last-child {
+  margin-bottom: 0;
+}
+
 .message-actions {
   display: flex;
   gap: 6px;
@@ -805,16 +819,15 @@
 /* Styling for when file context or original question is shown with truncated main content */
 .separated-file-context,
 .separated-user-question {
-  margin-top: 15px; /* Add space above when it follows a truncated main message */
+  margin-top: 15px;
   padding-top: 10px;
   border-top: 1px dashed var(--vscode-editorWidget-border, var(--vscode-disabledForeground));
 }
 
 .file-context-display .toggle-context-button,
 .chat-message-content > .toggle-context-button {
-  /* Styles for the main show/less button for the primary prompt */
-  display: block; /* Make it block to take full width available in its context */
+  display: block;
   margin-left: 0;
   margin-right: 0;
-  width: auto; /* Or width: 100%; if you want it to span the whole message bubble padding */
+  width: auto;
 }

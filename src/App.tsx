@@ -1809,8 +1809,21 @@ const App = (): JSX.Element => {
       displayPreviewContent = `**User Instructions:**\n${userInstructionSnippet}`;
     } else if (finalMessageContent.length > MAIN_MESSAGE_DISPLAY_THRESHOLD) {
       displayIsContentTruncated = true;
-      const snippet = finalMessageContent.substring(0, GENERIC_PREVIEW_LENGTH);
-      displayPreviewContent = `Preview:\n\`\`\`text\n${snippet}...\n\`\`\``;
+      let snippet = finalMessageContent.substring(0, GENERIC_PREVIEW_LENGTH);
+
+      // Heuristic to avoid creating malformed Markdown for code blocks at truncation point
+      const backtickSequences = snippet.split('```');
+      if (backtickSequences.length % 2 === 0) {
+        // An odd number of ``` means a code block is open
+        const contentAfterLastBacktick = backtickSequences[backtickSequences.length - 1];
+        if (contentAfterLastBacktick.indexOf('\n') === -1) {
+          // If no newline after the last ``` within the snippet, it's likely a broken ```lang or empty block start.
+          // Truncate before this last ``` to maintain valid Markdown.
+          snippet = snippet.substring(0, snippet.lastIndexOf('```'));
+        }
+      }
+      const ellipsis = finalMessageContent.length > snippet.length ? '...' : '';
+      displayPreviewContent = snippet + ellipsis;
     }
 
     const userMessage: ChatMessage = {
