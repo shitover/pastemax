@@ -39,21 +39,21 @@ import {
   ProviderSpecificConfig,
   LlmApiWindow,
   MessageRole,
-  SystemPrompt, 
+  SystemPrompt,
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
 import { ChatSession } from './components/ChatHistorySidebar';
 import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUtils';
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
-import { isChatSession, isWorkspace } from './utils/typeguards'; 
-import { DEFAULT_SYSTEM_PROMPTS } from './config/defaultSystemPrompts'; 
+import { isChatSession, isWorkspace } from './utils/typeguards';
+import { DEFAULT_SYSTEM_PROMPTS } from './config/defaultSystemPrompts';
 
 // Augment the Window interface
 declare global {
   interface Window {
-    electron: any; 
-    llmApi: LlmApiWindow['llmApi']; 
+    electron: any;
+    llmApi: LlmApiWindow['llmApi'];
   }
 }
 
@@ -77,8 +77,8 @@ const STORAGE_KEYS = {
   COPY_HISTORY: 'pastemax-copy-history',
   CHAT_HISTORY: 'pastemax-chat-history',
   CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
-  SYSTEM_PROMPTS: 'pastemax-system-prompts', 
-  SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id', 
+  SYSTEM_PROMPTS: 'pastemax-system-prompts',
+  SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id',
 };
 
 const App = (): JSX.Element => {
@@ -1664,15 +1664,10 @@ const App = (): JSX.Element => {
 
   const handleCloseChatView = () => {
     setIsChatViewOpen(false);
-    // Always clear these view-specific states when the chat view overlay is closed.
-    // The active session ID (currentChatSessionId) is preserved.
-    // When the chat is re-opened:
-    // - Clicking a session in history calls selectChatSession, reloading its state.
-    // - Clicking "New Chat" or general "Chat with AI" calls handleOpenGeneralChat, creating a fresh session.
-    setChatMessages([]);
-    setLlmError(null);
-    setIsLlmLoading(false);
-    setChatTarget(undefined);
+    // The view-specific states (chatMessages, llmError, isLlmLoading, chatTarget)
+    // will remain as they were. If a session was active, they hold that session's
+    // current view state. If no session was active (e.g., after 'New Chat' and then closing),
+    // they would be in their cleared state.
   };
 
   /**
@@ -2280,8 +2275,6 @@ const App = (): JSX.Element => {
         setLlmError(err);
         setIsLlmLoading(false);
       }
-
-    
     }
   };
 
@@ -2408,27 +2401,45 @@ const App = (): JSX.Element => {
    * Opens a general chat (not specific to any file)
    */
   const handleOpenGeneralChat = useCallback(() => {
-    console.log('[App.tsx] handleOpenGeneralChat called - preparing for new general chat.');
+    console.log('[App.tsx] handleOpenGeneralChat called.');
 
-    // Don't create session object yet. Set UI for a potential new chat.
-    setCurrentChatSessionId(null); // Indicate no specific session is active, ready for new general chat if message is sent
+    // If a chat session is already active (currentChatSessionId is set),
+    // and its messages are loaded into chatMessages,
+    // simply open the view to show the existing context.
+    // This handles the case where the user closed the chat view
+    // without explicitly starting a new chat or selecting another session.
+    if (currentChatSessionId && chatMessages.length > 0) {
+      console.log(
+        `[App.tsx] Resuming active session ${currentChatSessionId} in general chat view.`
+      );
+      setIsChatViewOpen(true);
+      //isLoading and error state are already part of the session's context (from chatSessions and loaded into view states by selectChatSession or by direct updates)
+      return;
+    }
 
-    // Reset view states for the new potential chat context
+    // If no active session, or if the active session somehow has no messages loaded in the view (less likely),
+    // or if currentChatSessionId is null (meaning no session was active or was explicitly cleared),
+    // then set up for a new general chat.
+    console.log(
+      '[App.tsx] No active session or active session view state is clear. Setting up for new general chat.'
+    );
+    setCurrentChatSessionId(null); // Explicitly indicate no specific session, ready for new general if message sent
     setChatMessages([]);
     setChatTarget({ type: 'general', content: '' });
     setLlmError(null);
     setIsLlmLoading(false);
 
-    setIsChatViewOpen(true); // Open the chat view
+    setIsChatViewOpen(true);
   }, [
-    // Dependencies: setters for view state.
+    // Dependencies
+    currentChatSessionId, // Now depends on currentChatSessionId
+    chatMessages, // And chatMessages to check if we can resume
     setCurrentChatSessionId,
     setChatMessages,
     setChatTarget,
     setLlmError,
     setIsLlmLoading,
     setIsChatViewOpen,
-    // createNewChatSession is NOT a dependency here anymore
   ]);
 
   const handleSendInstructionsToAI = useCallback(
@@ -2864,9 +2875,9 @@ const App = (): JSX.Element => {
       STORAGE_KEYS.IGNORE_SETTINGS_MODIFIED,
       STORAGE_KEYS.THEME,
       STORAGE_KEYS.WINDOW_SIZES,
-    
-      STORAGE_KEYS.SYSTEM_PROMPTS, 
-      STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID, 
+
+      STORAGE_KEYS.SYSTEM_PROMPTS,
+      STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID,
       STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
       STORAGE_KEYS.RECENT_FOLDERS,
       // 'pastemax-selected-model' is not in STORAGE_KEYS and will be preserved by not touching it.
