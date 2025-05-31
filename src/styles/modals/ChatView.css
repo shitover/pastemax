@@ -454,8 +454,6 @@
   font-size: 1.3em;
 }
 
-.chat-view-maximize-button {
-}
 
 .chat-view-modal--maximized .chat-view-content {
   flex-grow: 1;
@@ -607,9 +605,6 @@
   color: var(--vscode-descriptionForeground);
 }
 
-.chat-message.user .chat-message-content {
-}
-
 .chat-message.assistant .chat-message-content pre,
 .chat-message.assistant .chat-message-content code {
   max-width: 100%;
@@ -693,12 +688,6 @@
   background-color: var(--vscode-inputValidation-errorBackground, #521318);
   color: var(--vscode-inputValidation-errorForeground, #f8d7da);
   border-color: var(--vscode-inputValidation-errorBorder, #8c2a32);
-}
-
-.chat-view-modal--maximized .chat-view-header {
-}
-
-.chat-view-modal--maximized .chat-view-input-form {
 }
 
 .chat-view-messages::-webkit-scrollbar,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemPrompt } from '../types/llmTypes';
 import { DEFAULT_SYSTEM_PROMPTS, NONE_PROMPT_ID } from '../config/defaultSystemPrompts'; // For reset and NONE_PROMPT_ID
 import '../styles/modals/SystemPromptEditor.css';

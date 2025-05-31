@@ -142,7 +142,7 @@ const ChatView: React.FC<ChatViewProps> = ({
 
   // Helper function to get displayable message content
   const commonMarkdownComponents: Options['components'] = {
-    code({ node, inline, className, children, ...rest }: CodeRendererProps) {
+    code({ inline, className, children, ...rest }: CodeRendererProps) {
       const match = /language-(\w+)/.exec(className || '');
       const lang = match ? match[1] : '';
       const safeClassName = className || '';
@@ -174,14 +174,6 @@ const ChatView: React.FC<ChatViewProps> = ({
         </code>
       );
     },
-  };
-
-  const getDisplayableMessageContent = (message: ChatMessage) => {
-    // THIS FUNCTION WILL BE SIMPLIFIED OR ITS LOGIC MOVED
-    // For now, let's focus on the direct rendering logic in the map
-    // The existing truncation logic might need significant rework for the new structure
-    // and will be addressed if it becomes an issue after the primary rendering change.
-    return message.content; // Placeholder, actual rendering will be in the map
   };
 
   // Don't render if the modal is not open

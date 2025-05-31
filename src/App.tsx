@@ -1842,12 +1842,12 @@ const App = (): JSX.Element => {
     let userFileContext: ChatMessage['fileContext'] | undefined = undefined;
     let finalOriginalUserQuestion = options?.originalQuestion || messageContent;
 
-    const VERY_LONG_CONTENT_THRESHOLD = 20000; // Characters for fileContext
-    const PREVIEW_LENGTH = 1500; // Characters for fileContext preview
+    // const VERY_LONG_CONTENT_THRESHOLD = 20000; // Characters for fileContext - Unused in this function as userFileContext is always undefined
+    // const PREVIEW_LENGTH = 1500; // Characters for fileContext preview - Unused in this function
 
     // Constants for main message truncation (used if isFullContextSubmission or general long messages)
-    const MAIN_MESSAGE_VERY_LONG_THRESHOLD = 10000; // Used for isFullContextSubmission to decide if its preview is needed
-    const MAIN_MESSAGE_PREVIEW_LENGTH = 500; // Used for isFullContextSubmission preview snippet
+    // const MAIN_MESSAGE_VERY_LONG_THRESHOLD = 10000; // Used for isFullContextSubmission to decide if its preview is needed - Unused
+    // const MAIN_MESSAGE_PREVIEW_LENGTH = 500; // Used for isFullContextSubmission preview snippet - Unused
     const USER_INSTRUCTION_PREVIEW_LENGTH = 150; // Used for isFullContextSubmission user instruction snippet
 
     const MAIN_MESSAGE_DISPLAY_THRESHOLD = 2000; // General threshold for truncating any long message display
@@ -2538,17 +2538,6 @@ const App = (): JSX.Element => {
 
   /* ============================== RENDER FUNCTIONS ============================== */
 
-  // Add after other useEffects
-  /**
-   * Loads the system prompt from localStorage - REMOVED as new system handles this.
-   */
-  // useEffect(() => {
-  //   const savedSystemPrompt = localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT);
-  //   if (savedSystemPrompt) {
-  //     setSystemPrompt(savedSystemPrompt);
-  //   }
-  // }, []);
-
   // Add handler functions
   /**
    * Opens the system prompt editor modal
@@ -2618,24 +2607,6 @@ const App = (): JSX.Element => {
     // The SystemPromptEditor will typically open when a new prompt is selected for editing or creation.
     // If it's not already open, this is a good place to open it:
     // setIsSystemPromptEditorOpen(true); // This will be handled by the editor's open logic based on selection
-  };
-
-  /**
-   * Resets the system prompt to the default value
-   */
-  const handleResetSystemPrompt = () => {
-    // This function's behavior changes. It should reset the *currently selected*
-    // system prompt in the editor to its default state if it IS a default prompt.
-    // The actual saving will be handled by handleSaveSystemPrompt.
-    // The SystemPromptEditor will manage this local reset within its own state.
-    // If the user wants to reset a *custom* prompt, they might just clear its content or delete it.
-    // This function is now primarily a signal to the editor for default prompts.
-    // For now, App.tsx doesn't need to do much other than perhaps re-fetch defaults
-    // if they were to be modified in-memory (which they aren't currently).
-    console.log(
-      'Resetting system prompt (delegated to editor for UI changes, save for persistence).'
-    );
-    // If the editor needs access to original defaults, it can import DEFAULT_SYSTEM_PROMPTS.
   };
 
   // Save chat sessions to localStorage when they change
