@@ -746,31 +746,45 @@ const App = (): JSX.Element => {
 
   // File event handlers with proper typing
   const handleFileAdded = useCallback((newFile: FileData) => {
-    console.log('<<< IPC Event Received: file-added >>> Data:', JSON.stringify(newFile));
-    setAllFiles((prevFiles: FileData[]) =>
-      prevFiles.some((f) => arePathsEqual(f.path, newFile.path))
-        ? prevFiles
-        : [...prevFiles, newFile]
-    );
+    console.log('[IPC] Received file-added:', newFile);
+    setAllFiles((prevFiles: FileData[]) => {
+      const isDuplicate = prevFiles.some((f) => arePathsEqual(f.path, newFile.path));
+      const newAllFiles = isDuplicate ? prevFiles : [...prevFiles, newFile];
+      console.log(`[IPC] file-added: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Path: ${newFile.path}`);
+      return newAllFiles;
+    });
   }, []);
 
   const handleFileUpdated = useCallback((updatedFile: FileData) => {
-    console.log('<<< IPC Event Received: file-updated >>> Data:', JSON.stringify(updatedFile));
-    setAllFiles((prevFiles: FileData[]) =>
-      prevFiles.map((file) => (arePathsEqual(file.path, updatedFile.path) ? updatedFile : file))
-    );
+    console.log('[IPC] Received file-updated:', updatedFile);
+    setAllFiles((prevFiles: FileData[]) => {
+      const newAllFiles = prevFiles.map((file) => 
+        arePathsEqual(file.path, updatedFile.path) ? updatedFile : file
+      );
+      console.log(`[IPC] file-updated: Count remains: ${newAllFiles.length}, Updated path: ${updatedFile.path}`);
+      return newAllFiles;
+    });
   }, []);
 
   const handleFileRemoved = useCallback(
     (filePathData: { path: string; relativePath: string } | string) => {
       const path = typeof filePathData === 'object' ? filePathData.path : filePathData;
       const normalizedPath = normalizePath(path);
-      setAllFiles((prevFiles: FileData[]) =>
-        prevFiles.filter((file) => !arePathsEqual(file.path, normalizedPath))
-      );
-      setSelectedFiles((prevSelected: string[]) =>
-        prevSelected.filter((p) => !arePathsEqual(p, normalizedPath))
-      );
+      console.log('[IPC] Received file-removed:', filePathData);
+      
+      setAllFiles((prevFiles: FileData[]) => {
+        const newAllFiles = prevFiles.filter((file) => !arePathsEqual(file.path, normalizedPath));
+        console.log(`[IPC] file-removed: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Removed path: ${normalizedPath}`);
+        return newAllFiles;
+      });
+      
+      setSelectedFiles((prevSelected: string[]) => {
+        const newSelected = prevSelected.filter((p) => !arePathsEqual(p, normalizedPath));
+        if (newSelected.length !== prevSelected.length) {
+          console.log(`[IPC] file-removed: Also removed from selectedFiles. Path: ${normalizedPath}`);
+        }
+        return newSelected;
+      });
     },
     []
   );

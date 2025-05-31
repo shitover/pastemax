@@ -34,7 +34,8 @@ PasteMax is a simple desktop app built for developers using AI coding assistants
 - **File Tree Navigation**: Browse directories and files with an expandable tree view
 - **Search Capabilities**: Quickly find files by name or content
 - **Sorting Options**: Sort files by name, size, or token count
-- **File Change Watcher**: Auto-updates when files are modified
+- **File Change Watcher**: Automatically updates the file list when files are added, modified, or deleted
+- **Manual Refresh**: Option to perform a full directory re-scan when needed
 
 ### 🤖 AI-Ready Features
 
