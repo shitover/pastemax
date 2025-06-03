@@ -143,8 +143,8 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
       size: stats.size,
       isBinary: false,
       isSkipped: false,
-      content: '',
-      tokenCount: 0,
+      content: undefined, // Content will be loaded on demand
+      tokenCount: undefined, // Token count will be calculated on demand
       // Determine if the file should be marked as 'excluded by default'.
       // This check is mode-dependent (e.g., GlobalModeExclusion applies only in 'global' mode via isPathExcludedByDefaults).
       excludedByDefault: isPathExcludedByDefaults(fullPath, rootDir, ignoreMode),
@@ -152,7 +152,9 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
 
     if (stats.size > MAX_FILE_SIZE) {
       fileData.isSkipped = true;
-      fileData.error = 'File too large to process';
+      fileData.error = 'File too large for initial processing. Content not loaded.';
+      // fileData.content remains undefined
+      // fileData.tokenCount remains undefined
       fileCache.set(normalizePath(fullPath), fileData);
       return fileData;
     }
@@ -161,18 +163,18 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
     if (binaryExtensions.includes(ext)) {
       fileData.isBinary = true;
       fileData.fileType = ext.toUpperCase();
+      // fileData.content remains undefined
+      // fileData.tokenCount remains undefined
       fileCache.set(normalizePath(fullPath), fileData);
       return fileData;
     }
 
-    const content = await fs.promises.readFile(fullPath, 'utf8');
-    console.log(
-      `[FileProcessor][processSingleFile] Read content for: ${fullPath} (Size: ${content.length})`
-    );
-    fileData.content = content;
-    fileData.tokenCount = countTokens(content);
+    // For non-binary files, content and tokenCount are no longer set here.
+    // They will be fetched on demand by the frontend.
+    // fileData.content will remain undefined
+    // fileData.tokenCount will remain undefined
 
-    // Always update the cache with the latest fileData
+    // Always update the cache with the latest fileData (without content)
     fileCache.set(normalizePath(fullPath), fileData);
     console.log(
       `[FileProcessor][processSingleFile] Updated fileCache for: ${normalizePath(fullPath)}`
@@ -189,8 +191,8 @@ async function processSingleFile(fullPath, rootDir, ignoreFilter, ignoreMode) {
       isBinary: false,
       isSkipped: true,
       error: `Error: ${err.message}`,
-      content: '',
-      tokenCount: 0,
+      content: undefined,
+      tokenCount: undefined,
       excludedByDefault: isPathExcludedByDefaults(fullPath, rootDir, ignoreMode),
     };
   }
@@ -423,9 +425,9 @@ async function readFilesRecursively(
               name: dirent.name,
               path: fullPathNormalized,
               relativePath: relativePath,
-              tokenCount: 0,
+              tokenCount: undefined,
               size: 0,
-              content: '',
+              content: undefined,
               isBinary: true,
               isSkipped: false,
               fileType: path.extname(fullPath).substring(1).toUpperCase(),
@@ -455,12 +457,12 @@ async function readFilesRecursively(
               name: dirent.name,
               path: fullPathNormalized,
               relativePath: relativePath,
-              tokenCount: 0,
+              tokenCount: undefined,
               size: stats.size,
-              content: '',
+              content: undefined,
               isBinary: false,
               isSkipped: true,
-              error: 'File too large to process',
+              error: 'File too large for initial processing. Content not loaded.',
             };
             fileCache.set(fullPathNormalized, fileData);
             results.push(fileData);
@@ -468,15 +470,16 @@ async function readFilesRecursively(
             return;
           }
 
-          const fileContent = await fs.promises.readFile(fullPath, 'utf8');
+          // Content is NOT read here anymore for initial scan.
+          // const fileContent = await fs.promises.readFile(fullPath, 'utf8');
           if (!isLoadingDirectory) return;
 
           const fileData = {
             name: dirent.name,
             path: fullPathNormalized,
             relativePath: relativePath,
-            content: fileContent, // Still loading full content for token counting
-            tokenCount: countTokens(fileContent),
+            content: undefined, // Content not loaded
+            tokenCount: undefined, // Token count not calculated
             size: stats.size,
             isBinary: false,
             isSkipped: false,
@@ -490,7 +493,7 @@ async function readFilesRecursively(
             name: dirent.name,
             path: fullPathNormalized,
             relativePath: relativePath,
-            tokenCount: 0,
+            tokenCount: undefined,
             size: 0, // Attempt to get size if possible, otherwise 0
             isBinary: false,
             isSkipped: true,

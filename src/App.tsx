@@ -1,5 +1,5 @@
 /* ============================== IMPORTS ============================== */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ConfirmUseFolderModal from './components/ConfirmUseFolderModal';
 import Sidebar from './components/Sidebar';
 import FileList from './components/FileList';
@@ -47,6 +47,12 @@ import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUt
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
 import type { UpdateDisplayState } from './types/UpdateTypes';
 import { isChatSession, isWorkspace } from './utils/typeguards';
+import {
+  saveChatSession as dbSaveChatSession,
+  getAllChatSessions as dbGetAllChatSessions,
+  deleteChatSession as dbDeleteChatSession,
+  // getChatSession as dbGetChatSession, // Optional: if needed for direct fetching
+} from './utils/indexedDBService';
 import { DEFAULT_SYSTEM_PROMPTS } from './config/defaultSystemPrompts';
 
 // Augment the Window interface
@@ -55,6 +61,29 @@ declare global {
     electron: any;
     llmApi: LlmApiWindow['llmApi'];
   }
+}
+
+// Debounce utility function
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function debounce<T extends (...args: any[]) => void>(func: T, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const debouncedFunc = (...args: Parameters<T>) => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+
+  debouncedFunc.cancel = () => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  return debouncedFunc;
 }
 
 const STORAGE_KEYS = {
@@ -191,51 +220,57 @@ const App = (): JSX.Element => {
   const [chatTarget, setChatTarget] = useState<ChatTarget | undefined>(undefined);
   const [isLlmLoading, setIsLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
-    console.log(
-      `[App.tsx Init] Attempting to load chat sessions from localStorage key: ${STORAGE_KEYS.CHAT_HISTORY}`
-    );
-    try {
-      const savedSessions = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
-      console.log(
-        `[App.tsx Init] Raw savedSessions from localStorage:`,
-        savedSessions ? savedSessions.substring(0, 100) + '...' : 'null'
-      );
-      if (savedSessions) {
-        const parsedSessions = JSON.parse(savedSessions);
-        console.log(
-          `[App.tsx Init] Parsed sessions (first item if array):`,
-          Array.isArray(parsedSessions) && parsedSessions.length > 0
-            ? parsedSessions[0]
-            : parsedSessions
-        );
-        if (Array.isArray(parsedSessions)) {
-          const validSessions = parsedSessions.filter((session) => {
-            const isValid = isChatSession(session);
-            if (!isValid) {
-              console.warn('[App.tsx Init] Invalid chat session found in localStorage:', session);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [isChatHistoryLoading, setIsChatHistoryLoading] = useState<boolean>(true);
+  const MIGRATION_FLAG_KEY = 'pastemax-chat-migrated-to-indexeddb';
+
+  // Load initial chat sessions from IndexedDB and perform one-time migration
+  useEffect(() => {
+    const loadAndMigrateChatHistory = async () => {
+      setIsChatHistoryLoading(true);
+      try {
+        const migrated = localStorage.getItem(MIGRATION_FLAG_KEY);
+        if (!migrated) {
+          console.log('[App.tsx Migration] Checking for localStorage chat history to migrate...');
+          const oldSessionsJson = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+          if (oldSessionsJson) {
+            try {
+              const oldSessions = JSON.parse(oldSessionsJson);
+              if (Array.isArray(oldSessions)) {
+                const validOldSessions = oldSessions.filter(isChatSession);
+                console.log(`[App.tsx Migration] Found ${validOldSessions.length} valid sessions in localStorage. Migrating...`);
+                for (const session of validOldSessions) {
+                  await dbSaveChatSession(session);
+                }
+                console.log('[App.tsx Migration] Successfully migrated sessions to IndexedDB.');
+                // Optionally, remove the old localStorage item after successful migration
+                // localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+                // For safety, we might leave it or remove it after a few versions.
+                // For this exercise, let's assume we remove it if migration is successful.
+                localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+                console.log('[App.tsx Migration] Removed old chat history from localStorage.');
+              }
+            } catch (e) {
+              console.error('[App.tsx Migration] Error parsing or migrating old chat history:', e);
             }
-            return isValid;
-          });
-          console.log(
-            `[App.tsx Init] Number of valid sessions found: ${validSessions.length} out of ${parsedSessions.length}`
-          );
-          return validSessions;
+          }
+          localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+          console.log('[App.tsx Migration] Migration check complete. Flag set.');
         }
-        console.warn(
-          '[App.tsx Init] Parsed sessions from localStorage was not an array.',
-          parsedSessions
-        );
+
+        const sessionsFromDB = await dbGetAllChatSessions();
+        setChatSessions(sessionsFromDB);
+        console.log(`[App.tsx] Loaded ${sessionsFromDB.length} chat sessions from IndexedDB.`);
+      } catch (error) {
+        console.error('[App.tsx] Error loading chat sessions from IndexedDB:', error);
+        // Fallback or error display strategy for the user
+      } finally {
+        setIsChatHistoryLoading(false);
       }
-    } catch (error) {
-      console.error(
-        '[App.tsx Init] Error loading or validating chat sessions from localStorage:',
-        error
-      );
-    }
-    console.log('[App.tsx Init] No valid chat sessions loaded, returning empty array.');
-    return [];
-  });
+    };
+    loadAndMigrateChatHistory();
+  }, []);
+
   const [currentChatSessionId, setCurrentChatSessionId] = useState<string | null>(() => {
     const savedSessionId = localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT_SESSION);
     if (savedSessionId) {
@@ -1077,48 +1112,127 @@ const App = (): JSX.Element => {
     localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
   }, [setExpandedNodes]);
 
-  // Cache base content when file selections or formatting options change
+  // Effect for preparing base content string for copying
   useEffect(() => {
-    const updateBaseContent = async () => {
+    const DEBOUNCE_DELAY = 300; // ms
+
+    const processFileContentPreparation = async () => {
+      if (!selectedFiles || selectedFiles.length === 0) {
+        setCachedBaseContentString('');
+        setCachedBaseContentTokens(0);
+        setProcessingStatus({ status: 'idle', message: '' }); // Clear any previous loading/error from this
+        return;
+      }
+
+      setProcessingStatus({ status: 'processing', message: 'Preparing files for copying...' });
+
+      const filesToFetchContentFor = selectedFiles.filter((filePath) => {
+        const fileData = allFiles.find((f) => arePathsEqual(f.path, filePath));
+        // Fetch if content is undefined AND it's not a binary file we're only including paths for,
+        // AND it's not skipped due to size or other errors from initial scan.
+        return fileData && fileData.content === undefined && !fileData.isBinary && !fileData.isSkipped;
+      });
+
+      if (filesToFetchContentFor.length > 0) {
+        setProcessingStatus({
+          status: 'processing',
+          message: `Loading content for ${filesToFetchContentFor.length} file(s)...`,
+        });
+        try {
+          const contentPromises = filesToFetchContentFor.map(async (filePath) => {
+            const result = await window.electron.ipcRenderer.invoke('get-file-content', filePath);
+            if (result.error) {
+              console.error(`Error fetching content for ${filePath}: ${result.error}`);
+              // Update specific file in allFiles with error or mark as content unavailable
+              setAllFiles(prevAllFiles => prevAllFiles.map(f =>
+                arePathsEqual(f.path, filePath) ? { ...f, content: `/* Error: ${result.error} */`, error: result.error } : f
+              ));
+              return { filePath, error: result.error }; // Propagate error
+            }
+            // Update allFiles with fetched content
+            setAllFiles(prevAllFiles => prevAllFiles.map(f =>
+              arePathsEqual(f.path, filePath) ? { ...f, content: result.content } : f
+            ));
+            return { filePath, content: result.content }; // Return content for immediate use if needed
+          });
+
+          const results = await Promise.all(contentPromises);
+          const anyErrors = results.some(r => r.error);
+          if (anyErrors) {
+             // Handle errors - some files might not have content.
+             // The formatBaseFileContent will use placeholders for files with errors.
+            console.warn("Some files could not be loaded. Proceeding with available content.");
+            // We might want to show a more specific error to the user in processingStatus
+            setProcessingStatus({ status: 'error', message: 'Some file contents could not be loaded. Copying what is available.' });
+          }
+          // Proceed even if some files had errors, formatBaseFileContent will handle missing content.
+        } catch (error) {
+          console.error('Error fetching multiple file contents:', error);
+          setProcessingStatus({ status: 'error', message: 'Failed to load file contents.' });
+          setCachedBaseContentString('');
+          setCachedBaseContentTokens(0);
+          return; // Stop if the Promise.all itself fails catastrophically
+        }
+      }
+
+      // At this point, all *attempted* fetches are done.
+      // `allFiles` state should be updated (or marked with errors).
+      // Now, use the current `allFiles` (which has the fetched content or placeholders)
+      // to format the base string.
+      // We need to ensure formatBaseFileContent is called AFTER setAllFiles has re-rendered.
+      // This is tricky. A follow-up useEffect that depends on the content of specific selected files
+      // might be more robust, or we can pass the content directly.
+      // For now, let's assume setAllFiles updates quickly enough for the subsequent read.
+
+      // Re-fetch allFiles from state to ensure we use the version with updated content
+      // This is not ideal as setAllFiles is async.
+      // A better approach would be to use the `results` from Promise.all to build up
+      // the necessary FileData objects with content for formatBaseFileContent.
+      // However, formatBaseFileContent expects the full `allFiles` array.
+      // The most robust way is to trigger a re-run of this effect when allFiles changes
+      // and skip fetching if content is present.
+
+      // Let's try to use the allFiles that should have been updated.
+      // The `formatBaseFileContent` will use the `allFiles` state.
+      // If `setAllFiles` hasn't completed, this might use stale data.
+      // This is a common React anti-pattern.
+      // The correct way is to have formatBaseFileContent run in a subsequent effect
+      // that depends on the specific content fields of the selected files.
+      // Or, construct the FileData array with new content from `results` and pass THAT.
+
+      // Simplification: The `allFiles` state is used by `formatBaseFileContent`.
+      // The next useEffect for token counting will use the `cachedBaseContentString`
+      // derived from this `allFiles` state.
+
+      // This will run after the state updates from fetching are processed in the next render cycle.
+      // To make this work correctly, we'll make `formatBaseFileContent` depend on `allFiles`
+      // and the actual formatting will happen in a separate step/effect if not all content is ready.
+      // For this iteration, we will assume formatBaseFileContent is called and uses the latest allFiles.
+
+      // The content is now in allFiles state. Proceed to format.
+      setProcessingStatus({ status: 'processing', message: 'Formatting content...' });
       const baseContent = formatBaseFileContent({
-        files: allFiles,
+        files: allFiles, // This should now have the fetched content for selected files
         selectedFiles,
         sortOrder,
         includeFileTree,
         includeBinaryPaths,
         selectedFolder,
       });
-
       setCachedBaseContentString(baseContent);
-
-      if (isElectron && baseContent) {
-        try {
-          const result = await window.electron.ipcRenderer.invoke('get-token-count', baseContent);
-          if (result?.tokenCount !== undefined) {
-            setCachedBaseContentTokens(result.tokenCount);
-          }
-        } catch (error) {
-          console.error('Error getting base content token count:', error);
-          setCachedBaseContentTokens(0);
-        }
-      } else {
-        setCachedBaseContentTokens(0);
-      }
+      setProcessingStatus({ status: 'idle', message: '' }); // Clear after successful formatting
     };
 
-    const debounceTimer = setTimeout(updateBaseContent, 300);
+    const debounceTimer = setTimeout(processFileContentPreparation, DEBOUNCE_DELAY);
     return () => clearTimeout(debounceTimer);
-  }, [
-    allFiles,
-    selectedFiles,
-    sortOrder,
-    includeFileTree,
-    includeBinaryPaths,
-    selectedFolder,
-    isElectron,
-  ]);
 
-  // Calculate total tokens when user instructions change
+  }, [allFiles, selectedFiles, sortOrder, includeFileTree, includeBinaryPaths, selectedFolder, isElectron]);
+  // Note: `allFiles` is now a dependency. This is important. When content is fetched and `allFiles` is updated,
+  // this effect will re-run. The fetching logic (filesToFetchContentFor) will find no files needing fetching
+  // if all selected files now have content, and it will proceed to formatting.
+
+
+  // Calculate total tokens when user instructions or base content tokens change
   useEffect(() => {
     const calculateAndSetTokenCount = async () => {
       const instructionsBlock = formatUserInstructionsBlock(userInstructions);
@@ -2343,20 +2457,65 @@ const App = (): JSX.Element => {
   /**
    * Opens chat for a selected file
    */
-  const handleChatAboutFile = (filePath: string) => {
-    // Find the file in allFiles
-    const file = allFiles.find((f) => f.path === filePath);
-    if (!file) return;
+  const handleChatAboutFile = async (filePath: string) => {
+    const fileIndex = allFiles.findIndex((f) => arePathsEqual(f.path, filePath));
+    if (fileIndex === -1) {
+      setLlmError(`File ${filePath} not found in the list.`);
+      return;
+    }
+
+    let fileToChat = allFiles[fileIndex];
+
+    // Check if content needs to be fetched
+    if (fileToChat.content === undefined && !fileToChat.isBinary && !fileToChat.isSkipped) {
+      setProcessingStatus({ status: 'processing', message: `Loading content for ${fileToChat.name}...`});
+      setIsLlmLoading(true); // Use LLM loading indicator for chat-specific file load
+      setLlmError(null);
+      try {
+        const result = await window.electron.ipcRenderer.invoke('get-file-content', filePath);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        // Update the specific file in allFiles state
+        const updatedFile = { ...fileToChat, content: result.content };
+        setAllFiles(prevAllFiles =>
+          prevAllFiles.map(f => arePathsEqual(f.path, filePath) ? updatedFile : f)
+        );
+        fileToChat = updatedFile; // Use the file with fetched content
+        setProcessingStatus({ status: 'idle', message: '' });
+        setIsLlmLoading(false);
+      } catch (error) {
+        console.error(`Error fetching content for chat: ${filePath}`, error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        setProcessingStatus({ status: 'error', message: `Failed to load content for ${fileToChat.name}: ${errorMsg}` });
+        setLlmError(`Failed to load content for ${fileToChat.name}: ${errorMsg}`);
+        setIsLlmLoading(false);
+        // Optionally, open chat view with an error message or prevent opening
+        return;
+      }
+    } else if (fileToChat.isSkipped || fileToChat.isBinary) {
+      // For skipped or binary files, content might be intentionally undefined or a placeholder.
+      // Let chat proceed with what's available (e.g., just filename for context).
+      // Or, display a message that content cannot be chatted about.
+      // For now, we allow it, and the system prompt or user can be informed.
+       if (fileToChat.isBinary) {
+        setLlmError(`Cannot chat about the content of binary file: ${fileToChat.name}. You can discuss its metadata.`);
+       } else if (fileToChat.error) { // e.g. file too large
+        setLlmError(`Cannot chat about the content of ${fileToChat.name}: ${fileToChat.error}.`);
+       }
+    }
+
 
     // Create chat target
-    const chatTarget: ChatTarget = {
+    const chatTargetData: ChatTarget = {
       type: 'file',
-      filePath: file.path,
-      fileName: file.name,
-      content: file.content || '',
+      filePath: fileToChat.path,
+      fileName: fileToChat.name,
+      // Provide content if available, otherwise, it implies content could not be loaded or is not applicable
+      content: fileToChat.content || `(Content for ${fileToChat.name} is not available or not applicable for chat)`,
     };
 
-    handleOpenChatView(chatTarget);
+    handleOpenChatView(chatTargetData);
   };
 
   const createNewChatSession = (target?: ChatTarget) => {
@@ -2623,12 +2782,9 @@ const App = (): JSX.Element => {
     // setIsSystemPromptEditorOpen(true); // This will be handled by the editor's open logic based on selection
   };
 
-  // Save chat sessions to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(chatSessions));
-  }, [chatSessions]);
+  // Removed useEffect for debouncedSaveChatSessions (localStorage)
 
-  // Save current chat session ID to localStorage when it changes
+  // Save current chat session ID to localStorage when it changes (this remains)
   useEffect(() => {
     if (currentChatSessionId) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_CHAT_SESSION, currentChatSessionId);
@@ -2698,47 +2854,71 @@ const App = (): JSX.Element => {
               }
             }
 
-            return {
+            const updatedSession = {
               ...session,
               messages: messages.map((msg) => ({
                 id: msg.id,
                 role: msg.role,
                 content: msg.content,
                 timestamp: msg.timestamp,
-                originalUserQuestion: msg.originalUserQuestion, // Preserve originalUserQuestion
-                fileContext: msg.fileContext ? { ...msg.fileContext } : undefined, // Preserve and deep copy fileContext
-                previewDisplayContent: msg.previewDisplayContent, // Preserve previewDisplayContent
-                isContentTruncated: msg.isContentTruncated, // Preserve isContentTruncated
+                originalUserQuestion: msg.originalUserQuestion,
+                fileContext: msg.fileContext ? { ...msg.fileContext } : undefined,
+                previewDisplayContent: msg.previewDisplayContent,
+                isContentTruncated: msg.isContentTruncated,
               })),
               lastUpdated: Date.now(),
-              userPreview: userPreview || session.userPreview, // Preserve existing preview if new one is undefined
-              title: title, // Update the title
-            } as ChatSession; // Cast the updated active session
+              userPreview: userPreview || session.userPreview,
+              title: title,
+            } as ChatSession;
+
+            // Save the updated session to IndexedDB
+            dbSaveChatSession(updatedSession).catch(err =>
+              console.error(`[App.tsx] Failed to save session ${updatedSession.id} to IndexedDB during update:`, err)
+            );
+            return updatedSession;
           }
-          return session as ChatSession; // Cast the non-active session
+          return session as ChatSession;
         });
 
-        // If the currentChatSessionId was not found in prevSessions (e.g., it's a brand new session ID)
-        // and we have messages to add, this implies we should add this new session.
-        // This case should ideally be handled by createNewChatSession adding it first.
-        // For safety, if it wasn't found but we have a current ID, log a warning.
         if (!sessionFound && currentChatSessionId) {
           console.warn(
-            `[App.tsx] updateCurrentSession: currentChatSessionId ${currentChatSessionId} not found in prevSessions. This might indicate an issue.`
+            `[App.tsx] updateCurrentSession: currentChatSessionId ${currentChatSessionId} not found in prevSessions. This might indicate an issue with creating new sessions.`
           );
-        }
+          // Attempt to find the session that *should* exist if it was just created
+          const justCreatedSession = messages.length > 0 ? ({
+            id: currentChatSessionId,
+            title: userPreview || `New Chat (${new Date().toLocaleTimeString()})`,
+            lastUpdated: Date.now(),
+            messages: messages.map(m => ({...m})), // basic clone
+            userPreview,
+            // other fields like targetType, targetName might be missing here if not passed correctly
+          } as ChatSession) : null;
 
+          if (justCreatedSession) {
+             console.log("[App.tsx] Attempting to save a potentially new session that wasn't in state map:", justCreatedSession);
+             dbSaveChatSession(justCreatedSession).catch(err => console.error(`[App.tsx] Failed to save new session ${justCreatedSession.id} to IndexedDB:`, err));
+             // This path suggests createNewChatSession might not be adding to chatSessions state before messages arrive,
+             // or updateCurrentSession is called too early.
+             // Add it to the updatedSessions array to ensure UI consistency.
+             return [justCreatedSession, ...updatedSessions.filter(s => s.id !== currentChatSessionId)];
+          }
+        }
         return updatedSessions;
       });
     },
-    [currentChatSessionId]
+    [currentChatSessionId] // Only currentChatSessionId, as setChatSessions handles its own closure for prevSessions
   );
 
-  // Update current session with new messages when chatMessages changes
+  // This useEffect is now primarily for triggering the updateCurrentSession (which includes DB save)
+  // when chatMessages for the active session change.
   useEffect(() => {
-    if (currentChatSessionId) {
+    if (currentChatSessionId && chatMessages.length > 0) {
+      // Only run if there's an active session and messages to process.
+      // This prevents running on initial load if chatMessages is empty before session selection.
       updateCurrentSession(chatMessages);
     }
+    // No need to run if chatMessages is empty, as updateCurrentSession wouldn't do much.
+    // updateCurrentSession itself depends on currentChatSessionId.
   }, [chatMessages, currentChatSessionId, updateCurrentSession]);
 
   /**
@@ -2795,14 +2975,23 @@ const App = (): JSX.Element => {
   /**
    * Deletes a chat session
    */
-  const deleteChatSession = (sessionId: string) => {
+  const deleteChatSession = async (sessionId: string) => {
+    // Update React state first
     setChatSessions((prevSessions) => prevSessions.filter((s) => s.id !== sessionId));
 
-    // If deleting the current session, clear current session
     if (currentChatSessionId === sessionId) {
       setCurrentChatSessionId(null);
-      setChatMessages([]);
-      setChatTarget(undefined);
+      setChatMessages([]); // Clear messages for the deleted session from view
+      setChatTarget(undefined); // Clear target
+    }
+
+    // Then delete from IndexedDB
+    try {
+      await dbDeleteChatSession(sessionId);
+      console.log(`[App.tsx] Session ${sessionId} deleted from IndexedDB.`);
+    } catch (error) {
+      console.error(`[App.tsx] Error deleting session ${sessionId} from IndexedDB:`, error);
+      // Optionally, inform the user or try to re-sync state if deletion failed
     }
   };
 

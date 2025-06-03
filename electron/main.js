@@ -11,6 +11,7 @@ const {
   setAllLlmConfigsInStore,
   sendPromptToLlm,
   cancelLlmRequestInService,
+  fetchAvailableModelsFromProvider, // Import the new function
 } = require('./llmService');
 // GlobalModeExclusion is now in ignore-manager.js
 
@@ -122,6 +123,75 @@ async function cancelDirectoryLoading(window, reason = 'user') {
 // ======================
 // IPC HANDLERS
 // ======================
+
+// IPC handler for fetching file content on demand
+ipcMain.handle('get-file-content', async (event, filePath) => {
+  console.log(`[Main IPC] Received 'get-file-content' for path: ${filePath}`);
+  if (!filePath || typeof filePath !== 'string') {
+    return { error: 'Invalid file path specified.' };
+  }
+
+  // Basic security check: ensure the path is absolute and normalized.
+  // More sophisticated checks could involve ensuring it's within the selected project directory,
+  // but that requires passing the project root or having it globally available here.
+  // For now, we rely on the renderer sending paths it received from the initial scan.
+  const normalizedPath = normalizePath(ensureAbsolutePath(filePath));
+
+  try {
+    // It's good practice to check file size again before reading,
+    // even if initial scan did, as file could have changed or initial limit was different.
+    // However, for this iteration, we'll trust the initial scan's MAX_FILE_SIZE check.
+    // const stats = await fs.promises.stat(normalizedPath);
+    // if (stats.size > MAX_FILE_SIZE_FOR_ON_DEMAND_READ) { // Potentially a different, larger limit for on-demand
+    //   return { error: 'File is too large to read on demand.' };
+    // }
+
+    const content = await fs.promises.readFile(normalizedPath, 'utf8');
+    return { content };
+  } catch (error) {
+    console.error(`[Main IPC] Error reading file content for ${normalizedPath}:`, error);
+    let userFriendlyError = 'Failed to read file content.';
+    if (error.code === 'ENOENT') {
+      userFriendlyError = 'File not found. It may have been moved or deleted.';
+    } else if (error.code === 'EACCES' || error.code === 'EPERM') {
+      userFriendlyError = 'Permission denied while trying to read the file.';
+    } else if (error.code === 'EMFILE') {
+      userFriendlyError = 'Too many open files. Please try again later or restart the application.';
+    }
+    return { error: userFriendlyError };
+  }
+});
+
+// Handler for fetching models for a specific provider
+ipcMain.handle('llm:fetch-provider-models', async (event, providerName) => {
+  console.log(`[Main IPC] Received 'llm:fetch-provider-models' for provider: ${providerName}`);
+  if (!providerName || typeof providerName !== 'string') {
+    return { models: [], error: 'Invalid provider name specified.' };
+  }
+
+  try {
+    const allConfigs = await getAllLlmConfigsFromStore();
+    // Ensure providerName is consistently cased (e.g., lowercase) for config lookup
+    const lookupProviderName = providerName.toLowerCase();
+    const providerConfig = allConfigs ? allConfigs[lookupProviderName] : null;
+
+    if (!providerConfig || !providerConfig.apiKey) {
+      console.warn(`[Main IPC] Configuration or API key not found for provider: ${lookupProviderName}`);
+      return { models: [], error: `Configuration or API key for ${providerName} is missing. Please set it in LLM Settings.` };
+    }
+
+    const { apiKey, baseUrl } = providerConfig;
+    // Pass the lookupProviderName (lowercase) to the service function as it handles casing internally or expects lowercase
+    const result = await fetchAvailableModelsFromProvider(lookupProviderName, apiKey, baseUrl);
+
+    console.log(`[Main IPC] Models fetched for ${providerName}:`, result.models?.length || 'None', 'Error:', result.error, 'Message:', result.message);
+    return result; // Contains { models: ModelInfo[], error?: string, message?: string }
+
+  } catch (error) {
+    console.error(`[Main IPC] Error in 'llm:fetch-provider-models' for ${providerName}:`, error);
+    return { models: [], error: error.message || `An unexpected error occurred while fetching models for ${providerName}.` };
+  }
+});
 
 // LLM Service Handlers
 ipcMain.handle('llm:get-config', async () => {

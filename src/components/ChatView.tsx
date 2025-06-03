@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { VariableSizeList, FixedSizeList } from 'react-window';
 import { ChatMessage, ChatTarget } from '../types/llmTypes';
 import ChatHistorySidebar, { ChatSession } from './ChatHistorySidebar';
 import ChatModelSelector from './ChatModelSelector';
@@ -67,9 +68,10 @@ const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const [userMessage, setUserMessage] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // const messagesEndRef = useRef<HTMLDivElement>(null); // Replaced by listRef for virtualization
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null); // To get height for the list
+  const listRef = useRef<FixedSizeList>(null); // Ref for FixedSizeList
   const { theme } = useTheme();
   const [isMaximized, setIsMaximized] = useState(false);
   const [expandedFileContexts, setExpandedFileContexts] = useState<Record<string, boolean>>({});
@@ -105,12 +107,15 @@ const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [isOpen]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change or chat view opens
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen && visibleMessages.length > 0 && listRef.current) {
+      // Using setTimeout to ensure the list has rendered and dimensions are available
+      setTimeout(() => {
+        listRef.current?.scrollToItem(visibleMessages.length - 1, 'end');
+      }, 0);
     }
-  }, [messages]);
+  }, [messages, isOpen, visibleMessages.length]); // Rerun when messages change or view opens
 
   // Handle message submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -176,10 +181,212 @@ const ChatView: React.FC<ChatViewProps> = ({
     },
   };
 
+// Define the Row component for react-window
+const Row = React.memo(
+  ({
+    index,
+    style,
+    data,
+  }: {
+    index: number;
+    style: React.CSSProperties;
+    data: {
+      messages: ChatMessage[];
+      theme: string;
+      onCopyResponse: (messageId: string) => void;
+      onRetry?: (messageIdToRetry: string) => void;
+      expandedFileContexts: Record<string, boolean>;
+      toggleFileContextExpansion: (messageId: string) => void;
+      expandedMainMessages: Record<string, boolean>;
+      toggleMainMessageExpansion: (messageId: string) => void;
+      formatTime: (timestamp: number) => string;
+      commonMarkdownComponents: Options['components'];
+      isLoading: boolean; // Added isLoading to data
+    };
+  }) => {
+    const message = data.messages[index];
+    if (!message) return null; // Should not happen if itemCount is correct
+
+    return (
+      <div style={style} className={`chat-message-wrapper ${message.role}-wrapper`}>
+        <div className={`chat-message ${message.role}`}>
+          <div className="chat-message-header">
+            <span className="chat-message-role">{message.role === 'user' ? 'You' : 'AI'}</span>
+            {(message.role === 'user' || message.role === 'assistant') && ' '}
+            <span className="chat-message-time">{data.formatTime(message.timestamp)}</span>
+          </div>
+          <div className="chat-message-content">
+            {message.role === 'user' ? (
+              <>
+                {message.isContentTruncated && !data.expandedMainMessages[message.id] ? (
+                  <>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={data.commonMarkdownComponents}
+                    >
+                      {message.previewDisplayContent || ''}
+                    </ReactMarkdown>
+                    <button
+                      onClick={() => data.toggleMainMessageExpansion(message.id)}
+                      className="toggle-context-button"
+                    >
+                      Show more
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={data.commonMarkdownComponents}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                    {message.isContentTruncated && data.expandedMainMessages[message.id] && (
+                      <button
+                        onClick={() => data.toggleMainMessageExpansion(message.id)}
+                        className="toggle-context-button"
+                      >
+                        Show less
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {message.fileContext && (
+                  <div className="file-context-display separated-file-context">
+                    <p className="file-context-name">
+                      Attached File Context: <strong>{message.fileContext.name}</strong>
+                    </p>
+                    <SyntaxHighlighter
+                      key={`${message.id}-filecontext-${data.theme}-${message.fileContext.language}`}
+                      style={data.theme === 'dark' ? oneDark : oneLight}
+                      language={message.fileContext.language || 'plaintext'}
+                      PreTag="div"
+                      className="file-content-codeblock"
+                      wrapLines={true}
+                      lineProps={{
+                        style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
+                      }}
+                    >
+                      {message.fileContext.isVeryLong
+                        ? data.expandedFileContexts[message.id]
+                          ? String(message.fileContext.content)
+                          : String(message.fileContext.previewContent)
+                        : String(message.fileContext.content)}
+                    </SyntaxHighlighter>
+                    {message.fileContext.isVeryLong && (
+                      <button
+                        onClick={() => data.toggleFileContextExpansion(message.id)}
+                        className="toggle-context-button"
+                      >
+                        {data.expandedFileContexts[message.id]
+                          ? 'Show less file context'
+                          : 'Show more file context'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {!message.isContentTruncated &&
+                  message.originalUserQuestion &&
+                  message.originalUserQuestion !== message.content &&
+                  !message.fileContext && (
+                    <div className="user-question-display separated-user-question">
+                      <p className="user-question-header">Your Original Question:</p>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={data.commonMarkdownComponents}
+                      >
+                        {message.originalUserQuestion}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+              </>
+            ) : (
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={data.commonMarkdownComponents}>
+                {message.content}
+              </ReactMarkdown>
+            )}
+          </div>
+          {message.role === 'assistant' && data.onCopyResponse && (
+            <div className="message-actions">
+              <button
+                className="copy-button"
+                onClick={() => data.onCopyResponse(message.id)}
+                title="Copy to clipboard"
+              >
+                Copy
+              </button>
+            </div>
+          )}
+          {message.role === 'user' && data.onRetry && (
+            <div className="message-actions">
+              <button
+                className="retry-button"
+                onClick={() => data.onRetry && data.onRetry(message.id)}
+                disabled={data.isLoading} // Use isLoading from itemData
+                title="Retry this prompt"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+Row.displayName = 'MessageRow';
+
+
   // Don't render if the modal is not open
   if (!isOpen) return null;
 
   const toggleMaximize = () => setIsMaximized(!isMaximized);
+
+  const itemData = {
+    messages: visibleMessages,
+    theme,
+    onCopyResponse,
+    onRetry,
+    expandedFileContexts,
+    toggleFileContextExpansion,
+    expandedMainMessages,
+    toggleMainMessageExpansion,
+    formatTime,
+    commonMarkdownComponents,
+    isLoading, // Pass isLoading to itemData
+  };
+
+  // Estimate item height - this is a placeholder.
+  // For FixedSizeList, we use a fixed size. For VariableSizeList, this would be dynamic.
+  const getItemHeight = (index: number) => {
+    // Basic estimation, can be improved significantly for VariableSizeList
+    const message = visibleMessages[index];
+    if (!message) return 100; // Default height
+
+    let height = 80; // Base height for role, timestamp, actions
+    const lines = message.content.split('\n').length;
+    height += lines * 20; // Approx 20px per line of text
+
+    if (message.fileContext) {
+      height += 50; // Additional height for file context header
+      const fileLines = message.fileContext.isVeryLong && !expandedFileContexts[message.id]
+        ? (message.fileContext.previewContent || '').split('\n').length
+        : (message.fileContext.content || '').split('\n').length;
+      height += fileLines * 18; // Approx 18px per line for code
+      if (message.fileContext.isVeryLong) height += 30; // Button height
+    }
+    if (message.isContentTruncated) height += 30; // Button height
+
+    // Add more for code blocks within main content if possible to detect
+    if (message.content.includes('```')) {
+        height += 80; // Arbitrary extra for potential code block
+    }
+
+    return Math.min(Math.max(height, 100), 600); // Min 100px, Max 600px
+  };
+
 
   return (
     <div className="chat-view-overlay" onClick={onClose}>
@@ -245,148 +452,29 @@ const ChatView: React.FC<ChatViewProps> = ({
             )}
 
             <div className="chat-view-messages" ref={chatContainerRef}>
-              {visibleMessages.map((message, index) => (
-                <div
-                  key={message.id}
-                  ref={index === messages.length - 1 ? messagesEndRef : null}
-                  className={`chat-message-wrapper ${message.role}-wrapper`}
+              {chatContainerRef.current && visibleMessages.length > 0 && (
+                <FixedSizeList
+                  ref={listRef}
+                  height={chatContainerRef.current.clientHeight}
+                  itemCount={visibleMessages.length}
+                  itemSize={150} // Using FixedSizeList with an average item size
+                  width="100%"
+                  itemData={itemData}
+                  itemKey={(index, data) => data.messages[index].id}
                 >
-                  <div className={`chat-message ${message.role}`}>
-                    <div className="chat-message-header">
-                      <span className="chat-message-role">
-                        {message.role === 'user' ? 'You' : 'AI'}
-                      </span>
-                      {(message.role === 'user' || message.role === 'assistant') && ' '}
-                      <span className="chat-message-time">{formatTime(message.timestamp)}</span>
-                    </div>
-                    <div className="chat-message-content">
-                      {message.role === 'user' ? (
-                        <>
-                          {message.isContentTruncated && !expandedMainMessages[message.id] ? (
-                            <>
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={commonMarkdownComponents}
-                              >
-                                {message.previewDisplayContent || ''}
-                              </ReactMarkdown>
-                              <button
-                                onClick={() => toggleMainMessageExpansion(message.id)}
-                                className="toggle-context-button"
-                              >
-                                Show more
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={commonMarkdownComponents}
-                              >
-                                {message.content}
-                              </ReactMarkdown>
-                              {message.isContentTruncated && (
-                                <button
-                                  onClick={() => toggleMainMessageExpansion(message.id)}
-                                  className="toggle-context-button"
-                                >
-                                  Show less
-                                </button>
-                              )}
-                            </>
-                          )}
-
-                          {message.fileContext && (
-                            <div className="file-context-display separated-file-context">
-                              <p className="file-context-name">
-                                Attached File Context: <strong>{message.fileContext.name}</strong>
-                              </p>
-                              <SyntaxHighlighter
-                                key={`${message.id}-filecontext-${theme}-${message.fileContext.language}`}
-                                style={theme === 'dark' ? oneDark : oneLight}
-                                language={message.fileContext.language || 'plaintext'}
-                                PreTag="div"
-                                className="file-content-codeblock"
-                                wrapLines={true}
-                                lineProps={{
-                                  style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
-                                }}
-                              >
-                                {
-                                  message.fileContext.isVeryLong
-                                    ? expandedFileContexts[message.id]
-                                      ? String(message.fileContext.content) // Show full content if expanded
-                                      : String(message.fileContext.previewContent) // Show preview if very long and not expanded
-                                    : String(message.fileContext.content) // Show full content if not very long
-                                }
-                              </SyntaxHighlighter>
-                              {message.fileContext.isVeryLong && (
-                                <button
-                                  onClick={() => toggleFileContextExpansion(message.id)}
-                                  className="toggle-context-button"
-                                >
-                                  {expandedFileContexts[message.id]
-                                    ? 'Show less file context'
-                                    : 'Show more file context'}
-                                </button>
-                              )}
-                            </div>
-                          )}
-
-                          {!message.isContentTruncated &&
-                            message.originalUserQuestion &&
-                            message.originalUserQuestion !== message.content &&
-                            !message.fileContext && (
-                              <div className="user-question-display separated-user-question">
-                                <p className="user-question-header">Your Original Question:</p>
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={commonMarkdownComponents}
-                                >
-                                  {message.originalUserQuestion}
-                                </ReactMarkdown>
-                              </div>
-                            )}
-                        </>
-                      ) : (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={commonMarkdownComponents}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      )}
-                    </div>
-                    {message.role === 'assistant' && onCopyResponse && (
-                      <div className="message-actions">
-                        <button
-                          className="copy-button"
-                          onClick={() => onCopyResponse(message.id)}
-                          title="Copy to clipboard"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    )}
-                    {message.role === 'user' && onRetry && (
-                      <div className="message-actions">
-                        <button
-                          className="retry-button"
-                          onClick={() => onRetry(message.id)}
-                          disabled={isLoading}
-                          title="Retry this prompt"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {Row}
+                </FixedSizeList>
+              )}
+              {(!chatContainerRef.current || visibleMessages.length === 0) && !isLoading && !error && (
+                <div className="chat-view-empty">
+                  {/* Optional: Message for when there are no messages */}
+                  {/* <p>No messages yet. Start the conversation!</p> */}
                 </div>
-              ))}
+              )}
 
               {/* Loading indicator */}
               {isLoading && currentLlmRequestId === currentSessionId && (
-                <div className="chat-message-wrapper assistant-wrapper">
+                <div className="chat-message-wrapper assistant-wrapper chat-loading-indicator-container">
                   <div className="chat-message assistant chat-loading-indicator">
                     <div className="typing-dots">
                       <span></span>
@@ -397,15 +485,13 @@ const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               )}
 
-              {/* Global Error message for the session (e.g., config errors, not per-message retry) */}
+              {/* Global Error message for the session */}
               {error && !isLoading && (
                 <div className="chat-error">
                   <p>{error}</p>
                 </div>
               )}
-
-              {/* Empty div for scrolling to bottom */}
-              <div ref={messagesEndRef} />
+              {/* messagesEndRef is no longer used for scrolling with react-window */}
             </div>
 
             {/* User input area */}

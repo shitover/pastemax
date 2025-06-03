@@ -50,7 +50,7 @@ export const formatBaseFileContent = ({
       if (sortKey === 'name') {
         comparison = a.name.localeCompare(b.name);
       } else if (sortKey === 'tokens') {
-        comparison = a.tokenCount - b.tokenCount;
+        comparison = (a.tokenCount ?? 0) - (b.tokenCount ?? 0); // Handle undefined tokenCount
       } else if (sortKey === 'size') {
         comparison = a.size - b.size;
       }
@@ -82,7 +82,9 @@ export const formatBaseFileContent = ({
   normalFiles.forEach((file: FileData) => {
     const language = getLanguageFromFilename(file.name);
     const normalizedPath = normalizePath(file.path);
-    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
+    // Use content if available, otherwise provide a placeholder
+    const contentToShow = file.content !== undefined ? file.content : '/* Content not loaded */';
+    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${contentToShow}\n\`\`\`\n\n`;
   });
 
   // Add binary files section if enabled and files exist
@@ -126,7 +128,7 @@ export const formatContentForCopying = ({
       if (sortKey === 'name') {
         comparison = a.name.localeCompare(b.name);
       } else if (sortKey === 'tokens') {
-        comparison = a.tokenCount - b.tokenCount;
+        comparison = (a.tokenCount ?? 0) - (b.tokenCount ?? 0); // Handle undefined tokenCount
       } else if (sortKey === 'size') {
         comparison = a.size - b.size;
       }
@@ -164,9 +166,11 @@ export const formatContentForCopying = ({
     const language = getLanguageFromFilename(file.name);
     // Normalize the file path for cross-platform compatibility
     const normalizedPath = normalizePath(file.path);
+    // Use content if available, otherwise provide a placeholder
+    const contentToShow = file.content !== undefined ? file.content : '/* Content not loaded */';
 
     // Add file path and content with language-specific code fencing
-    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${file.content}\n\`\`\`\n\n`;
+    concatenatedString += `File: ${normalizedPath}\n\`\`\`${language}\n${contentToShow}\n\`\`\`\n\n`;
   });
 
   // Add binary files section if enabled and files exist

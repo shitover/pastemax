@@ -2,10 +2,10 @@ export type IgnoreMode = 'automatic' | 'global';
 // Hot reload occurs when mode changes.
 
 export interface FileData {
-  name: string;
+  name:string;
   path: string;
-  content: string;
-  tokenCount: number;
+  content?: string; // Made optional
+  tokenCount?: number; // Made optional
   size: number;
   isBinary: boolean;
   isSkipped: boolean;

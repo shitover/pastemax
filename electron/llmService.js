@@ -1,3 +1,4 @@
+const fetch = require('node-fetch'); // Added for fetchAvailableModelsFromProvider
 const { ChatOpenAI } = require('@langchain/openai');
 const { ChatAnthropic } = require('@langchain/anthropic');
 const { ChatMistralAI } = require('@langchain/mistralai');
@@ -399,6 +400,148 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
 }
 
 /**
+ * Normalizes LLM error messages for user display.
+ * @param {Error} error - The error object from the LLM SDK.
+ * @param {string} provider - The name of the LLM provider (e.g., 'openai', 'anthropic').
+ * @returns {string} A user-friendly error message.
+ */
+function normalizeLlmError(error, provider) {
+  // General checks
+  if (error.name === 'AbortError' || error.message?.toLowerCase().includes('abort')) {
+    return 'Request cancelled by user.';
+  }
+  if (error.message?.includes('ENOTFOUND') || error.message?.includes('ECONNREFUSED') || error.message?.includes('EAI_AGAIN')) {
+    return `Network Error: Could not connect to ${provider}. Check your internet connection and firewall settings.`;
+  }
+  if (error.message?.includes('socket hang up')) {
+    return `Network Error: Connection to ${provider} was unexpectedly closed. Check your internet connection.`;
+  }
+
+  // Provider-specific error handling
+  let status;
+  let errorCode;
+  let errorMessage = error.message || `An unknown error occurred with ${provider}.`; // Default
+
+  if (error.response) { // Axios-like error structure (used by some SDKs implicitly)
+    status = error.response.status;
+    // Attempt to get more specific error message from response data
+    if (error.response.data && error.response.data.error) {
+      if (typeof error.response.data.error === 'string') {
+        errorMessage = error.response.data.error;
+      } else if (error.response.data.error.message) {
+        errorMessage = error.response.data.error.message;
+      }
+      if (error.response.data.error.code) {
+        errorCode = error.response.data.error.code;
+      }
+    } else if (error.response.data && error.response.data.message) {
+      errorMessage = error.response.data.message; // For some API formats
+    }
+  } else if (error.status) { // Direct status property
+    status = error.status;
+  } else if (error.statusCode) { // Another common property for status
+    status = error.statusCode;
+  }
+
+  if (error.code) { // SDK-specific error codes (not HTTP status)
+    errorCode = error.code;
+  }
+
+
+  // Normalize based on provider and status/code
+  const providerName = provider.charAt(0).toUpperCase() + provider.slice(1); // Capitalize provider
+
+  switch (provider.toLowerCase()) {
+    case 'openai':
+    case 'mistral': // MistralAI often uses similar error structures to OpenAI
+    case 'openrouter': // OpenRouter also mirrors OpenAI errors
+      if (status === 401) return `Authentication Error: Invalid API Key for ${providerName}. Please check your settings.`;
+      if (status === 403) return `Permission Denied: Ensure your API key has the correct permissions for ${providerName}. (${errorMessage})`;
+      if (status === 404) {
+        if (errorMessage.includes('model_not_found') || errorMessage.includes('does not exist')) {
+          return `Model Not Found: The selected model could not be found for ${providerName}. Check the model name and availability.`;
+        }
+        return `API Endpoint Not Found for ${providerName}. This might indicate an issue with the Base URL or API version. (${status})`;
+      }
+      if (status === 429) {
+        if (errorCode === 'insufficient_quota' || errorMessage.toLowerCase().includes('quota')) {
+          return `Quota Exceeded for ${providerName}. Please check your billing details and plan limits.`;
+        }
+        return `Rate Limit Exceeded for ${providerName}. Please try again later or check your plan. (${errorMessage})`;
+      }
+      if (status === 500) return `Internal Server Error with ${providerName}. Please try again later. (${errorMessage})`;
+      if (errorCode === 'invalid_api_key') return `Authentication Error: Invalid API Key for ${providerName}.`;
+      break;
+
+    case 'anthropic':
+      if (status === 401) return `Authentication Error: Invalid API Key for Anthropic. Please check your settings.`;
+      if (status === 403) {
+        if (errorMessage.includes('does not have access to models of type')) {
+          return `Model Access Denied: Your Anthropic API key may not have access to the requested model. (${errorMessage})`;
+        }
+        return `Permission Denied: Ensure your API key has the correct permissions for Anthropic. (${errorMessage})`;
+      }
+      if (status === 404) return `Model Not Found or Endpoint Invalid for Anthropic. Check model name and API version. (${errorMessage})`;
+      if (status === 429) return `Rate Limit Exceeded for Anthropic. Please try again later or check your plan. (${errorMessage})`;
+      if (status === 500) return `Internal Server Error with Anthropic. Please try again later. (${errorMessage})`;
+      if (error.type === 'authentication_error') return `Authentication Error: Invalid API Key for Anthropic.`;
+      if (error.type === 'permission_error') return `Permission Denied for Anthropic. Check API key permissions.`;
+      break;
+
+    case 'gemini': // Google Generative AI
+      // Google's SDK might wrap errors differently. Often, `error.message` contains the core info.
+      // HTTP status might be less directly available or wrapped inside a deeper object.
+      // Example: error.message might be "[GoogleGenerativeAI Error]: Error fetching from https..."
+      // or "GoogleGenerativeAIError: [400] User location is not supported for the API use."
+      if (errorMessage.includes('[400]') && errorMessage.toLowerCase().includes('api key not valid')) {
+        return `Authentication Error: Invalid API Key for Google Gemini. Please ensure it is correct and enabled.`;
+      }
+      if (errorMessage.toLowerCase().includes('api key not valid')) {
+         return `Authentication Error: Invalid API Key for Google Gemini. Please ensure it is correct and enabled.`;
+      }
+      if (errorMessage.includes('[400]') && errorMessage.toLowerCase().includes('user location is not supported')) {
+        return `Region Not Supported: Google Gemini API does not support your current location. (${errorMessage})`;
+      }
+      if (errorMessage.includes('[404]') && errorMessage.toLowerCase().includes('model not found')) {
+        return `Model Not Found: The specified model could not be found for Google Gemini.`;
+      }
+      if (errorMessage.includes('[429]') || errorMessage.toLowerCase().includes('resource has been exhausted') || errorMessage.toLowerCase().includes('rate limit')) {
+        return `Rate Limit Exceeded or Quota Exhausted for Google Gemini. Please check your quota and try again later.`;
+      }
+      if (errorMessage.includes('[500]') || errorMessage.toLowerCase().includes('internal error')) {
+        return `Internal Server Error with Google Gemini. Please try again later.`;
+      }
+      // Fallback for Gemini if specific patterns not matched
+      if (providerName === 'Gemini' && errorMessage) return `Google Gemini Error: ${errorMessage}`;
+      break;
+
+    case 'groq':
+      if (status === 401) return `Authentication Error: Invalid API Key for Groq. Please check your settings.`;
+      if (status === 403) return `Permission Denied: Ensure your API key has the correct permissions for Groq. (${errorMessage})`;
+      if (status === 404) return `Model Not Found or Endpoint Invalid for Groq. Check model name. (${errorMessage})`;
+      if (status === 429) return `Rate Limit Exceeded for Groq. Please try again later or check your plan. (${errorMessage})`;
+      if (status === 500) return `Internal Server Error with Groq. Please try again later. (${errorMessage})`;
+      if (error.code === 'auth_failed' || errorMessage.toLowerCase().includes('invalid api key')) {
+        return `Authentication Error: Invalid API Key for Groq.`;
+      }
+      break;
+
+    default:
+      // Generic status code handling if provider specific checks didn't catch it
+      if (status === 401) return `Authentication Error for ${providerName}. Check your API Key. (${errorMessage})`;
+      if (status === 403) return `Permission Denied for ${providerName}. Check API key permissions. (${errorMessage})`;
+      if (status === 404) return `Resource/Model Not Found for ${providerName}. (${errorMessage})`;
+      if (status === 429) return `Rate Limit or Quota Exceeded for ${providerName}. (${errorMessage})`;
+      if (status >= 500) return `Server Error (${status}) with ${providerName}. Please try again later. (${errorMessage})`;
+      break;
+  }
+
+  // If nothing specific matched, return the most relevant message we have
+  return errorMessage || `An unknown error occurred with ${providerName}. Status: ${status || 'N/A'}, Code: ${errorCode || 'N/A'}`;
+}
+
+
+/**
  * Converts message objects to Langchain message instances
  * @param {Array} messages - Array of message objects
  * @returns {Array} Array of Langchain message instances
@@ -488,17 +631,20 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
   } catch (error) {
     console.error('[LLM Service] Error sending prompt:', error);
 
-    // Check if the error is due to abortion
-    if (error.name === 'AbortError' || error.message?.includes('abort')) {
-      console.log('[LLM Service] Request was cancelled by user');
+    // Normalize the error message
+    const normalizedErrorMessage = normalizeLlmError(error, provider);
+
+    // Check if the error was due to cancellation (handled by normalizeLlmError)
+    if (normalizedErrorMessage === 'Request cancelled by user.') {
+      console.log('[LLM Service] Request was cancelled by user (identified by normalizeLlmError)');
       return {
         cancelled: true,
-        error: 'Request cancelled by user',
+        error: normalizedErrorMessage,
       };
     }
 
     return {
-      error: error.message || 'Unknown error occurred',
+      error: normalizedErrorMessage,
     };
   } finally {
     // Clean up the active request
@@ -537,4 +683,111 @@ module.exports = {
   setAllLlmConfigsInStore,
   sendPromptToLlm,
   cancelLlmRequestInService,
+  fetchAvailableModelsFromProvider, // Export the new function
 };
+
+/**
+ * @typedef {Object} ModelInfo
+ * @property {string} id - Composite ID like 'provider/modelName'
+ * @property {string} name - User-friendly display name
+ * @property {string} provider - The provider name
+ * @property {any} [originalData] - The original data from the API for this model
+ */
+
+/**
+ * Fetches available models from a given LLM provider.
+ * @param {string} providerName - The name of the provider (e.g., 'openrouter', 'openai', 'mistral').
+ * @param {string} apiKey - The API key for the provider.
+ * @param {string} [baseUrl] - Optional custom base URL for the API.
+ * @returns {Promise<{ models: ModelInfo[], error?: string, message?: string }>}
+ */
+async function fetchAvailableModelsFromProvider(providerName, apiKey, baseUrl) {
+  console.log(`[LLM Service] Fetching models for provider: ${providerName}`);
+  try {
+    switch (providerName.toLowerCase()) {
+      case 'openrouter': {
+        // OpenRouter uses its own API key in the Authorization header.
+        const response = await fetch(baseUrl || 'https://openrouter.ai/api/v1/models', {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[LLM Service] OpenRouter API error: ${response.status} ${errorText}`);
+          throw new Error(`OpenRouter API request failed: ${response.status} ${response.statusText}. Details: ${errorText}`);
+        }
+        const apiResponse = await response.json();
+        if (apiResponse && Array.isArray(apiResponse.data)) {
+          const models = apiResponse.data.map((model) => ({
+            id: `openrouter/${model.id}`,
+            name: model.name || model.id,
+            provider: 'openrouter',
+            originalData: model,
+          }));
+          return { models };
+        }
+        return { models: [], message: 'No models found or unexpected format from OpenRouter.' };
+      }
+      case 'openai': {
+        const effectiveBaseUrl = baseUrl || 'https://api.openai.com/v1';
+        const response = await fetch(`${effectiveBaseUrl.replace(/\/$/, '')}/models`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[LLM Service] OpenAI API error: ${response.status} ${errorText}`);
+          throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}. Details: ${errorText}`);
+        }
+        const apiResponse = await response.json();
+        if (apiResponse && Array.isArray(apiResponse.data)) {
+          const models = apiResponse.data
+            .filter(model => model.id)
+            .map((model) => ({
+              id: `openai/${model.id}`,
+              name: model.id,
+              provider: 'openai',
+              originalData: model,
+            }));
+          return { models };
+        }
+        return { models: [], message: 'No models found or unexpected format from OpenAI.' };
+      }
+      case 'mistral': {
+        const effectiveBaseUrl = baseUrl || 'https://api.mistral.ai/v1';
+        const response = await fetch(`${effectiveBaseUrl.replace(/\/$/, '')}/models`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[LLM Service] Mistral API error: ${response.status} ${errorText}`);
+          throw new Error(`Mistral API request failed: ${response.status} ${response.statusText}. Details: ${errorText}`);
+        }
+        const apiResponse = await response.json();
+        if (apiResponse && Array.isArray(apiResponse.data)) {
+          const models = apiResponse.data
+            .filter(model => model.id)
+            .map((model) => ({
+              id: `mistral/${model.id}`,
+              name: model.id,
+              provider: 'mistral',
+              originalData: model,
+            }));
+          return { models };
+        }
+        return { models: [], message: 'No models found or unexpected format from Mistral.' };
+      }
+      case 'anthropic':
+        return { models: [], message: 'Anthropic does not provide a public model listing API. Please enter model IDs manually from their documentation.' };
+      case 'groq':
+        return { models: [], message: 'Groq does not provide a public model listing API. Please enter model IDs manually from their documentation.' };
+      case 'gemini':
+        return { models: [], message: 'Google Gemini models are typically specified by name from documentation. Dynamic listing is not supported through a simple client API endpoint in the same way as other providers.' };
+      default:
+        console.warn(`[LLM Service] Model fetching not supported for provider: ${providerName}`);
+        return { models: [], message: `Model fetching not implemented for ${providerName}.` };
+    }
+  } catch (error) {
+    console.error(`[LLM Service] Error fetching models for ${providerName}:`, error);
+    const normalizedMsg = normalizeLlmError(error, providerName);
+    return { models: [], error: normalizedMsg };
+  }
+}
