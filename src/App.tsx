@@ -2567,6 +2567,15 @@ const App = (): JSX.Element => {
     setChatSessions((prevSessions) => [newSession, ...prevSessions]);
     setCurrentChatSessionId(sessionId);
 
+    // Save the new session shell to IndexedDB first
+    // This ensures the session record exists before any messages are added or UI tries to update it.
+    dbSaveChatSession(newSession)
+      .then(() => console.log(`[App.tsx] New session shell ${sessionId} saved to IndexedDB.`))
+      .catch(err => console.error(`[App.tsx] Failed to save new session shell ${sessionId} to IndexedDB:`, err));
+
+    setChatSessions((prevSessions) => [newSession, ...prevSessions]);
+    setCurrentChatSessionId(sessionId);
+
     return sessionId;
   };
 
@@ -2811,12 +2820,34 @@ const App = (): JSX.Element => {
    * Updates the current session with the new messages
    */
   const updateCurrentSession = useCallback(
-    (messages: ChatMessage[]) => {
-      if (!currentChatSessionId) return;
+    async (messagesInView: ChatMessage[]) => {
+      if (!currentChatSessionIdRef.current) { // Use ref for most up-to-date ID
+        console.warn('[App.tsx updateCurrentSession] No currentChatSessionId, cannot update.');
+        return;
+      }
 
-      // Find the first user message to create a preview
-      const firstUserMessage = messages.find((msg) => msg.role === 'user');
-      let userPreview: string | undefined;
+      const activeSessionId = currentChatSessionIdRef.current;
+
+      // Find the session from the React state
+      const oldSessionIndex = chatSessions.findIndex(s => s.id === activeSessionId);
+
+      if (oldSessionIndex === -1) {
+        console.warn(`[App.tsx updateCurrentSession] Session ${activeSessionId} not found in React state. Cannot update.`);
+        // This might happen if createNewChatSession's setState hasn't completed before a message is sent.
+        // The initial save in createNewChatSession should handle the shell.
+        // Subsequent message additions will update this shell.
+        // If a session shell was created and saved by createNewChatSession,
+        // we can try to create a minimal session object here to save the messages,
+        // but it's better if createNewChatSession ensures the session is in chatSessions state quickly.
+        // For now, we'll rely on the initial save in createNewChatSession and this function
+        // updating an existing record in IndexedDB.
+        return;
+      }
+
+      const oldSession = chatSessions[oldSessionIndex];
+
+      const firstUserMessage = messagesInView.find((msg) => msg.role === 'user');
+      let userPreview: string | undefined = oldSession.userPreview; // Default to existing
       if (firstUserMessage?.content) {
         userPreview = firstUserMessage.content.substring(0, 40);
         if (firstUserMessage.content.length > 40) {
@@ -2824,102 +2855,61 @@ const App = (): JSX.Element => {
         }
       }
 
-      setChatSessions((prevSessions) => {
-        let sessionFound = false;
-        const updatedSessions = prevSessions.map((session) => {
-          if (session.id === currentChatSessionId) {
-            sessionFound = true;
-            let title = session.title;
-
-            if (session.targetType === 'file') {
-              title = session.targetName
-                ? `File: ${session.targetName} (${new Date(session.lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })})`
-                : session.title || 'File Chat';
-            } else if (session.targetType === 'selection') {
-              title = session.title.startsWith('Selection Chat') ? session.title : 'Selection Chat';
-            } else {
-              // For general chats, only update title if we have a meaningful user preview
-              // and the current title is still the default "New Chat" format
-              if (userPreview && session.title.includes('New Chat (')) {
-                title = userPreview;
-              } else if (session.title.includes('New Chat (') && !userPreview) {
-                // Keep the timestamped title if no user preview yet
-                title = session.title;
-              } else if (userPreview) {
-                // If we have user preview and it's not a timestamped title, use the preview
-                title = userPreview;
-              } else {
-                // Fallback to existing title
-                title = session.title;
-              }
-            }
-
-            const updatedSession = {
-              ...session,
-              messages: messages.map((msg) => ({
-                id: msg.id,
-                role: msg.role,
-                content: msg.content,
-                timestamp: msg.timestamp,
-                originalUserQuestion: msg.originalUserQuestion,
-                fileContext: msg.fileContext ? { ...msg.fileContext } : undefined,
-                previewDisplayContent: msg.previewDisplayContent,
-                isContentTruncated: msg.isContentTruncated,
-              })),
-              lastUpdated: Date.now(),
-              userPreview: userPreview || session.userPreview,
-              title: title,
-            } as ChatSession;
-
-            // Save the updated session to IndexedDB
-            dbSaveChatSession(updatedSession).catch(err =>
-              console.error(`[App.tsx] Failed to save session ${updatedSession.id} to IndexedDB during update:`, err)
-            );
-            return updatedSession;
-          }
-          return session as ChatSession;
-        });
-
-        if (!sessionFound && currentChatSessionId) {
-          console.warn(
-            `[App.tsx] updateCurrentSession: currentChatSessionId ${currentChatSessionId} not found in prevSessions. This might indicate an issue with creating new sessions.`
-          );
-          // Attempt to find the session that *should* exist if it was just created
-          const justCreatedSession = messages.length > 0 ? ({
-            id: currentChatSessionId,
-            title: userPreview || `New Chat (${new Date().toLocaleTimeString()})`,
-            lastUpdated: Date.now(),
-            messages: messages.map(m => ({...m})), // basic clone
-            userPreview,
-            // other fields like targetType, targetName might be missing here if not passed correctly
-          } as ChatSession) : null;
-
-          if (justCreatedSession) {
-             console.log("[App.tsx] Attempting to save a potentially new session that wasn't in state map:", justCreatedSession);
-             dbSaveChatSession(justCreatedSession).catch(err => console.error(`[App.tsx] Failed to save new session ${justCreatedSession.id} to IndexedDB:`, err));
-             // This path suggests createNewChatSession might not be adding to chatSessions state before messages arrive,
-             // or updateCurrentSession is called too early.
-             // Add it to the updatedSessions array to ensure UI consistency.
-             return [justCreatedSession, ...updatedSessions.filter(s => s.id !== currentChatSessionId)];
-          }
+      let title = oldSession.title;
+      if (oldSession.targetType === 'file') {
+        title = oldSession.targetName
+          ? `File: ${oldSession.targetName} (${new Date(oldSession.lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })})`
+          : oldSession.title || 'File Chat';
+      } else if (oldSession.targetType === 'selection') {
+        title = oldSession.title.startsWith('Selection Chat') ? oldSession.title : 'Selection Chat';
+      } else {
+        if (userPreview && oldSession.title.includes('New Chat (')) {
+          title = userPreview;
+        } else if (oldSession.title.includes('New Chat (') && !userPreview) {
+          title = oldSession.title;
+        } else if (userPreview) {
+          title = userPreview;
         }
-        return updatedSessions;
-      });
+      }
+
+      const updatedSession: ChatSession = {
+        ...oldSession,
+        messages: messagesInView.map(msg => ({ ...msg })), // Deep copy messages
+        lastUpdated: Date.now(),
+        userPreview: userPreview,
+        title: title,
+        isLoading: isLlmLoading, // Persist UI loading state related to this session
+        llmError: llmError,     // Persist UI error state related to this session
+      };
+
+      try {
+        await dbSaveChatSession(updatedSession);
+        console.log(`[App.tsx updateCurrentSession] Session ${activeSessionId} updated in IndexedDB.`);
+      } catch (err) {
+        console.error(`[App.tsx updateCurrentSession] Failed to save session ${activeSessionId} to IndexedDB:`, err);
+      }
+
+      // Update React state
+      setChatSessions(prevSessions =>
+        prevSessions.map(s => (s.id === activeSessionId ? updatedSession : s))
+      );
     },
-    [currentChatSessionId] // Only currentChatSessionId, as setChatSessions handles its own closure for prevSessions
+    [chatSessions, isLlmLoading, llmError] // currentChatSessionIdRef is stable, chatSessions is key
   );
 
-  // This useEffect is now primarily for triggering the updateCurrentSession (which includes DB save)
-  // when chatMessages for the active session change.
+  // This useEffect triggers saving the currently active session when its messages or related loading/error states change.
   useEffect(() => {
-    if (currentChatSessionId && chatMessages.length > 0) {
-      // Only run if there's an active session and messages to process.
-      // This prevents running on initial load if chatMessages is empty before session selection.
+    // Only save if there's an active session and the chat view is open (indicating active interaction)
+    // or if LLM loading/error state changes for the current session.
+    // The initial save of a session shell is handled by createNewChatSession.
+    // Subsequent updates (like adding messages) will update chatMessages, triggering this.
+    if (currentChatSessionIdRef.current && (chatMessages.length > 0 || isLlmLoading || llmError)) {
+       // Check if the messages actually belong to the current session ID to avoid cross-talk
+       // This is implicitly handled if chatMessages is cleared/set when currentChatSessionId changes.
+       // The `chatMessages` state should always reflect the messages of `currentChatSessionId`.
       updateCurrentSession(chatMessages);
     }
-    // No need to run if chatMessages is empty, as updateCurrentSession wouldn't do much.
-    // updateCurrentSession itself depends on currentChatSessionId.
-  }, [chatMessages, currentChatSessionId, updateCurrentSession]);
+  }, [chatMessages, isLlmLoading, llmError, updateCurrentSession]); // updateCurrentSession dependency is important here
 
   /**
    * Creates a new chat session and sets it as the current session
