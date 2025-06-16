@@ -608,11 +608,13 @@ async function sendStreamingPromptToLlm({
         });
 
         for await (const chunk of stream) {
+          // Check for abort signal at the start of each iteration
           if (abortController.signal.aborted) {
-            console.log('[LLM Service] Stream aborted by user');
+            console.log('[LLM Service] Stream aborted by user during native streaming');
             webContents.send('llm:stream-error', {
               requestId,
               error: 'Request cancelled by user',
+              cancelled: true,
             });
             return;
           }
@@ -620,6 +622,18 @@ async function sendStreamingPromptToLlm({
           const chunkContent = chunk.content || '';
           if (chunkContent) {
             fullContent += chunkContent;
+
+            // Check abort signal again before sending chunk
+            if (abortController.signal.aborted) {
+              console.log('[LLM Service] Stream aborted by user before sending chunk');
+              webContents.send('llm:stream-error', {
+                requestId,
+                error: 'Request cancelled by user',
+                cancelled: true,
+              });
+              return;
+            }
+
             // Send chunk to renderer
             webContents.send('llm:stream-chunk', {
               requestId,
@@ -627,8 +641,14 @@ async function sendStreamingPromptToLlm({
               fullContent: fullContent,
             });
 
-            // Small delay for smooth UI updates
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            // Small delay for smooth UI updates (with abort check)
+            await new Promise((resolve) => {
+              const timeout = setTimeout(resolve, 20);
+              if (abortController.signal.aborted) {
+                clearTimeout(timeout);
+                resolve();
+              }
+            });
           }
         }
 
@@ -666,6 +686,17 @@ async function sendStreamingPromptToLlm({
         const chunk = fullContent.slice(currentIndex, currentIndex + chunkSize);
         const accumulatedContent = fullContent.slice(0, currentIndex + chunk.length);
 
+        // Check for abort before sending chunk
+        if (abortController.signal.aborted) {
+          console.log('[LLM Service] Simulated stream aborted by user');
+          webContents.send('llm:stream-error', {
+            requestId,
+            error: 'Request cancelled by user',
+            cancelled: true,
+          });
+          return;
+        }
+
         webContents.send('llm:stream-chunk', {
           requestId,
           chunk: chunk,
@@ -674,14 +705,22 @@ async function sendStreamingPromptToLlm({
 
         currentIndex += chunkSize;
 
-        // Add small delay to simulate streaming (faster for better UX)
-        await new Promise((resolve) => setTimeout(resolve, 30));
+        // Add small delay to simulate streaming (with abort check)
+        await new Promise((resolve) => {
+          const timeout = setTimeout(resolve, 30);
+          if (abortController.signal.aborted) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
       }
 
       if (abortController.signal.aborted) {
+        console.log('[LLM Service] Simulated stream cancelled before completion');
         webContents.send('llm:stream-error', {
           requestId,
           error: 'Request cancelled by user',
+          cancelled: true,
         });
         return;
       }
@@ -734,8 +773,17 @@ async function cancelLlmRequestInService(requestId) {
 
     if (abortController) {
       console.log('[LLM Service] Found active request, sending abort signal');
+
+      // Abort the controller
       abortController.abort();
+
+      // Clean up immediately
       activeRequests.delete(requestId);
+
+      // Add a small delay to ensure abort propagates
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      console.log('[LLM Service] Request cancelled and cleaned up:', requestId);
       return { success: true };
     } else {
       console.log('[LLM Service] No active request found for ID:', requestId);

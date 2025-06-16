@@ -2051,7 +2051,10 @@ const App = (): JSX.Element => {
         requestId: assistantMessageId, // Use assistant message ID as request ID for streaming
       };
 
-      // Setup streaming event listeners
+      // Clean up any existing listeners first
+      console.log('[App] Setting up streaming listeners for request:', assistantMessageId);
+
+      // Setup streaming event listeners with cleanup tracking
       const streamStartWrapper = window.llmApi.onStreamEvent('stream-start', (data: any) => {
         if (data.requestId === assistantMessageId) {
           console.log('[App] Stream started for request:', data.requestId);
@@ -2107,6 +2110,7 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
+          console.log('[App] Cleaning up stream listeners for completed request:', data.requestId);
           window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
           window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
           window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
@@ -2132,6 +2136,7 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
+          console.log('[App] Cleaning up stream listeners for errored request:', data.requestId);
           window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
           window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
           window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
@@ -2299,12 +2304,13 @@ const App = (): JSX.Element => {
 
     // Set loading state for the session and globally if active
     // Remove any subsequent messages from the point of retry in the session state
+    // Important: Keep the user message being retried, but remove any subsequent assistant responses
     setChatSessions((prevSessions) =>
       prevSessions.map((s) =>
         s.id === requestSessionId
           ? {
               ...s,
-              messages: cleanupLoadingMessages(s.messages).slice(0, messageToRetryIndex + 1), // Keep messages up to and including the one retried
+              messages: cleanupLoadingMessages(s.messages).slice(0, messageToRetryIndex + 1), // Keep the user message being retried
               isLoading: true,
               llmError: null,
             }
@@ -2313,25 +2319,29 @@ const App = (): JSX.Element => {
     );
 
     if (currentChatSessionIdRef.current === requestSessionId) {
-      setChatMessages((prevMessages) =>
-        cleanupLoadingMessages(prevMessages).slice(0, messageToRetryIndex + 1)
+      setChatMessages(
+        (prevMessages) => cleanupLoadingMessages(prevMessages).slice(0, messageToRetryIndex + 1) // Keep the user message being retried
       );
       setIsLlmLoading(true);
       setLlmError(null);
     }
 
     try {
-      // Re-fetch sessionForRequest to get the sliced messages for the API call
+      // Get the updated session after cleanup to construct proper message history
+      // The session now contains messages up to (but not including) the failed message
       const updatedSessionForRequest = chatSessions.find((s) => s.id === requestSessionId);
       if (!updatedSessionForRequest) {
         // Should not happen if previous logic is correct
         throw new Error('Session disappeared during retry preparation.');
       }
 
-      const messagesForLlm = updatedSessionForRequest.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Convert session messages to LLM format, excluding any loading messages
+      const messagesForLlm = updatedSessionForRequest.messages
+        .filter((m) => !m.isLoading) // Exclude any remaining loading messages
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
 
       let messagesToSend;
 
@@ -2534,40 +2544,51 @@ const App = (): JSX.Element => {
    * Cancels the current LLM request
    */
   const handleCancelLlmRequest = async () => {
+    console.log('[App.tsx] handleCancelLlmRequest called');
+
     if (!currentChatSessionId) {
       console.warn('[App.tsx] No current chat session to cancel');
       return;
     }
 
-    // Find the currently loading message in the session to get its ID
+    // Find ALL currently loading messages in the session
     const currentSession = chatSessions.find((s) => s.id === currentChatSessionId);
-    const loadingMessage = currentSession?.messages.find((m) => m.isLoading);
+    const loadingMessages =
+      currentSession?.messages.filter((m) => m.isLoading && m.role === 'assistant') || [];
 
-    if (!loadingMessage) {
-      console.warn('[App.tsx] No loading message found to cancel');
+    if (loadingMessages.length === 0) {
+      console.warn('[App.tsx] No loading messages found to cancel');
       return;
     }
 
-    const requestIdToCancel = loadingMessage.id;
-    console.log(`[App.tsx] Cancelling LLM request: ${requestIdToCancel}`);
+    console.log(`[App.tsx] Found ${loadingMessages.length} loading messages to cancel`);
 
-    try {
-      if (window.llmApi?.cancelLlmRequest) {
-        const result = await window.llmApi.cancelLlmRequest(requestIdToCancel);
-        if (result.success) {
-          console.log(`[App.tsx] Successfully cancelled request: ${requestIdToCancel}`);
-        } else {
-          console.error(`[App.tsx] Failed to cancel request: ${result.error}`);
+    // Cancel all loading requests
+    for (const loadingMessage of loadingMessages) {
+      const requestIdToCancel = loadingMessage.id;
+      console.log(`[App.tsx] Cancelling LLM request: ${requestIdToCancel}`);
+
+      try {
+        if (window.llmApi?.cancelLlmRequest) {
+          const result = await window.llmApi.cancelLlmRequest(requestIdToCancel);
+          if (result.success) {
+            console.log(`[App.tsx] Successfully cancelled request: ${requestIdToCancel}`);
+          } else {
+            console.error(`[App.tsx] Failed to cancel request: ${result.error}`);
+          }
         }
+      } catch (error) {
+        console.error('[App.tsx] Error cancelling LLM request:', error);
       }
-    } catch (error) {
-      console.error('[App.tsx] Error cancelling LLM request:', error);
     }
+
+    // Wait a moment for cancellation to propagate
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Reset loading state regardless of cancellation success
     setIsLlmLoading(false);
 
-    // Update the current session state - mark the loading message as cancelled
+    // Update the current session state - mark ALL loading messages as cancelled
     if (currentChatSessionId) {
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
@@ -2577,8 +2598,13 @@ const App = (): JSX.Element => {
                 isLoading: false,
                 llmError: null,
                 messages: s.messages.map((m) =>
-                  m.id === requestIdToCancel
-                    ? { ...m, isLoading: false, content: m.content + '\n\n_[Request cancelled]_' }
+                  m.isLoading && m.role === 'assistant'
+                    ? {
+                        ...m,
+                        isLoading: false,
+                        content:
+                          (m.content || '') + (m.content ? '\n\n' : '') + '_[Request cancelled]_',
+                      }
                     : m
                 ),
               }
@@ -2590,13 +2616,19 @@ const App = (): JSX.Element => {
       if (currentChatSessionIdRef.current === currentChatSessionId) {
         setChatMessages((prev) =>
           prev.map((m) =>
-            m.id === requestIdToCancel
-              ? { ...m, isLoading: false, content: m.content + '\n\n_[Request cancelled]_' }
+            m.isLoading && m.role === 'assistant'
+              ? {
+                  ...m,
+                  isLoading: false,
+                  content: (m.content || '') + (m.content ? '\n\n' : '') + '_[Request cancelled]_',
+                }
               : m
           )
         );
       }
     }
+
+    console.log('[App.tsx] Cancel operation completed');
   };
 
   /**
