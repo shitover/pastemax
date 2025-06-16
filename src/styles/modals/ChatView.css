@@ -454,7 +454,6 @@
   font-size: 1.3em;
 }
 
-
 .chat-view-modal--maximized .chat-view-content {
   flex-grow: 1;
   min-height: 0;
@@ -762,6 +761,38 @@
   background-color: var(--vscode-descriptionForeground, #aaa);
 }
 /* === End Modern Loading Indicator Styling === */
+
+/* === Streaming Content Styling === */
+.streaming-content {
+  position: relative;
+}
+
+.streaming-indicator {
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.streaming-cursor {
+  color: var(--vscode-descriptionForeground, #777);
+  font-weight: bold;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.dark-mode .streaming-cursor {
+  color: var(--vscode-descriptionForeground, #aaa);
+}
+/* === End Streaming Content Styling === */
 
 /* === Toggle Context Button Styling === */
 .toggle-context-button {

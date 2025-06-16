@@ -30,8 +30,7 @@ interface ChatViewProps {
   onCreateNewSession: () => void;
   selectedModelId?: string;
   onModelSelect?: (modelId: string) => void;
-  currentLlmRequestId?: string | null;
-  onCancelLlmRequest?: (requestId: string) => void;
+  onCancelLlmRequest?: () => void;
 }
 
 // Define this interface for your code renderer props
@@ -62,7 +61,6 @@ const ChatView: React.FC<ChatViewProps> = ({
   onCreateNewSession,
   selectedModelId,
   onModelSelect,
-  currentLlmRequestId,
   onCancelLlmRequest,
 }) => {
   const [userMessage, setUserMessage] = useState<string>('');
@@ -257,7 +255,10 @@ const ChatView: React.FC<ChatViewProps> = ({
                         {message.role === 'user' ? 'You' : 'AI'}
                       </span>
                       {(message.role === 'user' || message.role === 'assistant') && ' '}
-                      <span className="chat-message-time">{formatTime(message.timestamp)}</span>
+                      {/* Only show timestamp when not loading or when message has content */}
+                      {(!message.isLoading || message.content.trim()) && (
+                        <span className="chat-message-time">{formatTime(message.timestamp)}</span>
+                      )}
                     </div>
                     <div className="chat-message-content">
                       {message.role === 'user' ? (
@@ -349,25 +350,53 @@ const ChatView: React.FC<ChatViewProps> = ({
                             )}
                         </>
                       ) : (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={commonMarkdownComponents}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
+                        <>
+                          {message.isLoading && !message.content.trim() ? (
+                            <div className="chat-loading-indicator">
+                              <div className="typing-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                              </div>
+                            </div>
+                          ) : message.isLoading && message.content.trim() ? (
+                            <div className="streaming-content">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={commonMarkdownComponents}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
+                              <div className="streaming-indicator">
+                                <span className="streaming-cursor">|</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={commonMarkdownComponents}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          )}
+                        </>
                       )}
                     </div>
-                    {message.role === 'assistant' && onCopyResponse && (
-                      <div className="message-actions">
-                        <button
-                          className="copy-button"
-                          onClick={() => onCopyResponse(message.id)}
-                          title="Copy to clipboard"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    )}
+                    {/* Only show copy button for completed assistant messages */}
+                    {message.role === 'assistant' &&
+                      onCopyResponse &&
+                      !message.isLoading &&
+                      message.content.trim() && (
+                        <div className="message-actions">
+                          <button
+                            className="copy-button"
+                            onClick={() => onCopyResponse(message.id)}
+                            title="Copy to clipboard"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
                     {message.role === 'user' && onRetry && (
                       <div className="message-actions">
                         <button
@@ -383,19 +412,6 @@ const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 </div>
               ))}
-
-              {/* Loading indicator */}
-              {isLoading && currentLlmRequestId === currentSessionId && (
-                <div className="chat-message-wrapper assistant-wrapper">
-                  <div className="chat-message assistant chat-loading-indicator">
-                    <div className="typing-dots">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Global Error message for the session (e.g., config errors, not per-message retry) */}
               {error && !isLoading && (
@@ -432,11 +448,11 @@ const ChatView: React.FC<ChatViewProps> = ({
               >
                 {isLoading ? 'Sending...' : 'Send'}
               </button>
-              {isLoading && currentLlmRequestId && onCancelLlmRequest && (
+              {isLoading && onCancelLlmRequest && (
                 <button
                   type="button"
                   className="chat-view-stop-button"
-                  onClick={() => onCancelLlmRequest(currentLlmRequestId)}
+                  onClick={() => onCancelLlmRequest()}
                 >
                   Stop
                 </button>

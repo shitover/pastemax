@@ -48,6 +48,7 @@ export interface ChatMessage {
   };
   previewDisplayContent?: string;
   isContentTruncated?: boolean;
+  isLoading?: boolean; // For streaming responses
 }
 
 /**
@@ -87,6 +88,23 @@ export interface LlmApiWindow {
       content: string;
     }) => Promise<{ success: boolean; message: string }>;
     cancelLlmRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+    // Streaming methods
+    sendStreamPrompt: (params: {
+      messages: { role: MessageRole; content: string }[];
+      provider: LlmProvider;
+      model: string;
+      apiKey: string;
+      baseUrl?: string | null;
+      requestId: string;
+    }) => void;
+    onStreamEvent: (
+      event: 'stream-start' | 'stream-chunk' | 'stream-end' | 'stream-error',
+      callback: (data: any) => void
+    ) => (...args: any[]) => void;
+    removeStreamListener: (
+      event: 'stream-start' | 'stream-chunk' | 'stream-end' | 'stream-error',
+      wrapper: (...args: any[]) => void
+    ) => void;
   };
 }
 

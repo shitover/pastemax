@@ -774,7 +774,9 @@ const App = (): JSX.Element => {
     setAllFiles((prevFiles: FileData[]) => {
       const isDuplicate = prevFiles.some((f) => arePathsEqual(f.path, newFile.path));
       const newAllFiles = isDuplicate ? prevFiles : [...prevFiles, newFile];
-      console.log(`[IPC] file-added: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Path: ${newFile.path}`);
+      console.log(
+        `[IPC] file-added: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Path: ${newFile.path}`
+      );
       return newAllFiles;
     });
   }, []);
@@ -782,10 +784,12 @@ const App = (): JSX.Element => {
   const handleFileUpdated = useCallback((updatedFile: FileData) => {
     console.log('[IPC] Received file-updated:', updatedFile);
     setAllFiles((prevFiles: FileData[]) => {
-      const newAllFiles = prevFiles.map((file) => 
+      const newAllFiles = prevFiles.map((file) =>
         arePathsEqual(file.path, updatedFile.path) ? updatedFile : file
       );
-      console.log(`[IPC] file-updated: Count remains: ${newAllFiles.length}, Updated path: ${updatedFile.path}`);
+      console.log(
+        `[IPC] file-updated: Count remains: ${newAllFiles.length}, Updated path: ${updatedFile.path}`
+      );
       return newAllFiles;
     });
   }, []);
@@ -795,17 +799,21 @@ const App = (): JSX.Element => {
       const path = typeof filePathData === 'object' ? filePathData.path : filePathData;
       const normalizedPath = normalizePath(path);
       console.log('[IPC] Received file-removed:', filePathData);
-      
+
       setAllFiles((prevFiles: FileData[]) => {
         const newAllFiles = prevFiles.filter((file) => !arePathsEqual(file.path, normalizedPath));
-        console.log(`[IPC] file-removed: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Removed path: ${normalizedPath}`);
+        console.log(
+          `[IPC] file-removed: Previous count: ${prevFiles.length}, New count: ${newAllFiles.length}, Removed path: ${normalizedPath}`
+        );
         return newAllFiles;
       });
-      
+
       setSelectedFiles((prevSelected: string[]) => {
         const newSelected = prevSelected.filter((p) => !arePathsEqual(p, normalizedPath));
         if (newSelected.length !== prevSelected.length) {
-          console.log(`[IPC] file-removed: Also removed from selectedFiles. Path: ${normalizedPath}`);
+          console.log(
+            `[IPC] file-removed: Also removed from selectedFiles. Path: ${normalizedPath}`
+          );
         }
         return newSelected;
       });
@@ -1922,13 +1930,32 @@ const App = (): JSX.Element => {
       isContentTruncated: displayIsContentTruncated,
     };
 
+    // Cancel any ongoing streaming before starting new message
+    if (isLlmLoading) {
+      await handleCancelLlmRequest();
+      // Small delay to ensure cancellation is processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    // Clean up any loading messages and finalize them before adding new message
+    const cleanupLoadingMessages = (messages: ChatMessage[]) =>
+      messages.map((msg) =>
+        msg.isLoading && msg.role === 'assistant'
+          ? {
+              ...msg,
+              isLoading: false,
+              content: msg.content || '_[Response interrupted]_',
+            }
+          : msg
+      );
+
     // Update per-session state and global state if the session is active
     setChatSessions((prevSessions) =>
       prevSessions.map((s) =>
         s.id === requestSessionId
           ? {
               ...s,
-              messages: [...s.messages, userMessage],
+              messages: [...cleanupLoadingMessages(s.messages), userMessage],
               isLoading: true,
               llmError: null, // Clear previous error for this session
             }
@@ -1937,7 +1964,37 @@ const App = (): JSX.Element => {
     );
 
     if (currentChatSessionIdRef.current === requestSessionId) {
-      setChatMessages((prev) => [...prev, userMessage]);
+      setChatMessages((prev) => [...cleanupLoadingMessages(prev), userMessage]);
+      setIsLlmLoading(true);
+      setLlmError(null);
+    }
+
+    // Create placeholder assistant message for streaming
+    const assistantMessageId = generateMessageId();
+    const assistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      isLoading: true,
+    };
+
+    // Add assistant message placeholder to session
+    setChatSessions((prevSessions) =>
+      prevSessions.map((s) =>
+        s.id === requestSessionId
+          ? {
+              ...s,
+              messages: [...s.messages, assistantMessage],
+              isLoading: true,
+              llmError: null,
+            }
+          : s
+      )
+    );
+
+    if (currentChatSessionIdRef.current === requestSessionId) {
+      setChatMessages((prev) => [...prev, assistantMessage]);
       setIsLlmLoading(true);
       setLlmError(null);
     }
@@ -1953,12 +2010,9 @@ const App = (): JSX.Element => {
           DEFAULT_SYSTEM_PROMPTS[0].content;
 
       // Construct messages to be sent to the LLM
-      // The history from sessionForRequest.messages should be added *before* the current userMessage
-      // And the system prompt should be the very first message.
-
       const historyMessages = updatedSessionForRequest
         ? updatedSessionForRequest.messages
-            .filter((m) => m.role === 'user' || m.role === 'assistant') // Only user and assistant messages for history
+            .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.isLoading)) // Exclude loading messages
             .map((m) => ({ role: m.role, content: m.content }))
         : [];
 
@@ -1994,40 +2048,99 @@ const App = (): JSX.Element => {
         model: actualModelName,
         apiKey: providerConfigForRequest.apiKey,
         baseUrl: providerConfigForRequest.baseUrl,
-        requestId: requestSessionId as string, // Safe assertion after null checks above
+        requestId: assistantMessageId, // Use assistant message ID as request ID for streaming
       };
 
-      const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
+      // Setup streaming event listeners
+      const streamStartWrapper = window.llmApi.onStreamEvent('stream-start', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.log('[App] Stream started for request:', data.requestId);
+        }
+      });
 
-      if (response.error) {
-        throw new Error(response.error);
-      }
+      const streamChunkWrapper = window.llmApi.onStreamEvent('stream-chunk', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          // Update the assistant message with the new chunk
+          const updateMessageContent = (messages: ChatMessage[]) =>
+            messages.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: data.fullContent, isLoading: true }
+                : msg
+            );
 
-      const assistantMessage: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: response.content,
-        timestamp: Date.now(),
-      };
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId ? { ...s, messages: updateMessageContent(s.messages) } : s
+            )
+          );
 
-      setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === requestSessionId
-            ? {
-                ...s,
-                messages: [...s.messages, assistantMessage],
-                isLoading: false,
-                llmError: null,
-              }
-            : s
-        )
-      );
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setChatMessages((prev) => updateMessageContent(prev));
+          }
+        }
+      });
 
-      if (currentChatSessionIdRef.current === requestSessionId) {
-        setChatMessages((prev) => [...prev, assistantMessage]);
-        setIsLlmLoading(false);
-        setLlmError(null);
-      }
+      const streamEndWrapper = window.llmApi.onStreamEvent('stream-end', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.log('[App] Stream completed for request:', data.requestId);
+
+          // Mark message as complete
+          const finalizeMessage = (messages: ChatMessage[]) =>
+            messages.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: data.fullContent, isLoading: false }
+                : msg
+            );
+
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId
+                ? { ...s, messages: finalizeMessage(s.messages), isLoading: false, llmError: null }
+                : s
+            )
+          );
+
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setChatMessages((prev) => finalizeMessage(prev));
+            setIsLlmLoading(false);
+            setLlmError(null);
+          }
+
+          // Cleanup listeners
+          window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
+          window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
+          window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
+          window.llmApi.removeStreamListener('stream-error', streamErrorWrapper);
+        }
+      });
+
+      const streamErrorWrapper = window.llmApi.onStreamEvent('stream-error', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.error('[App] Stream error for request:', data.requestId, data.error);
+
+          const err = data.error || 'Failed to get response from LLM.';
+
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
+            )
+          );
+
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setLlmError(err);
+            setIsLlmLoading(false);
+          }
+
+          // Cleanup listeners
+          window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
+          window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
+          window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
+          window.llmApi.removeStreamListener('stream-error', streamErrorWrapper);
+        }
+      });
+
+      // Start the streaming request
+      window.llmApi.sendStreamPrompt(paramsForSendPrompt);
     } catch (e) {
       const err = e instanceof Error ? e.message : 'Failed to get response from LLM.';
       setChatSessions((prevSessions) =>
@@ -2039,8 +2152,6 @@ const App = (): JSX.Element => {
         setLlmError(err);
         setIsLlmLoading(false);
       }
-
-      // Request completed with error
     }
   };
 
@@ -2167,6 +2278,25 @@ const App = (): JSX.Element => {
       return;
     }
 
+    // Cancel any ongoing streaming before retry
+    if (isLlmLoading) {
+      await handleCancelLlmRequest();
+      // Small delay to ensure cancellation is processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    // Clean up any loading messages and finalize them before retry
+    const cleanupLoadingMessages = (messages: ChatMessage[]) =>
+      messages.map((msg) =>
+        msg.isLoading && msg.role === 'assistant'
+          ? {
+              ...msg,
+              isLoading: false,
+              content: msg.content || '_[Response interrupted]_',
+            }
+          : msg
+      );
+
     // Set loading state for the session and globally if active
     // Remove any subsequent messages from the point of retry in the session state
     setChatSessions((prevSessions) =>
@@ -2174,7 +2304,7 @@ const App = (): JSX.Element => {
         s.id === requestSessionId
           ? {
               ...s,
-              messages: s.messages.slice(0, messageToRetryIndex + 1), // Keep messages up to and including the one retried
+              messages: cleanupLoadingMessages(s.messages).slice(0, messageToRetryIndex + 1), // Keep messages up to and including the one retried
               isLoading: true,
               llmError: null,
             }
@@ -2183,7 +2313,9 @@ const App = (): JSX.Element => {
     );
 
     if (currentChatSessionIdRef.current === requestSessionId) {
-      setChatMessages((prevMessages) => prevMessages.slice(0, messageToRetryIndex + 1));
+      setChatMessages((prevMessages) =>
+        cleanupLoadingMessages(prevMessages).slice(0, messageToRetryIndex + 1)
+      );
       setIsLlmLoading(true);
       setLlmError(null);
     }
@@ -2237,36 +2369,24 @@ const App = (): JSX.Element => {
         throw new Error('LLM API bridge (window.llmApi) is not available.');
       }
 
-      const paramsForSendPrompt = {
-        messages: messagesToSend.slice(-20),
-        provider: currentProvider,
-        model: actualModelName,
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
-        requestId: requestSessionId as string, // Safe assertion after null checks above
-      };
-
-      const response = await window.llmApi.sendPrompt(paramsForSendPrompt);
-
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
+      // Create placeholder assistant message for streaming
+      const assistantMessageId = generateMessageId();
       const assistantMessage: ChatMessage = {
-        id: generateMessageId(),
+        id: assistantMessageId,
         role: 'assistant',
-        content: response.content,
+        content: '',
         timestamp: Date.now(),
+        isLoading: true,
       };
 
-      // Append only the new assistant message to the (already sliced) session messages
+      // Append the assistant message placeholder to the (already sliced) session messages
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
           s.id === requestSessionId
             ? {
                 ...s,
                 messages: [...s.messages, assistantMessage],
-                isLoading: false,
+                isLoading: true,
                 llmError: null,
               }
             : s
@@ -2275,9 +2395,116 @@ const App = (): JSX.Element => {
 
       if (currentChatSessionIdRef.current === requestSessionId) {
         setChatMessages((prev) => [...prev, assistantMessage]);
-        setIsLlmLoading(false);
+        setIsLlmLoading(true);
         setLlmError(null);
       }
+
+      const paramsForSendPrompt = {
+        messages: messagesToSend.slice(-20),
+        provider: currentProvider,
+        model: actualModelName,
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+        requestId: assistantMessageId, // Use assistant message ID as request ID
+      };
+
+      // Setup streaming event listeners for retry
+      const retryStreamStartWrapper = window.llmApi.onStreamEvent('stream-start', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.log('[App] Retry stream started for request:', data.requestId);
+        }
+      });
+
+      const retryStreamChunkWrapper = window.llmApi.onStreamEvent('stream-chunk', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          // Update the assistant message with the new chunk
+          const updateRetryMessageContent = (messages: ChatMessage[]) =>
+            messages.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: data.fullContent, isLoading: true }
+                : msg
+            );
+
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId
+                ? { ...s, messages: updateRetryMessageContent(s.messages) }
+                : s
+            )
+          );
+
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setChatMessages((prev) => updateRetryMessageContent(prev));
+          }
+        }
+      });
+
+      const retryStreamEndWrapper = window.llmApi.onStreamEvent('stream-end', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.log('[App] Retry stream completed for request:', data.requestId);
+
+          // Mark message as complete
+          const finalizeRetryMessage = (messages: ChatMessage[]) =>
+            messages.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: data.fullContent, isLoading: false }
+                : msg
+            );
+
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId
+                ? {
+                    ...s,
+                    messages: finalizeRetryMessage(s.messages),
+                    isLoading: false,
+                    llmError: null,
+                  }
+                : s
+            )
+          );
+
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setChatMessages((prev) => finalizeRetryMessage(prev));
+            setIsLlmLoading(false);
+            setLlmError(null);
+          }
+
+          // Cleanup listeners
+          window.llmApi.removeStreamListener('stream-start', retryStreamStartWrapper);
+          window.llmApi.removeStreamListener('stream-chunk', retryStreamChunkWrapper);
+          window.llmApi.removeStreamListener('stream-end', retryStreamEndWrapper);
+          window.llmApi.removeStreamListener('stream-error', retryStreamErrorWrapper);
+        }
+      });
+
+      const retryStreamErrorWrapper = window.llmApi.onStreamEvent('stream-error', (data: any) => {
+        if (data.requestId === assistantMessageId) {
+          console.error('[App] Retry stream error for request:', data.requestId, data.error);
+
+          const err = data.error || 'Failed to get response from LLM on retry.';
+
+          setChatSessions((prevSessions) =>
+            prevSessions.map((s) =>
+              s.id === requestSessionId ? { ...s, llmError: err, isLoading: false } : s
+            )
+          );
+
+          if (currentChatSessionIdRef.current === requestSessionId) {
+            setLlmError(err);
+            setIsLlmLoading(false);
+          }
+
+          // Cleanup listeners
+          window.llmApi.removeStreamListener('stream-start', retryStreamStartWrapper);
+          window.llmApi.removeStreamListener('stream-chunk', retryStreamChunkWrapper);
+          window.llmApi.removeStreamListener('stream-end', retryStreamEndWrapper);
+          window.llmApi.removeStreamListener('stream-error', retryStreamErrorWrapper);
+        }
+      });
+
+      // Start the streaming request for retry
+      window.llmApi.sendStreamPrompt(paramsForSendPrompt);
     } catch (e) {
       const err = e instanceof Error ? e.message : 'Failed to get response from LLM on retry.';
       setChatSessions((prevSessions) =>
@@ -2312,13 +2539,23 @@ const App = (): JSX.Element => {
       return;
     }
 
-    console.log(`[App.tsx] Cancelling LLM request: ${currentChatSessionId}`);
+    // Find the currently loading message in the session to get its ID
+    const currentSession = chatSessions.find((s) => s.id === currentChatSessionId);
+    const loadingMessage = currentSession?.messages.find((m) => m.isLoading);
+
+    if (!loadingMessage) {
+      console.warn('[App.tsx] No loading message found to cancel');
+      return;
+    }
+
+    const requestIdToCancel = loadingMessage.id;
+    console.log(`[App.tsx] Cancelling LLM request: ${requestIdToCancel}`);
 
     try {
       if (window.llmApi?.cancelLlmRequest) {
-        const result = await window.llmApi.cancelLlmRequest(currentChatSessionId);
+        const result = await window.llmApi.cancelLlmRequest(requestIdToCancel);
         if (result.success) {
-          console.log(`[App.tsx] Successfully cancelled request: ${currentChatSessionId}`);
+          console.log(`[App.tsx] Successfully cancelled request: ${requestIdToCancel}`);
         } else {
           console.error(`[App.tsx] Failed to cancel request: ${result.error}`);
         }
@@ -2330,13 +2567,35 @@ const App = (): JSX.Element => {
     // Reset loading state regardless of cancellation success
     setIsLlmLoading(false);
 
-    // Update the current session state
+    // Update the current session state - mark the loading message as cancelled
     if (currentChatSessionId) {
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
-          s.id === currentChatSessionId ? { ...s, isLoading: false, llmError: null } : s
+          s.id === currentChatSessionId
+            ? {
+                ...s,
+                isLoading: false,
+                llmError: null,
+                messages: s.messages.map((m) =>
+                  m.id === requestIdToCancel
+                    ? { ...m, isLoading: false, content: m.content + '\n\n_[Request cancelled]_' }
+                    : m
+                ),
+              }
+            : s
         )
       );
+
+      // Also update the current chat messages if this is the active session
+      if (currentChatSessionIdRef.current === currentChatSessionId) {
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === requestIdToCancel
+              ? { ...m, isLoading: false, content: m.content + '\n\n_[Request cancelled]_' }
+              : m
+          )
+        );
+      }
     }
   };
 
@@ -3355,7 +3614,6 @@ const App = (): JSX.Element => {
             onDeleteSession={deleteChatSession}
             onCreateNewSession={handleCreateNewChat}
             onRetry={handleRetrySendMessage}
-            currentLlmRequestId={currentChatSessionId}
             onCancelLlmRequest={handleCancelLlmRequest}
           />
         )}

@@ -10,6 +10,7 @@ const {
   getAllLlmConfigsFromStore,
   setAllLlmConfigsInStore,
   sendPromptToLlm,
+  sendStreamingPromptToLlm,
   cancelLlmRequestInService,
 } = require('./llmService');
 // GlobalModeExclusion is now in ignore-manager.js
@@ -163,6 +164,30 @@ ipcMain.handle('llm:cancel-request', async (_event, requestId) => {
   } catch (error) {
     console.error('Error cancelling LLM request:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// Streaming LLM handlers
+ipcMain.on('llm:send-stream-prompt', async (event, params) => {
+  try {
+    console.log(
+      '[Main IPC Handler] llm:send-stream-prompt - received params.messages:',
+      JSON.stringify(params.messages, null, 2)
+    );
+
+    // Add webContents to params for streaming communication
+    const streamParams = {
+      ...params,
+      webContents: event.sender,
+    };
+
+    await sendStreamingPromptToLlm(streamParams);
+  } catch (error) {
+    console.error('Error sending streaming prompt to LLM:', error);
+    event.sender.send('llm:stream-error', {
+      requestId: params.requestId,
+      error: error.message,
+    });
   }
 });
 

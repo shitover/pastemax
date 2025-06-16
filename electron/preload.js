@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electron', {
       'debug-file-selection',
       'cancel-directory-loading',
       'set-ignore-mode',
+      'llm:send-stream-prompt',
     ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
@@ -65,6 +66,10 @@ contextBridge.exposeInMainWorld('electron', {
       'file-added',
       'file-updated',
       'file-removed',
+      'llm:stream-start',
+      'llm:stream-chunk',
+      'llm:stream-end',
+      'llm:stream-error',
     ];
     if (validChannels.includes(channel)) {
       // Remove any existing listeners to avoid duplicates
@@ -102,6 +107,10 @@ contextBridge.exposeInMainWorld('electron', {
         'file-added',
         'file-updated',
         'file-removed',
+        'llm:stream-start',
+        'llm:stream-chunk',
+        'llm:stream-end',
+        'llm:stream-error',
       ];
       if (validChannels.includes(channel)) {
         ipcRenderer.removeListener(channel, (event, ...args) => func(...args));
@@ -165,4 +174,49 @@ contextBridge.exposeInMainWorld('llmApi', {
    * @returns A promise that resolves to an object indicating success or failure.
    */
   cancelLlmRequest: (requestId) => ipcRenderer.invoke('llm:cancel-request', requestId),
+
+  /**
+   * Sends a streaming prompt to the LLM
+   * @param {Object} params - Parameters for the prompt
+   * @param {Array} params.messages - Array of message objects with role and content
+   * @param {string} params.requestId - A unique ID for this request
+   * @returns {void} - Sends streaming data via IPC events
+   */
+  sendStreamPrompt: (params) => {
+    console.log(
+      '[Preload] llmApi.sendStreamPrompt - params.messages:',
+      JSON.stringify(params.messages, null, 2)
+    );
+    ipcRenderer.send('llm:send-stream-prompt', ensureSerializable(params));
+  },
+
+  /**
+   * Sets up listeners for streaming LLM events
+   * @param {string} event - The event name ('stream-start', 'stream-chunk', 'stream-end', 'stream-error')
+   * @param {Function} callback - The callback function to handle the event
+   * @returns {Function} - The wrapper function for cleanup
+   */
+  onStreamEvent: (event, callback) => {
+    const channel = `llm:${event}`;
+    const wrapper = (eventObj, ...args) => {
+      try {
+        const serializedArgs = args.map(ensureSerializable);
+        callback(...serializedArgs);
+      } catch (err) {
+        console.error(`Error in streaming IPC handler for channel ${channel}:`, err);
+      }
+    };
+    ipcRenderer.on(channel, wrapper);
+    return wrapper;
+  },
+
+  /**
+   * Removes a streaming event listener
+   * @param {string} event - The event name
+   * @param {Function} wrapper - The wrapper function returned by onStreamEvent
+   */
+  removeStreamListener: (event, wrapper) => {
+    const channel = `llm:${event}`;
+    ipcRenderer.removeListener(channel, wrapper);
+  },
 });

@@ -341,6 +341,38 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
             const text = response.text(); // Helper function to get full text
             return new AIMessage(text); // Return as a Langchain AIMessage
           },
+
+          // Add streaming support for Gemini
+          async stream(langchainMessages, options = {}) {
+            console.log('[LLM Service] Gemini stream method called - simulating streaming');
+
+            // Use the regular invoke method to get the full response
+            const response = await this.invoke(langchainMessages);
+            const fullText = response.content;
+
+            // Create an async generator to simulate streaming
+            async function* streamSimulator() {
+              const chunkSize = 15; // Characters per chunk
+              let currentIndex = 0;
+
+              while (currentIndex < fullText.length) {
+                // Check for abort signal
+                if (options.signal && options.signal.aborted) {
+                  throw new Error('Request aborted');
+                }
+
+                const chunk = fullText.slice(currentIndex, currentIndex + chunkSize);
+                yield new AIMessage(chunk);
+                currentIndex += chunkSize;
+
+                // Add small delay to simulate streaming
+                await new Promise((resolve) => setTimeout(resolve, 30));
+              }
+            }
+
+            return streamSimulator();
+          },
+
           // Add _isChatModel property to satisfy Langchain checks if any part of your code relies on it.
           _isChatModel: true,
         };
@@ -507,6 +539,189 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
 }
 
 /**
+ * Sends a streaming prompt to the specified LLM
+ * @param {Object} params - Parameters for the LLM request
+ * @param {Array} params.messages - Array of message objects
+ * @param {string} params.provider - LLM provider
+ * @param {string} params.model - Model name
+ * @param {string} params.apiKey - API key
+ * @param {string} [params.baseUrl] - Base URL for the API
+ * @param {string} params.requestId - Unique request ID for cancellation
+ * @param {Object} params.webContents - Electron webContents to send stream events
+ * @returns {Promise<void>} Streams response chunks via IPC
+ */
+async function sendStreamingPromptToLlm({
+  messages,
+  provider,
+  model,
+  apiKey,
+  baseUrl,
+  requestId,
+  webContents,
+}) {
+  console.log('[LLM Service] Preparing to send streaming prompt to LLM');
+
+  // Create AbortController for this request
+  const abortController = new AbortController();
+  activeRequests.set(requestId, abortController);
+
+  try {
+    // Notify start of stream
+    webContents.send('llm:stream-start', { requestId });
+
+    // Small delay to ensure UI is ready for streaming
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Get the chat model
+    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
+
+    // Convert messages to Langchain format
+    const langchainMessages = convertToLangchainMessages(messages);
+    console.log(
+      '[LLM Service] Converted',
+      messages.length,
+      'messages to Langchain format for streaming'
+    );
+
+    console.log('[LLM Service] Starting streaming invocation');
+
+    // Check if the model supports streaming with robust detection
+    const hasStreamMethod = typeof chatModel.stream === 'function';
+    let streamingSupported = hasStreamMethod && chatModel.stream !== undefined;
+
+    console.log('[LLM Service] Stream method check:', {
+      hasStreamMethod,
+      streamingSupported,
+      modelType: chatModel.constructor?.name,
+      provider,
+    });
+
+    let fullContent = '';
+
+    if (streamingSupported) {
+      console.log('[LLM Service] Using native streaming support');
+
+      try {
+        // Use streaming with LangChain
+        const stream = await chatModel.stream(langchainMessages, {
+          signal: abortController.signal,
+        });
+
+        for await (const chunk of stream) {
+          if (abortController.signal.aborted) {
+            console.log('[LLM Service] Stream aborted by user');
+            webContents.send('llm:stream-error', {
+              requestId,
+              error: 'Request cancelled by user',
+            });
+            return;
+          }
+
+          const chunkContent = chunk.content || '';
+          if (chunkContent) {
+            fullContent += chunkContent;
+            // Send chunk to renderer
+            webContents.send('llm:stream-chunk', {
+              requestId,
+              chunk: chunkContent,
+              fullContent: fullContent,
+            });
+
+            // Small delay for smooth UI updates
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+        }
+
+        console.log(
+          '[LLM Service] Native stream completed, total length:',
+          fullContent.length,
+          'characters'
+        );
+      } catch (streamError) {
+        console.error(
+          '[LLM Service] Error during native streaming, falling back to simulated streaming:',
+          streamError
+        );
+        streamingSupported = false;
+        fullContent = ''; // Reset for fallback
+      }
+    }
+
+    if (!streamingSupported) {
+      console.log(
+        '[LLM Service] Model does not support streaming or streaming failed, falling back to simulated streaming'
+      );
+
+      // Fallback: Use regular invoke and simulate streaming by splitting the response
+      const response = await chatModel.invoke(langchainMessages, {
+        signal: abortController.signal,
+      });
+
+      fullContent = response.content;
+      const chunkSize = 15; // Characters per chunk (smaller for smoother animation)
+      let currentIndex = 0;
+
+      // Simulate streaming by sending content in chunks
+      while (currentIndex < fullContent.length && !abortController.signal.aborted) {
+        const chunk = fullContent.slice(currentIndex, currentIndex + chunkSize);
+        const accumulatedContent = fullContent.slice(0, currentIndex + chunk.length);
+
+        webContents.send('llm:stream-chunk', {
+          requestId,
+          chunk: chunk,
+          fullContent: accumulatedContent,
+        });
+
+        currentIndex += chunkSize;
+
+        // Add small delay to simulate streaming (faster for better UX)
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      }
+
+      if (abortController.signal.aborted) {
+        webContents.send('llm:stream-error', {
+          requestId,
+          error: 'Request cancelled by user',
+        });
+        return;
+      }
+
+      console.log(
+        '[LLM Service] Simulated stream completed, total length:',
+        fullContent.length,
+        'characters'
+      );
+    }
+
+    // Signal end of stream
+    webContents.send('llm:stream-end', {
+      requestId,
+      fullContent: fullContent,
+    });
+  } catch (error) {
+    console.error('[LLM Service] Error in streaming prompt:', error);
+
+    // Check if the error is due to abortion
+    if (error.name === 'AbortError' || error.message?.includes('abort')) {
+      console.log('[LLM Service] Streaming request was cancelled by user');
+      webContents.send('llm:stream-error', {
+        requestId,
+        error: 'Request cancelled by user',
+        cancelled: true,
+      });
+    } else {
+      webContents.send('llm:stream-error', {
+        requestId,
+        error: error.message || 'Unknown error occurred',
+      });
+    }
+  } finally {
+    // Clean up the active request
+    activeRequests.delete(requestId);
+  }
+}
+
+/**
  * Cancels an active LLM request
  * @param {string} requestId - The ID of the request to cancel
  * @returns {Promise<{success: boolean, error?: string}>} Result of the cancellation
@@ -536,5 +751,6 @@ module.exports = {
   getAllLlmConfigsFromStore,
   setAllLlmConfigsInStore,
   sendPromptToLlm,
+  sendStreamingPromptToLlm,
   cancelLlmRequestInService,
 };
