@@ -246,6 +246,9 @@ const App = (): JSX.Element => {
   });
   const currentChatSessionIdRef = useRef(currentChatSessionId);
 
+  // Map to track stream listeners for cleanup during cancellation
+  const streamListenersMap = useRef<Map<string, Array<() => void>>>(new Map());
+
   useEffect(() => {
     currentChatSessionIdRef.current = currentChatSessionId;
   }, [currentChatSessionId]);
@@ -2050,13 +2053,25 @@ const App = (): JSX.Element => {
         messages: messagesToSend.slice(-20), // Consider message history length
         provider: currentProvider,
         model: actualModelName,
-        apiKey: currentProvider === 'ollama' ? 'dummy' : providerConfigForRequest.apiKey || '',
+        ...(currentProvider !== 'ollama' &&
+          providerConfigForRequest.apiKey && { apiKey: providerConfigForRequest.apiKey }),
         baseUrl: providerConfigForRequest.baseUrl,
         requestId: assistantMessageId, // Use assistant message ID as request ID for streaming
       };
 
       // Clean up any existing listeners first
       console.log('[App] Setting up streaming listeners for request:', assistantMessageId);
+
+      // Create cleanup function to remove all listeners for this request
+      const cleanupListeners = () => {
+        console.log('[App] Cleaning up stream listeners for request:', assistantMessageId);
+        window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
+        window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
+        window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
+        window.llmApi.removeStreamListener('stream-error', streamErrorWrapper);
+        // Remove from map after cleanup
+        streamListenersMap.current.delete(assistantMessageId);
+      };
 
       // Setup streaming event listeners with cleanup tracking
       const streamStartWrapper = window.llmApi.onStreamEvent('stream-start', (data: any) => {
@@ -2114,11 +2129,7 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
-          console.log('[App] Cleaning up stream listeners for completed request:', data.requestId);
-          window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
-          window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
-          window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
-          window.llmApi.removeStreamListener('stream-error', streamErrorWrapper);
+          cleanupListeners();
         }
       });
 
@@ -2140,13 +2151,12 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
-          console.log('[App] Cleaning up stream listeners for errored request:', data.requestId);
-          window.llmApi.removeStreamListener('stream-start', streamStartWrapper);
-          window.llmApi.removeStreamListener('stream-chunk', streamChunkWrapper);
-          window.llmApi.removeStreamListener('stream-end', streamEndWrapper);
-          window.llmApi.removeStreamListener('stream-error', streamErrorWrapper);
+          cleanupListeners();
         }
       });
+
+      // Store cleanup function in map for potential cancellation
+      streamListenersMap.current.set(assistantMessageId, [cleanupListeners]);
 
       // Start the streaming request
       window.llmApi.sendStreamPrompt(paramsForSendPrompt);
@@ -2437,9 +2447,21 @@ const App = (): JSX.Element => {
         messages: messagesToSend.slice(-20),
         provider: currentProvider,
         model: actualModelName,
-        apiKey: effectiveProviderConfig.apiKey || '',
+        ...(currentProvider !== 'ollama' &&
+          effectiveProviderConfig.apiKey && { apiKey: effectiveProviderConfig.apiKey }),
         baseUrl: effectiveProviderConfig.baseUrl,
         requestId: assistantMessageId, // Use assistant message ID as request ID
+      };
+
+      // Create cleanup function to remove all listeners for this retry request
+      const cleanupRetryListeners = () => {
+        console.log('[App] Cleaning up retry stream listeners for request:', assistantMessageId);
+        window.llmApi.removeStreamListener('stream-start', retryStreamStartWrapper);
+        window.llmApi.removeStreamListener('stream-chunk', retryStreamChunkWrapper);
+        window.llmApi.removeStreamListener('stream-end', retryStreamEndWrapper);
+        window.llmApi.removeStreamListener('stream-error', retryStreamErrorWrapper);
+        // Remove from map after cleanup
+        streamListenersMap.current.delete(assistantMessageId);
       };
 
       // Setup streaming event listeners for retry
@@ -2505,10 +2527,7 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
-          window.llmApi.removeStreamListener('stream-start', retryStreamStartWrapper);
-          window.llmApi.removeStreamListener('stream-chunk', retryStreamChunkWrapper);
-          window.llmApi.removeStreamListener('stream-end', retryStreamEndWrapper);
-          window.llmApi.removeStreamListener('stream-error', retryStreamErrorWrapper);
+          cleanupRetryListeners();
         }
       });
 
@@ -2530,12 +2549,12 @@ const App = (): JSX.Element => {
           }
 
           // Cleanup listeners
-          window.llmApi.removeStreamListener('stream-start', retryStreamStartWrapper);
-          window.llmApi.removeStreamListener('stream-chunk', retryStreamChunkWrapper);
-          window.llmApi.removeStreamListener('stream-end', retryStreamEndWrapper);
-          window.llmApi.removeStreamListener('stream-error', retryStreamErrorWrapper);
+          cleanupRetryListeners();
         }
       });
+
+      // Store cleanup function in map for potential cancellation
+      streamListenersMap.current.set(assistantMessageId, [cleanupRetryListeners]);
 
       // Start the streaming request for retry
       window.llmApi.sendStreamPrompt(paramsForSendPrompt);
@@ -2600,6 +2619,15 @@ const App = (): JSX.Element => {
           } else {
             console.error(`[App.tsx] Failed to cancel request: ${result.error}`);
           }
+        }
+
+        // Clean up any associated stream listeners
+        const listenerCleanupFunctions = streamListenersMap.current.get(requestIdToCancel);
+        if (listenerCleanupFunctions) {
+          console.log(
+            `[App.tsx] Cleaning up ${listenerCleanupFunctions.length} stream listeners for cancelled request: ${requestIdToCancel}`
+          );
+          listenerCleanupFunctions.forEach((cleanupFn) => cleanupFn());
         }
       } catch (error) {
         console.error('[App.tsx] Error cancelling LLM request:', error);

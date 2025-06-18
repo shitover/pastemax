@@ -150,8 +150,14 @@ async function setAllLlmConfigsInStore(configs) {
  * @returns {Promise<ChatOpenAI|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI|ChatGroq>}
  */
 async function getChatModel(provider, modelName, apiKey, baseUrl) {
-  if (!provider || !apiKey || !modelName) {
-    throw new Error('LLM provider, API key, and Model Name are required to getChatModel.');
+  // Validate required parameters
+  if (!provider || !modelName) {
+    throw new Error('LLM provider and Model Name are required to getChatModel.');
+  }
+
+  // Validate API key for providers that require it
+  if (provider !== 'ollama' && !apiKey) {
+    throw new Error(`API key is required for provider: ${provider}`);
   }
 
   console.log(
@@ -481,6 +487,7 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
                 model: modelName,
                 ollamaUrl,
                 requestId: 'stream-' + Date.now(),
+                signal: options?.signal,
                 onChunk: (chunk) => {
                   chunks.push({
                     content: chunk,
@@ -552,7 +559,7 @@ function convertToLangchainMessages(messages) {
  * @param {Array} params.messages - Array of message objects
  * @param {string} params.provider - LLM provider
  * @param {string} params.model - Model name
- * @param {string} params.apiKey - API key
+ * @param {string} [params.apiKey] - API key (not required for Ollama)
  * @param {string} [params.baseUrl] - Base URL for the API
  * @param {string} params.requestId - Unique request ID for cancellation
  * @returns {Promise<Object>} Response from the LLM
@@ -565,11 +572,13 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
   activeRequests.set(requestId, abortController);
 
   try {
-    // For Ollama, handle special case where API key is not required
-    const effectiveApiKey = provider === 'ollama' ? 'dummy' : apiKey;
+    // Validate that API key is provided for providers that require it
+    if (provider !== 'ollama' && !apiKey) {
+      throw new Error(`API key is required for provider: ${provider}`);
+    }
 
     // Get the chat model
-    const chatModel = await getChatModel(provider, model, effectiveApiKey, baseUrl);
+    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
 
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);
@@ -624,11 +633,11 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
 
 /**
  * Sends a streaming prompt to the specified LLM
- * @param {Object} params - Parameters for the LLM request
+ * @param {Object} params - Parameters for the streaming LLM request
  * @param {Array} params.messages - Array of message objects
  * @param {string} params.provider - LLM provider
  * @param {string} params.model - Model name
- * @param {string} params.apiKey - API key
+ * @param {string} [params.apiKey] - API key (not required for Ollama)
  * @param {string} [params.baseUrl] - Base URL for the API
  * @param {string} params.requestId - Unique request ID for cancellation
  * @param {Object} params.webContents - Electron webContents to send stream events
@@ -656,8 +665,10 @@ async function sendStreamingPromptToLlm({
     // Small delay to ensure UI is ready for streaming
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // For Ollama, handle special case where API key is not required
-    const effectiveApiKey = provider === 'ollama' ? 'dummy' : apiKey;
+    // Validate that API key is provided for providers that require it
+    if (provider !== 'ollama' && !apiKey) {
+      throw new Error(`API key is required for provider: ${provider}`);
+    }
 
     // Special handling for Ollama streaming
     if (provider === 'ollama') {
@@ -679,6 +690,7 @@ async function sendStreamingPromptToLlm({
         model: modelName,
         ollamaUrl,
         requestId,
+        signal: abortController.signal,
         onChunk: (chunk) => {
           if (abortController.signal.aborted) {
             return;
@@ -710,7 +722,7 @@ async function sendStreamingPromptToLlm({
           webContents.send('llm:stream-error', {
             requestId,
             error: error.message || 'Ollama streaming error',
-            cancelled: false,
+            cancelled: error.message === 'Request cancelled',
           });
         },
       });
@@ -718,8 +730,8 @@ async function sendStreamingPromptToLlm({
       return; // Exit early for Ollama
     }
 
-    // Get the chat model
-    const chatModel = await getChatModel(provider, model, effectiveApiKey, baseUrl);
+    // Get the chat model for non-Ollama providers
+    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
 
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);

@@ -168,28 +168,30 @@ ipcMain.handle('llm:cancel-request', async (_event, requestId) => {
 });
 
 // Streaming LLM handlers
-ipcMain.on('llm:send-stream-prompt', async (event, params) => {
-  try {
-    console.log(
-      '[Main IPC Handler] llm:send-stream-prompt - received params.messages:',
-      JSON.stringify(params.messages, null, 2)
-    );
+if (!ipcMain.eventNames().includes('llm:send-stream-prompt')) {
+  ipcMain.on('llm:send-stream-prompt', async (event, params) => {
+    try {
+      console.log(
+        '[Main IPC Handler] llm:send-stream-prompt - received params.messages:',
+        JSON.stringify(params.messages, null, 2)
+      );
 
-    // Add webContents to params for streaming communication
-    const streamParams = {
-      ...params,
-      webContents: event.sender,
-    };
+      // Add webContents to params for streaming communication
+      const streamParams = {
+        ...params,
+        webContents: event.sender,
+      };
 
-    await sendStreamingPromptToLlm(streamParams);
-  } catch (error) {
-    console.error('Error sending streaming prompt to LLM:', error);
-    event.sender.send('llm:stream-error', {
-      requestId: params.requestId,
-      error: error.message,
-    });
-  }
-});
+      await sendStreamingPromptToLlm(streamParams);
+    } catch (error) {
+      console.error('Error sending streaming prompt to LLM:', error);
+      event.sender.send('llm:stream-error', {
+        requestId: params.requestId,
+        error: error.message,
+      });
+    }
+  });
+}
 
 ipcMain.handle('check-for-updates', async (event) => {
   console.log("Main Process: IPC 'check-for-updates' handler INVOKED.");
@@ -208,71 +210,77 @@ ipcMain.handle('check-for-updates', async (event) => {
   }
 });
 
-ipcMain.on('clear-main-cache', () => {
-  console.log('Clearing main process caches');
-  clearIgnoreCaches();
-  clearFileCaches();
-  console.log('Main process caches cleared');
-});
+if (!ipcMain.eventNames().includes('clear-main-cache')) {
+  ipcMain.on('clear-main-cache', () => {
+    console.log('Clearing main process caches');
+    clearIgnoreCaches();
+    clearFileCaches();
+    console.log('Main process caches cleared');
+  });
+}
 
-ipcMain.on('clear-ignore-cache', () => {
-  console.log('Clearing ignore cache due to ignore settings change');
-  clearIgnoreCaches();
-});
+if (!ipcMain.eventNames().includes('clear-ignore-cache')) {
+  ipcMain.on('clear-ignore-cache', () => {
+    console.log('Clearing ignore cache due to ignore settings change');
+    clearIgnoreCaches();
+  });
+}
 
 // --- WSL-aware folder picker ---
 const { exec } = require('child_process');
 const { isWSLPath } = require('./utils.js');
-ipcMain.on('open-folder', async (event, arg) => {
-  let defaultPath = undefined;
-  let lastSelectedFolder = arg && arg.lastSelectedFolder ? arg.lastSelectedFolder : undefined;
+if (!ipcMain.eventNames().includes('open-folder')) {
+  ipcMain.on('open-folder', async (event, arg) => {
+    let defaultPath = undefined;
+    let lastSelectedFolder = arg && arg.lastSelectedFolder ? arg.lastSelectedFolder : undefined;
 
-  // Only attempt WSL detection on Windows
-  if (process.platform === 'win32') {
-    try {
-      // List WSL distributions
-      const wslList = await new Promise((resolve) => {
-        exec('wsl.exe --list --quiet', { timeout: 2000 }, (err, stdout) => {
-          if (err || !stdout) return resolve([]);
-          const distros = stdout
-            .split('\n')
-            .map((d) => d.trim())
-            .filter((d) => d.length > 0);
-          resolve(distros);
+    // Only attempt WSL detection on Windows
+    if (process.platform === 'win32') {
+      try {
+        // List WSL distributions
+        const wslList = await new Promise((resolve) => {
+          exec('wsl.exe --list --quiet', { timeout: 2000 }, (err, stdout) => {
+            if (err || !stdout) return resolve([]);
+            const distros = stdout
+              .split('\n')
+              .map((d) => d.trim())
+              .filter((d) => d.length > 0);
+            resolve(distros);
+          });
         });
-      });
 
-      // Only set defaultPath to \\wsl$\ if last selected folder was a WSL path
-      if (
-        Array.isArray(wslList) &&
-        wslList.length > 0 &&
-        lastSelectedFolder &&
-        isWSLPath(lastSelectedFolder)
-      ) {
-        defaultPath = '\\\\wsl$\\';
+        // Only set defaultPath to \\wsl$\ if last selected folder was a WSL path
+        if (
+          Array.isArray(wslList) &&
+          wslList.length > 0 &&
+          lastSelectedFolder &&
+          isWSLPath(lastSelectedFolder)
+        ) {
+          defaultPath = '\\\\wsl$\\';
+        }
+      } catch (e) {
+        // Ignore errors, fallback to default dialog
       }
-    } catch (e) {
-      // Ignore errors, fallback to default dialog
     }
-  }
 
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    defaultPath,
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      defaultPath,
+    });
+
+    if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
+      const rawPath = result.filePaths[0];
+      const normalizedPath = normalizePath(rawPath);
+      try {
+        console.log('Sending folder-selected event with normalized path:', normalizedPath);
+        event.sender.send('folder-selected', normalizedPath);
+      } catch (err) {
+        console.error('Error sending folder-selected event:', err);
+        event.sender.send('folder-selected', normalizedPath);
+      }
+    }
   });
-
-  if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
-    const rawPath = result.filePaths[0];
-    const normalizedPath = normalizePath(rawPath);
-    try {
-      console.log('Sending folder-selected event with normalized path:', normalizedPath);
-      event.sender.send('folder-selected', normalizedPath);
-    } catch (err) {
-      console.error('Error sending folder-selected event:', err);
-      event.sender.send('folder-selected', normalizedPath);
-    }
-  }
-});
+}
 
 if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
   ipcMain.handle(
@@ -333,13 +341,17 @@ if (!ipcMain.eventNames().includes('get-ignore-patterns')) {
   );
 }
 
-ipcMain.on('cancel-directory-loading', (event) => {
-  cancelDirectoryLoading(BrowserWindow.fromWebContents(event.sender));
-});
+if (!ipcMain.eventNames().includes('cancel-directory-loading')) {
+  ipcMain.on('cancel-directory-loading', (event) => {
+    cancelDirectoryLoading(BrowserWindow.fromWebContents(event.sender));
+  });
+}
 
-ipcMain.on('debug-file-selection', (event, data) => {
-  console.log('DEBUG - File Selection:', data);
-});
+if (!ipcMain.eventNames().includes('debug-file-selection')) {
+  ipcMain.on('debug-file-selection', (event, data) => {
+    console.log('DEBUG - File Selection:', data);
+  });
+}
 
 if (!ipcMain.eventNames().includes('set-ignore-mode')) {
   /**
@@ -385,163 +397,165 @@ ipcMain.handle('get-token-count', async (event, textToTokenize) => {
   }
 });
 
-ipcMain.on('request-file-list', async (event, payload) => {
-  console.log('Received request-file-list payload:', payload); // Log the entire payload
+if (!ipcMain.eventNames().includes('request-file-list')) {
+  ipcMain.on('request-file-list', async (event, payload) => {
+    console.log('Received request-file-list payload:', payload); // Log the entire payload
 
-  // Always clear file caches before scanning
-  clearFileCaches();
+    // Always clear file caches before scanning
+    clearFileCaches();
 
-  if (isLoadingDirectory) {
-    console.log('Already processing a directory, ignoring new request for:', payload);
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (window && window.webContents && !window.webContents.isDestroyed()) {
-      window.webContents.send('file-processing-status', {
-        status: 'busy',
-        message: 'Already processing another directory. Please wait.',
-      });
-    }
-    return;
-  }
-
-  try {
-    isLoadingDirectory = true;
-    startFileProcessing(); // Start file processor state
-    setupDirectoryLoadingTimeout(BrowserWindow.fromWebContents(event.sender), payload.folderPath);
-
-    event.sender.send('file-processing-status', {
-      status: 'processing',
-      message: 'Scanning directory structure... (Press ESC to cancel)',
-    });
-
-    currentProgress = { directories: 0, files: 0 };
-
-    // Clear ignore cache if ignore settings were modified
-    if (payload.ignoreSettingsModified) {
-      console.log('Clearing ignore cache due to modified ignore settings');
-      clearIgnoreCaches();
-    }
-
-    console.log(
-      `Loading ignore patterns for: ${payload.folderPath} in mode: ${payload.ignoreMode}`
-    );
-    let ignoreFilter;
-    if (payload.ignoreMode === 'global') {
-      console.log('Using global ignore filter with custom ignores:', payload.customIgnores);
-      ignoreFilter = createGlobalIgnoreFilter(payload.customIgnores);
-    } else {
-      // Default to automatic
-      console.log('Using automatic ignore filter (loading .gitignore)');
-      ignoreFilter = await loadAutomaticModeIgnoreFilter(
-        payload.folderPath,
-        BrowserWindow.fromWebContents(event.sender)
-      );
-    }
-    if (!ignoreFilter) {
-      throw new Error('Failed to load ignore patterns');
-    }
-    console.log('Ignore patterns loaded successfully');
-
-    const { results: files } = await readFilesRecursively(
-      payload.folderPath,
-      payload.folderPath, // rootDir is the same as the initial dir for top-level call
-      ignoreFilter,
-      BrowserWindow.fromWebContents(event.sender),
-      currentProgress,
-      payload.folderPath, // currentDir is also the same for top-level
-      payload?.ignoreMode ?? currentIgnoreMode,
-      null, // fileQueue
-      watcher.shutdownWatcher,
-      watcher.initializeWatcher
-    );
-
-    if (!isLoadingDirectory) {
+    if (isLoadingDirectory) {
+      console.log('Already processing a directory, ignoring new request for:', payload);
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (window && window.webContents && !window.webContents.isDestroyed()) {
+        window.webContents.send('file-processing-status', {
+          status: 'busy',
+          message: 'Already processing another directory. Please wait.',
+        });
+      }
       return;
     }
 
-    if (loadingTimeoutId) {
-      clearTimeout(loadingTimeoutId);
-      loadingTimeoutId = null;
-    }
-    stopFileProcessing(); // Stop file processor state
-    isLoadingDirectory = false;
+    try {
+      isLoadingDirectory = true;
+      startFileProcessing(); // Start file processor state
+      setupDirectoryLoadingTimeout(BrowserWindow.fromWebContents(event.sender), payload.folderPath);
 
-    event.sender.send('file-processing-status', {
-      status: 'complete',
-      message: `Found ${files.length} files`,
-    });
-
-    const serializedFiles = files
-      .filter((file) => {
-        if (typeof file?.path !== 'string') {
-          console.warn('Invalid file object in files array:', file);
-          return false;
-        }
-        return true;
-      })
-      .map((file) => {
-        return {
-          path: file.path,
-          relativePath: file.relativePath,
-          name: file.name,
-          size: file.size,
-          isDirectory: file.isDirectory,
-          extension: path.extname(file.name).toLowerCase(),
-          excluded: isPathExcludedByDefaults(
-            file.path,
-            payload.folderPath,
-            payload.ignoreMode ?? currentIgnoreMode
-          ),
-          content: file.content,
-          tokenCount: file.tokenCount,
-          isBinary: file.isBinary,
-          isSkipped: file.isSkipped,
-          error: file.error,
-        };
+      event.sender.send('file-processing-status', {
+        status: 'processing',
+        message: 'Scanning directory structure... (Press ESC to cancel)',
       });
 
-    event.sender.send('file-list-data', serializedFiles);
+      currentProgress = { directories: 0, files: 0 };
 
-    // After sending file-list-data, start watcher for the root folder
-    // Use the same ignoreFilter as used for the scan
-    // Pass rootDir as payload.folderPath
-    watcher.initializeWatcher(
-      payload.folderPath, // rootDir
-      BrowserWindow.fromWebContents(event.sender),
-      ignoreFilter,
-      // For defaultIgnoreFilterInstance, use the system default filter
-      require('./ignore-manager.js').systemDefaultFilter,
-      // processSingleFileCallback
-      (filePath) =>
-        require('./file-processor.js').processSingleFile(
-          filePath,
+      // Clear ignore cache if ignore settings were modified
+      if (payload.ignoreSettingsModified) {
+        console.log('Clearing ignore cache due to modified ignore settings');
+        clearIgnoreCaches();
+      }
+
+      console.log(
+        `Loading ignore patterns for: ${payload.folderPath} in mode: ${payload.ignoreMode}`
+      );
+      let ignoreFilter;
+      if (payload.ignoreMode === 'global') {
+        console.log('Using global ignore filter with custom ignores:', payload.customIgnores);
+        ignoreFilter = createGlobalIgnoreFilter(payload.customIgnores);
+      } else {
+        // Default to automatic
+        console.log('Using automatic ignore filter (loading .gitignore)');
+        ignoreFilter = await loadAutomaticModeIgnoreFilter(
           payload.folderPath,
-          ignoreFilter,
-          payload?.ignoreMode ?? currentIgnoreMode
-        )
-    );
-  } catch (err) {
-    console.error('Error processing file list:', err);
-    stopFileProcessing(); // Stop file processor state
-    isLoadingDirectory = false;
+          BrowserWindow.fromWebContents(event.sender)
+        );
+      }
+      if (!ignoreFilter) {
+        throw new Error('Failed to load ignore patterns');
+      }
+      console.log('Ignore patterns loaded successfully');
 
-    if (loadingTimeoutId) {
-      clearTimeout(loadingTimeoutId);
-      loadingTimeoutId = null;
-    }
+      const { results: files } = await readFilesRecursively(
+        payload.folderPath,
+        payload.folderPath, // rootDir is the same as the initial dir for top-level call
+        ignoreFilter,
+        BrowserWindow.fromWebContents(event.sender),
+        currentProgress,
+        payload.folderPath, // currentDir is also the same for top-level
+        payload?.ignoreMode ?? currentIgnoreMode,
+        null, // fileQueue
+        watcher.shutdownWatcher,
+        watcher.initializeWatcher
+      );
 
-    event.sender.send('file-processing-status', {
-      status: 'error',
-      message: `Error: ${err.message}`,
-    });
-  } finally {
-    stopFileProcessing(); // Ensure file processor state is reset
-    isLoadingDirectory = false;
-    if (loadingTimeoutId) {
-      clearTimeout(loadingTimeoutId);
-      loadingTimeoutId = null;
+      if (!isLoadingDirectory) {
+        return;
+      }
+
+      if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+        loadingTimeoutId = null;
+      }
+      stopFileProcessing(); // Stop file processor state
+      isLoadingDirectory = false;
+
+      event.sender.send('file-processing-status', {
+        status: 'complete',
+        message: `Found ${files.length} files`,
+      });
+
+      const serializedFiles = files
+        .filter((file) => {
+          if (typeof file?.path !== 'string') {
+            console.warn('Invalid file object in files array:', file);
+            return false;
+          }
+          return true;
+        })
+        .map((file) => {
+          return {
+            path: file.path,
+            relativePath: file.relativePath,
+            name: file.name,
+            size: file.size,
+            isDirectory: file.isDirectory,
+            extension: path.extname(file.name).toLowerCase(),
+            excluded: isPathExcludedByDefaults(
+              file.path,
+              payload.folderPath,
+              payload.ignoreMode ?? currentIgnoreMode
+            ),
+            content: file.content,
+            tokenCount: file.tokenCount,
+            isBinary: file.isBinary,
+            isSkipped: file.isSkipped,
+            error: file.error,
+          };
+        });
+
+      event.sender.send('file-list-data', serializedFiles);
+
+      // After sending file-list-data, start watcher for the root folder
+      // Use the same ignoreFilter as used for the scan
+      // Pass rootDir as payload.folderPath
+      watcher.initializeWatcher(
+        payload.folderPath, // rootDir
+        BrowserWindow.fromWebContents(event.sender),
+        ignoreFilter,
+        // For defaultIgnoreFilterInstance, use the system default filter
+        require('./ignore-manager.js').systemDefaultFilter,
+        // processSingleFileCallback
+        (filePath) =>
+          require('./file-processor.js').processSingleFile(
+            filePath,
+            payload.folderPath,
+            ignoreFilter,
+            payload?.ignoreMode ?? currentIgnoreMode
+          )
+      );
+    } catch (err) {
+      console.error('Error processing file list:', err);
+      stopFileProcessing(); // Stop file processor state
+      isLoadingDirectory = false;
+
+      if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+        loadingTimeoutId = null;
+      }
+
+      event.sender.send('file-processing-status', {
+        status: 'error',
+        message: `Error: ${err.message}`,
+      });
+    } finally {
+      stopFileProcessing(); // Ensure file processor state is reset
+      isLoadingDirectory = false;
+      if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+        loadingTimeoutId = null;
+      }
     }
-  }
-});
+  });
+}
 
 // Handle fetch-models request from renderer
 ipcMain.handle('fetch-models', async () => {

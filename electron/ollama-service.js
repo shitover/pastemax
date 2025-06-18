@@ -11,6 +11,49 @@ const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 const OLLAMA_API_TIMEOUT = 30000; // 30 seconds
 
 /**
+ * Fetch with timeout using AbortController
+ * @param {string} url - The URL to fetch
+ * @param {Object} options - Fetch options
+ * @param {number} timeout - Timeout in milliseconds
+ * @param {AbortSignal} [externalSignal] - External abort signal for cancellation
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, options = {}, timeout = 5000, externalSignal = null) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  // If external signal is provided, abort our controller when it's aborted
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      clearTimeout(timeoutId);
+      throw new Error('Request cancelled');
+    }
+    externalSignal.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    });
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      if (externalSignal && externalSignal.aborted) {
+        throw new Error('Request cancelled');
+      }
+      throw new Error(`Request timed out after ${timeout}ms`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Check if Ollama is installed and running
  * @returns {Promise<{isInstalled: boolean, isRunning: boolean, url: string, error?: string}>}
  */
@@ -75,10 +118,13 @@ async function checkOllamaInstalled() {
  */
 async function checkOllamaRunning(ollamaUrl) {
   try {
-    const response = await fetch(`${ollamaUrl}/api/tags`, {
-      method: 'GET',
-      timeout: 5000,
-    });
+    const response = await fetchWithTimeout(
+      `${ollamaUrl}/api/tags`,
+      {
+        method: 'GET',
+      },
+      5000
+    );
     return response.ok;
   } catch (error) {
     console.log('Ollama service not running:', error.message);
@@ -95,10 +141,13 @@ async function fetchOllamaModels(ollamaUrl = DEFAULT_OLLAMA_URL) {
   try {
     console.log('Fetching Ollama models from:', ollamaUrl);
 
-    const response = await fetch(`${ollamaUrl}/api/tags`, {
-      method: 'GET',
-      timeout: OLLAMA_API_TIMEOUT,
-    });
+    const response = await fetchWithTimeout(
+      `${ollamaUrl}/api/tags`,
+      {
+        method: 'GET',
+      },
+      OLLAMA_API_TIMEOUT
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
@@ -148,21 +197,24 @@ async function sendOllamaRequest({ messages, model, ollamaUrl = DEFAULT_OLLAMA_U
 
     console.log(`Sending request to Ollama model: ${modelName}`);
 
-    const response = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelName,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
+    const response = await fetchWithTimeout(
+      `${ollamaUrl}/api/generate`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      }),
-      timeout: OLLAMA_API_TIMEOUT,
-    });
+        body: JSON.stringify({
+          model: modelName,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: 0.7,
+          },
+        }),
+      },
+      OLLAMA_API_TIMEOUT
+    );
 
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
@@ -185,6 +237,7 @@ async function sendOllamaRequest({ messages, model, ollamaUrl = DEFAULT_OLLAMA_U
  * Send a streaming chat request to Ollama
  * @param {Object} params - Chat parameters
  * @param {Function} onChunk - Callback for streaming chunks
+ * @param {AbortSignal} [params.signal] - AbortSignal for cancellation
  * @returns {Promise<void>}
  */
 async function sendOllamaStreamRequest({
@@ -195,6 +248,7 @@ async function sendOllamaStreamRequest({
   onChunk,
   onEnd,
   onError,
+  signal,
 }) {
   try {
     const prompt = convertMessagesToOllamaFormat(messages);
@@ -202,20 +256,32 @@ async function sendOllamaStreamRequest({
 
     console.log(`Sending streaming request to Ollama model: ${modelName}`);
 
-    const response = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelName,
-        prompt: prompt,
-        stream: true,
-        options: {
-          temperature: 0.7,
+    // Check if already cancelled before starting
+    if (signal && signal.aborted) {
+      console.log('[Ollama Service] Request cancelled before starting');
+      onError(new Error('Request cancelled'));
+      return;
+    }
+
+    const response = await fetchWithTimeout(
+      `${ollamaUrl}/api/generate`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          model: modelName,
+          prompt: prompt,
+          stream: true,
+          options: {
+            temperature: 0.7,
+          },
+        }),
+      },
+      OLLAMA_API_TIMEOUT,
+      signal
+    );
 
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
@@ -225,11 +291,27 @@ async function sendOllamaStreamRequest({
     let buffer = '';
 
     reader.on('data', (chunk) => {
+      // Check if request was cancelled
+      if (signal && signal.aborted) {
+        console.log('[Ollama Service] Streaming cancelled, destroying reader');
+        reader.destroy();
+        onError(new Error('Request cancelled'));
+        return;
+      }
+
       buffer += chunk.toString();
       const lines = buffer.split('\n');
       buffer = lines.pop(); // Keep the incomplete line in buffer
 
       for (const line of lines) {
+        // Check cancellation again before processing each line
+        if (signal && signal.aborted) {
+          console.log('[Ollama Service] Streaming cancelled during line processing');
+          reader.destroy();
+          onError(new Error('Request cancelled'));
+          return;
+        }
+
         if (line.trim()) {
           try {
             const data = JSON.parse(line);
@@ -248,12 +330,31 @@ async function sendOllamaStreamRequest({
     });
 
     reader.on('end', () => {
-      onEnd();
+      if (signal && signal.aborted) {
+        console.log('[Ollama Service] Stream ended due to cancellation');
+        onError(new Error('Request cancelled'));
+      } else {
+        onEnd();
+      }
     });
 
     reader.on('error', (error) => {
-      onError(error);
+      if (signal && signal.aborted) {
+        console.log('[Ollama Service] Stream error due to cancellation');
+        onError(new Error('Request cancelled'));
+      } else {
+        onError(error);
+      }
     });
+
+    // Handle external cancellation
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        console.log('[Ollama Service] Abort signal received, destroying stream');
+        reader.destroy();
+        onError(new Error('Request cancelled'));
+      });
+    }
   } catch (error) {
     console.error('Error sending Ollama streaming request:', error);
     onError(error);
@@ -307,23 +408,31 @@ function formatBytes(bytes) {
  */
 async function startOllamaService() {
   return new Promise((resolve) => {
-    if (os.platform() === 'win32') {
-      exec('ollama serve', (error, stdout, stderr) => {
-        if (error) {
-          resolve({ success: false, error: error.message });
-        } else {
-          resolve({ success: true });
-        }
+    try {
+      console.log('[Ollama Service] Starting Ollama server as detached process...');
+
+      // Start ollama serve as a detached background process
+      const child = spawn('ollama', ['serve'], {
+        detached: true, // Allow the process to continue running independently
+        stdio: 'ignore', // Don't pipe stdout/stderr (run silently)
       });
-    } else {
-      // For macOS and Linux
-      exec('ollama serve', (error, stdout, stderr) => {
-        if (error) {
-          resolve({ success: false, error: error.message });
-        } else {
-          resolve({ success: true });
-        }
+
+      // Unref the child process so the parent can exit independently
+      child.unref();
+
+      // Handle spawn errors (e.g., ollama not found)
+      child.on('error', (error) => {
+        console.error('[Ollama Service] Failed to start Ollama server:', error.message);
+        resolve({ success: false, error: error.message });
       });
+
+      // If spawn succeeds, resolve immediately
+      // The server will run in the background
+      console.log('[Ollama Service] Ollama server started with PID:', child.pid);
+      resolve({ success: true });
+    } catch (error) {
+      console.error('[Ollama Service] Error starting Ollama service:', error);
+      resolve({ success: false, error: error.message });
     }
   });
 }

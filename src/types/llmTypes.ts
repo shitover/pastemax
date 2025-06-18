@@ -89,7 +89,7 @@ export interface LlmApiWindow {
       messages: { role: MessageRole; content: string }[];
       provider: LlmProvider;
       model: string;
-      apiKey: string;
+      apiKey?: string;
       baseUrl?: string | null;
       requestId: string;
     }) => Promise<{ content: string; provider?: string; error?: string; cancelled?: boolean }>;
@@ -103,7 +103,7 @@ export interface LlmApiWindow {
       messages: { role: MessageRole; content: string }[];
       provider: LlmProvider;
       model: string;
-      apiKey: string;
+      apiKey?: string;
       baseUrl?: string | null;
       requestId: string;
     }) => void;
