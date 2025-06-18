@@ -851,3 +851,86 @@
   margin-right: 0;
   width: auto;
 }
+
+/* View Toggle Section */
+.view-toggle-section {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+  background: var(--background-hover);
+  color: var(--text-primary);
+}
+
+.view-toggle-btn.active {
+  background: var(--accent-color);
+  color: var(--background-primary);
+  border-color: var(--accent-color);
+}
+
+.view-toggle-btn.active:hover {
+  background: var(--accent-color-hover);
+  border-color: var(--accent-color-hover);
+}
+
+/* Save Conversation Button */
+.save-conversation-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--accent-color);
+  color: var(--background-primary);
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.save-conversation-btn:hover {
+  background: var(--accent-color-hover);
+  transform: translateY(-1px);
+}
+
+.save-conversation-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .view-toggle-section {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .view-toggle-btn {
+    justify-content: center;
+    padding: 10px 16px;
+  }
+
+  .save-conversation-btn {
+    margin-left: 0;
+    margin-top: 8px;
+    justify-content: center;
+  }
+}

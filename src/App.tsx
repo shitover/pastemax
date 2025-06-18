@@ -322,6 +322,36 @@ const App = (): JSX.Element => {
 
   const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
 
+  // Prompt Library State
+  const [promptLibraryEntries, setPromptLibraryEntries] = useState<any[]>([]);
+  const [promptCategories] = useState([
+    { id: 'general', name: 'General', isDefault: true },
+    { id: 'development', name: 'Development', isDefault: true },
+    { id: 'analysis', name: 'Analysis', isDefault: true },
+  ]);
+
+  // Prompt Library Handlers
+  const handleCreatePromptEntry = (entry: any) => {
+    setPromptLibraryEntries((prev) => [...prev, { ...entry, id: generateId('prompt_') }]);
+  };
+  const handleEditPromptEntry = (entry: any) => {
+    setPromptLibraryEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
+  };
+  const handleDeletePromptEntry = (entryId: string) => {
+    setPromptLibraryEntries((prev) => prev.filter((e) => e.id !== entryId));
+  };
+  const handleTogglePromptFavorite = (entryId: string) => {
+    setPromptLibraryEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, isFavorite: !e.isFavorite } : e))
+    );
+  };
+  const handleUsePrompt = (entry: any) => {
+    if (entry.prompt) handleSendMessage(entry.prompt);
+  };
+  const handleCopyPrompt = (entry: any) => {
+    navigator.clipboard.writeText(entry.prompt || '');
+  };
+
   useEffect(() => {
     try {
       const sm = localStorage.getItem('pastemax-recent-models');
@@ -3703,6 +3733,14 @@ const App = (): JSX.Element => {
             onCreateNewSession={handleCreateNewChat}
             onRetry={handleRetrySendMessage}
             onCancelLlmRequest={handleCancelLlmRequest}
+            promptLibraryEntries={promptLibraryEntries}
+            promptCategories={promptCategories}
+            onCreatePromptEntry={handleCreatePromptEntry}
+            onEditPromptEntry={handleEditPromptEntry}
+            onDeletePromptEntry={handleDeletePromptEntry}
+            onTogglePromptFavorite={handleTogglePromptFavorite}
+            onUsePrompt={handleUsePrompt}
+            onCopyPrompt={handleCopyPrompt}
           />
         )}
         {isSystemPromptEditorOpen && (

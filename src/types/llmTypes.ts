@@ -154,3 +154,62 @@ export interface SystemPrompt {
   content: string;
   isDefault?: boolean; // Optional: to identify if it's a non-deletable/non-editable-name default prompt
 }
+
+/**
+ * Interface for saved prompt entries in the prompt library
+ */
+export interface PromptLibraryEntry {
+  id: string;
+  title: string;
+  description?: string;
+  prompt: string;
+  response?: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+  modelUsed?: string;
+  provider?: LlmProvider;
+  isFavorite?: boolean;
+  isPrivate?: boolean;
+  category?: string;
+  tokenCount?: number;
+}
+
+/**
+ * Interface for prompt library categories
+ */
+export interface PromptCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  isDefault?: boolean;
+}
+
+/**
+ * Type for prompt library view modes
+ */
+export type PromptLibraryViewMode = 'chat' | 'library';
+
+/**
+ * Interface for prompt library filter options
+ */
+export interface PromptLibraryFilter {
+  category?: string;
+  tags?: string[];
+  favorite?: boolean;
+  provider?: LlmProvider;
+  searchQuery?: string;
+  dateRange?: {
+    start: number;
+    end: number;
+  };
+}
+
+/**
+ * Interface for prompt library sort options
+ */
+export interface PromptLibrarySortOption {
+  field: 'createdAt' | 'updatedAt' | 'title' | 'tokenCount' | 'category';
+  order: 'asc' | 'desc';
+}
