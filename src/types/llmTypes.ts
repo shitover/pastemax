@@ -1,7 +1,14 @@
 /**
  * Type for LLM provider
  */
-export type LlmProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral';
+export type LlmProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'groq'
+  | 'openrouter'
+  | 'mistral'
+  | 'ollama';
 
 /**
  * OLD Interface for LLM configuration - Used by existing IPC, to be phased out.
@@ -15,6 +22,9 @@ export interface ProviderSpecificConfig {
   apiKey: string | null;
   defaultModel?: string | null;
   baseUrl?: string | null;
+  // Ollama-specific configurations
+  ollamaUrl?: string | null; // For custom Ollama installations
+  isLocal?: boolean; // Flag to indicate if this is a local provider
 }
 
 /**
@@ -105,6 +115,18 @@ export interface LlmApiWindow {
       event: 'stream-start' | 'stream-chunk' | 'stream-end' | 'stream-error',
       wrapper: (...args: any[]) => void
     ) => void;
+    // Ollama-specific functions
+    checkOllamaStatus: (customUrl?: string) => Promise<{
+      isInstalled: boolean;
+      isRunning: boolean;
+      url: string;
+      error?: string;
+    }>;
+    fetchOllamaModels: (ollamaUrl: string) => Promise<any[]>;
+    startOllamaService: () => Promise<{
+      success: boolean;
+      error?: string;
+    }>;
   };
 }
 
@@ -119,6 +141,11 @@ export interface ModelInfo {
   description?: string;
   pricing?: string;
   available?: boolean;
+  // Ollama-specific fields
+  isLocal?: boolean;
+  size?: string; // For Ollama models (e.g., "3.8GB")
+  family?: string; // For Ollama models (e.g., "llama", "mistral")
+  modified_at?: string; // For Ollama models
 }
 
 export interface SystemPrompt {

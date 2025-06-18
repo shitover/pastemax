@@ -1839,7 +1839,7 @@ const App = (): JSX.Element => {
       }
     }
 
-    if (!providerConfigForRequest?.apiKey) {
+    if (!providerConfigForRequest?.apiKey && currentProvider !== 'ollama') {
       const apiKeyError = `API key for ${currentProvider} is not configured. Please check LLM Settings.`;
       console.error(
         '[App.tsx] API key missing for provider:',
@@ -2012,7 +2012,11 @@ const App = (): JSX.Element => {
       // Construct messages to be sent to the LLM
       const historyMessages = updatedSessionForRequest
         ? updatedSessionForRequest.messages
-            .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.isLoading)) // Exclude loading messages
+            .filter(
+              (m) =>
+                (m.role === 'user' || (m.role === 'assistant' && !m.isLoading)) &&
+                m.content.trim() !== ''
+            ) // Exclude loading messages and empty content
             .map((m) => ({ role: m.role, content: m.content }))
         : [];
 
@@ -2046,7 +2050,7 @@ const App = (): JSX.Element => {
         messages: messagesToSend.slice(-20), // Consider message history length
         provider: currentProvider,
         model: actualModelName,
-        apiKey: providerConfigForRequest.apiKey,
+        apiKey: currentProvider === 'ollama' ? 'dummy' : providerConfigForRequest.apiKey || '',
         baseUrl: providerConfigForRequest.baseUrl,
         requestId: assistantMessageId, // Use assistant message ID as request ID for streaming
       };
@@ -2269,7 +2273,7 @@ const App = (): JSX.Element => {
     }
 
     const providerConfig = allLlmConfigs?.[currentProvider];
-    if (!providerConfig?.apiKey) {
+    if (currentProvider !== 'ollama' && !providerConfig?.apiKey) {
       const missingConfigError = `API key for ${currentProvider} is missing. Please configure it in LLM Settings.`;
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
@@ -2278,6 +2282,26 @@ const App = (): JSX.Element => {
       );
       if (currentChatSessionId === requestSessionId) {
         setLlmError(missingConfigError);
+        setIsLlmLoading(false);
+      }
+      return;
+    }
+
+    // For Ollama, we don't need a real config, so create a dummy one if needed
+    const effectiveProviderConfig =
+      currentProvider === 'ollama'
+        ? { apiKey: 'dummy', baseUrl: providerConfig?.baseUrl || null }
+        : providerConfig;
+
+    if (!effectiveProviderConfig) {
+      const noConfigError = `Configuration for ${currentProvider} is missing. Please configure it in LLM Settings.`;
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === requestSessionId ? { ...s, llmError: noConfigError, isLoading: false } : s
+        )
+      );
+      if (currentChatSessionId === requestSessionId) {
+        setLlmError(noConfigError);
         setIsLlmLoading(false);
       }
       return;
@@ -2335,9 +2359,9 @@ const App = (): JSX.Element => {
         throw new Error('Session disappeared during retry preparation.');
       }
 
-      // Convert session messages to LLM format, excluding any loading messages
+      // Convert session messages to LLM format, excluding any loading messages and empty content
       const messagesForLlm = updatedSessionForRequest.messages
-        .filter((m) => !m.isLoading) // Exclude any remaining loading messages
+        .filter((m) => !m.isLoading && m.content.trim() !== '') // Exclude loading messages and empty content
         .map((m) => ({
           role: m.role,
           content: m.content,
@@ -2413,8 +2437,8 @@ const App = (): JSX.Element => {
         messages: messagesToSend.slice(-20),
         provider: currentProvider,
         model: actualModelName,
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
+        apiKey: effectiveProviderConfig.apiKey || '',
+        baseUrl: effectiveProviderConfig.baseUrl,
         requestId: assistantMessageId, // Use assistant message ID as request ID
       };
 
@@ -2767,7 +2791,11 @@ const App = (): JSX.Element => {
 
       // Pre-flight check for the selected model's provider configuration
       const providerForSelectedModel = getProviderFromModelId(selectedModelId);
-      if (!providerForSelectedModel || !allLlmConfigs?.[providerForSelectedModel]?.apiKey) {
+      if (
+        !providerForSelectedModel ||
+        (!allLlmConfigs?.[providerForSelectedModel]?.apiKey &&
+          providerForSelectedModel !== 'ollama')
+      ) {
         const errorMsg = `API key for ${providerForSelectedModel || "the selected model's provider"} is not configured. Please go to LLM Settings to add it.`;
         console.warn(`[App.tsx] Configuration check failed: ${errorMsg}`);
         setLlmError(errorMsg);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LlmProvider, ProviderSpecificConfig, AllLlmConfigs } from '../types/llmTypes';
-import { Edit, X } from 'lucide-react';
+import { Edit, X, RefreshCw, Play, AlertCircle, CheckCircle } from 'lucide-react';
 
 // Define a constant for the localStorage key
 const LAST_SAVED_PROVIDER_KEY = 'pastemax-last-saved-llm-provider';
@@ -31,6 +31,17 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [recentModels, setRecentModels] = useState<{ [key: string]: string[] }>({});
   const [recentModelsForProvider, setRecentModelsForProvider] = useState<string[]>([]);
+
+  // Ollama-specific state
+  const [ollamaStatus, setOllamaStatus] = useState<{
+    isInstalled: boolean;
+    isRunning: boolean;
+    url: string;
+    error?: string;
+  } | null>(null);
+  const [ollamaModels, setOllamaModels] = useState<any[]>([]);
+  const [isCheckingOllama, setIsCheckingOllama] = useState(false);
+  const [isLoadingOllamaModels, setIsLoadingOllamaModels] = useState(false);
 
   const lastActiveProviderRef = useRef<LlmProvider | ''>('');
 
@@ -144,6 +155,67 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     }
   }, [isOpen]);
 
+  // Check Ollama status when provider changes to Ollama
+  useEffect(() => {
+    if (currentProvider === 'ollama') {
+      checkOllamaStatus();
+    }
+  }, [currentProvider]);
+
+  // Ollama-specific functions
+  const checkOllamaStatus = async () => {
+    setIsCheckingOllama(true);
+    try {
+      const status = await window.llmApi?.checkOllamaStatus();
+      setOllamaStatus(status);
+
+      if (status?.isRunning) {
+        await loadOllamaModels(status.url);
+      }
+    } catch (error) {
+      console.error('Error checking Ollama status:', error);
+      setOllamaStatus({
+        isInstalled: false,
+        isRunning: false,
+        url: 'http://localhost:11434',
+        error: 'Failed to check Ollama status',
+      });
+    } finally {
+      setIsCheckingOllama(false);
+    }
+  };
+
+  const loadOllamaModels = async (ollamaUrl?: string) => {
+    setIsLoadingOllamaModels(true);
+    try {
+      const url = ollamaUrl || baseUrl || 'http://localhost:11434';
+      const models = await window.llmApi?.fetchOllamaModels(url);
+      setOllamaModels(models || []);
+    } catch (error) {
+      console.error('Error loading Ollama models:', error);
+      setOllamaModels([]);
+    } finally {
+      setIsLoadingOllamaModels(false);
+    }
+  };
+
+  const startOllamaService = async () => {
+    try {
+      const result = await window.llmApi?.startOllamaService();
+      if (result?.success) {
+        // Wait a moment for service to start, then check status
+        setTimeout(() => {
+          checkOllamaStatus();
+        }, 2000);
+      } else {
+        setErrorMessage(result?.error || 'Failed to start Ollama service');
+      }
+    } catch (error) {
+      console.error('Error starting Ollama service:', error);
+      setErrorMessage('Failed to start Ollama service');
+    }
+  };
+
   const getProviderPlaceholder = () => {
     switch (currentProvider) {
       case 'openai':
@@ -159,6 +231,8 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
         return 'Enter OpenRouter API Key';
       case 'mistral':
         return 'Enter Mistral API Key';
+      case 'ollama':
+        return 'No API key required for Ollama (local)';
       default:
         return 'API Key';
     }
@@ -188,7 +262,7 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
       return;
     }
 
-    if (!currentConfig.apiKey) {
+    if (!currentConfig.apiKey && currentProvider !== 'ollama') {
       setErrorMessage(`API Key is required for ${currentProvider}.`);
       return;
     }
@@ -304,60 +378,194 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
 
               <option value="openrouter">OpenRouter</option>
               <option value="mistral">Mistral</option>
+              <option value="ollama">Ollama (Local)</option>
             </select>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="api-key">API Key</label>
-            <input
-              id="api-key"
-              type="password"
-              name="apiKey"
-              value={currentConfig?.apiKey || ''}
-              onChange={handleInputChange}
-              placeholder={getProviderPlaceholder()}
-              className="api-key-input"
-              disabled={isSaving || !currentProvider}
-            />
-          </div>
+          {currentProvider === 'ollama' ? (
+            <div className="form-group">
+              <label>Ollama Status</label>
+              <div className="ollama-status-section">
+                <div className="ollama-status-info">
+                  {isCheckingOllama ? (
+                    <div className="ollama-status-item">
+                      <RefreshCw className="icon-spin" size={16} />
+                      <span>Checking Ollama status...</span>
+                    </div>
+                  ) : ollamaStatus ? (
+                    <>
+                      <div className="ollama-status-item">
+                        {ollamaStatus.isInstalled ? (
+                          <CheckCircle size={16} className="text-success" />
+                        ) : (
+                          <AlertCircle size={16} className="text-error" />
+                        )}
+                        <span>
+                          Ollama {ollamaStatus.isInstalled ? 'installed' : 'not installed'}
+                        </span>
+                      </div>
+                      <div className="ollama-status-item">
+                        {ollamaStatus.isRunning ? (
+                          <CheckCircle size={16} className="text-success" />
+                        ) : (
+                          <AlertCircle size={16} className="text-warning" />
+                        )}
+                        <span>Service {ollamaStatus.isRunning ? 'running' : 'not running'}</span>
+                      </div>
+                      {ollamaStatus.error && (
+                        <div className="ollama-error">
+                          <AlertCircle size={16} className="text-error" />
+                          <span>{ollamaStatus.error}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="ollama-status-item">
+                      <AlertCircle size={16} className="text-error" />
+                      <span>Unable to check Ollama status</span>
+                    </div>
+                  )}
+                </div>
+                <div className="ollama-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={checkOllamaStatus}
+                    disabled={isCheckingOllama}
+                  >
+                    <RefreshCw size={14} className={isCheckingOllama ? 'icon-spin' : ''} />
+                    Refresh
+                  </button>
+                  {ollamaStatus?.isInstalled && !ollamaStatus?.isRunning && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={startOllamaService}
+                      disabled={isCheckingOllama}
+                    >
+                      <Play size={14} />
+                      Start Service
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="api-key">API Key</label>
+              <input
+                id="api-key"
+                type="password"
+                name="apiKey"
+                value={currentConfig?.apiKey || ''}
+                onChange={handleInputChange}
+                placeholder={getProviderPlaceholder()}
+                className="api-key-input"
+                disabled={isSaving || !currentProvider}
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="defaultModel">Default Model Name</label>
-            <input
-              id="defaultModel"
-              name="defaultModel"
-              type="text"
-              placeholder="e.g., gpt-4o or gemini-1.5-pro-latest"
-              value={currentConfig?.defaultModel || ''}
-              onChange={handleInputChange}
-              className="model-name-input"
-              disabled={isSaving || !currentProvider}
-            />
 
-            {currentProvider && getRecentModelsForProvider().length > 0 && (
-              <div className="recent-models">
-                <small className="help-text">Recently used models for {currentProvider}:</small>
-                <div className="recent-models-list">
-                  {getRecentModelsForProvider().map((model, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      className="recent-model-button"
-                      onClick={() => handleSelectRecentModel(model)}
-                    >
-                      {model}
-                      <X
-                        size={14}
-                        className="delete-recent-model-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRecentModel(model);
-                        }}
-                      />
-                    </button>
+            {currentProvider === 'ollama' ? (
+              <>
+                <select
+                  id="defaultModel"
+                  name="defaultModel"
+                  value={currentConfig?.defaultModel || ''}
+                  onChange={handleInputChange}
+                  className="model-name-input"
+                  disabled={isSaving || !currentProvider || isLoadingOllamaModels}
+                >
+                  <option value="">
+                    {isLoadingOllamaModels ? 'Loading models...' : 'Select a model'}
+                  </option>
+                  {ollamaModels.map((model) => (
+                    <option key={model.name} value={model.name}>
+                      {model.name} ({model.size})
+                    </option>
                   ))}
-                </div>
-              </div>
+                </select>
+
+                <small className="help-text">
+                  You can also manually type any Ollama model name if it's not listed above.
+                </small>
+
+                <input
+                  type="text"
+                  name="defaultModel"
+                  placeholder="Or manually enter model name (e.g., llama2, mistral)"
+                  value={currentConfig?.defaultModel || ''}
+                  onChange={handleInputChange}
+                  className="model-name-input"
+                  disabled={isSaving || !currentProvider}
+                  style={{ marginTop: '8px' }}
+                />
+
+                {ollamaStatus?.isRunning && ollamaModels.length === 0 && !isLoadingOllamaModels && (
+                  <small className="help-text">
+                    No Ollama models found. Install models using: <code>ollama pull llama2</code>
+                  </small>
+                )}
+
+                {ollamaModels.length > 0 && (
+                  <div className="ollama-models-info">
+                    <small className="help-text">
+                      Available Ollama models ({ollamaModels.length} found)
+                    </small>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm"
+                      onClick={() => loadOllamaModels()}
+                      disabled={isLoadingOllamaModels}
+                    >
+                      <RefreshCw size={12} className={isLoadingOllamaModels ? 'icon-spin' : ''} />
+                      Refresh Models
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <input
+                  id="defaultModel"
+                  name="defaultModel"
+                  type="text"
+                  placeholder="e.g., gpt-4o or gemini-1.5-pro-latest"
+                  value={currentConfig?.defaultModel || ''}
+                  onChange={handleInputChange}
+                  className="model-name-input"
+                  disabled={isSaving || !currentProvider}
+                />
+
+                {currentProvider && getRecentModelsForProvider().length > 0 && (
+                  <div className="recent-models">
+                    <small className="help-text">Recently used models for {currentProvider}:</small>
+                    <div className="recent-models-list">
+                      {getRecentModelsForProvider().map((model, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="recent-model-button"
+                          onClick={() => handleSelectRecentModel(model)}
+                        >
+                          {model}
+                          <X
+                            size={14}
+                            className="delete-recent-model-button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRecentModel(model);
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

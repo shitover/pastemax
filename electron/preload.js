@@ -127,7 +127,10 @@ contextBridge.exposeInMainWorld('electron', {
         'llm:set-config',
         'llm:send-prompt',
         'llm:cancel-request',
-      ]; // Added LLM channels
+        'check-ollama-status',
+        'fetch-ollama-models',
+        'start-ollama-service',
+      ]; // Added LLM and Ollama channels
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, data);
       }
@@ -219,4 +222,28 @@ contextBridge.exposeInMainWorld('llmApi', {
     const channel = `llm:${event}`;
     ipcRenderer.removeListener(channel, wrapper);
   },
+
+  /**
+   * Ollama-specific functions
+   */
+
+  /**
+   * Check Ollama installation and running status
+   * @param {string} customUrl - Optional custom Ollama URL
+   * @returns {Promise<{isInstalled: boolean, isRunning: boolean, url: string, error?: string}>}
+   */
+  checkOllamaStatus: (customUrl) => ipcRenderer.invoke('check-ollama-status', customUrl),
+
+  /**
+   * Fetch available Ollama models
+   * @param {string} ollamaUrl - The Ollama API URL
+   * @returns {Promise<Array>} Array of Ollama models
+   */
+  fetchOllamaModels: (ollamaUrl) => ipcRenderer.invoke('fetch-ollama-models', ollamaUrl),
+
+  /**
+   * Start Ollama service
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  startOllamaService: () => ipcRenderer.invoke('start-ollama-service'),
 });

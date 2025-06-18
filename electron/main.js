@@ -583,6 +583,44 @@ ipcMain.handle('fetch-models', async () => {
   }
 });
 
+// Handle Ollama-related requests
+const ollamaService = require('./ollama-service');
+
+// Check Ollama status
+ipcMain.handle('check-ollama-status', async (event, customUrl) => {
+  try {
+    return await ollamaService.checkOllamaStatus(customUrl);
+  } catch (error) {
+    console.error('Error checking Ollama status:', error);
+    return {
+      isInstalled: false,
+      isRunning: false,
+      url: customUrl || ollamaService.DEFAULT_OLLAMA_URL,
+      error: error.message,
+    };
+  }
+});
+
+// Fetch Ollama models
+ipcMain.handle('fetch-ollama-models', async (event, ollamaUrl) => {
+  try {
+    return await ollamaService.fetchOllamaModels(ollamaUrl);
+  } catch (error) {
+    console.error('Error fetching Ollama models:', error);
+    return [];
+  }
+});
+
+// Start Ollama service
+ipcMain.handle('start-ollama-service', async () => {
+  try {
+    return await ollamaService.startOllamaService();
+  } catch (error) {
+    console.error('Error starting Ollama service:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // ======================
 // ELECTRON WINDOW SETUP
 // ======================

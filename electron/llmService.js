@@ -8,6 +8,7 @@ const Store = require('electron-store');
 const os = require('os');
 const crypto = require('crypto');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const ollamaService = require('./ollama-service');
 
 /**
  * Store instance for persisting LLM configuration
@@ -420,6 +421,86 @@ async function getChatModel(provider, modelName, apiKey, baseUrl) {
         return new ChatOpenAI(options);
       }
 
+      case 'ollama': {
+        console.log(`[LLM Service] Using Ollama model: ${modelName}`);
+        const ollamaUrl = baseUrl || ollamaService.DEFAULT_OLLAMA_URL;
+
+        // Create a Langchain-compatible adapter for Ollama
+        return {
+          async invoke(langchainMessages) {
+            console.log(
+              '[LLM Service] Ollama invoke adapter - received messages:',
+              langchainMessages.length
+            );
+
+            // Convert Langchain messages to simple message format for Ollama
+            const messages = langchainMessages.map((msg) => ({
+              role:
+                msg._getType() === 'human'
+                  ? 'user'
+                  : msg._getType() === 'ai'
+                    ? 'assistant'
+                    : 'system',
+              content: msg.content,
+            }));
+
+            const response = await ollamaService.sendOllamaRequest({
+              messages,
+              model: modelName,
+              ollamaUrl,
+              requestId: 'invoke-' + Date.now(),
+            });
+
+            return {
+              content: response,
+              _getType: () => 'ai',
+            };
+          },
+
+          async stream(langchainMessages, options = {}) {
+            console.log(
+              '[LLM Service] Ollama stream adapter - received messages:',
+              langchainMessages.length
+            );
+
+            const messages = langchainMessages.map((msg) => ({
+              role:
+                msg._getType() === 'human'
+                  ? 'user'
+                  : msg._getType() === 'ai'
+                    ? 'assistant'
+                    : 'system',
+              content: msg.content,
+            }));
+
+            const chunks = [];
+
+            return new Promise((resolve, reject) => {
+              ollamaService.sendOllamaStreamRequest({
+                messages,
+                model: modelName,
+                ollamaUrl,
+                requestId: 'stream-' + Date.now(),
+                onChunk: (chunk) => {
+                  chunks.push({
+                    content: chunk,
+                    _getType: () => 'ai',
+                  });
+                },
+                onEnd: () => {
+                  resolve(chunks);
+                },
+                onError: (error) => {
+                  reject(error);
+                },
+              });
+            });
+          },
+
+          _isChatModel: true,
+        };
+      }
+
       default:
         console.error(`[LLM Service] Unsupported provider: ${provider}`);
         throw new Error(`Unsupported LLM provider: ${provider}`);
@@ -484,8 +565,11 @@ async function sendPromptToLlm({ messages, provider, model, apiKey, baseUrl, req
   activeRequests.set(requestId, abortController);
 
   try {
+    // For Ollama, handle special case where API key is not required
+    const effectiveApiKey = provider === 'ollama' ? 'dummy' : apiKey;
+
     // Get the chat model
-    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
+    const chatModel = await getChatModel(provider, model, effectiveApiKey, baseUrl);
 
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);
@@ -572,8 +656,70 @@ async function sendStreamingPromptToLlm({
     // Small delay to ensure UI is ready for streaming
     await new Promise((resolve) => setTimeout(resolve, 50));
 
+    // For Ollama, handle special case where API key is not required
+    const effectiveApiKey = provider === 'ollama' ? 'dummy' : apiKey;
+
+    // Special handling for Ollama streaming
+    if (provider === 'ollama') {
+      console.log('[LLM Service] Using Ollama streaming');
+
+      const ollamaUrl = baseUrl || ollamaService.DEFAULT_OLLAMA_URL;
+      const modelName = model.startsWith('ollama/') ? model.substring(7) : model;
+
+      // Convert messages to simple format for Ollama
+      const ollamaMessages = messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      let fullContent = '';
+
+      await ollamaService.sendOllamaStreamRequest({
+        messages: ollamaMessages,
+        model: modelName,
+        ollamaUrl,
+        requestId,
+        onChunk: (chunk) => {
+          if (abortController.signal.aborted) {
+            return;
+          }
+
+          fullContent += chunk;
+          webContents.send('llm:stream-chunk', {
+            requestId,
+            chunk: chunk,
+            fullContent: fullContent,
+          });
+        },
+        onEnd: () => {
+          if (!abortController.signal.aborted) {
+            console.log(
+              '[LLM Service] Ollama stream completed, total length:',
+              fullContent.length,
+              'characters'
+            );
+            webContents.send('llm:stream-end', {
+              requestId,
+              fullContent: fullContent,
+              provider: provider,
+            });
+          }
+        },
+        onError: (error) => {
+          console.error('[LLM Service] Ollama streaming error:', error);
+          webContents.send('llm:stream-error', {
+            requestId,
+            error: error.message || 'Ollama streaming error',
+            cancelled: false,
+          });
+        },
+      });
+
+      return; // Exit early for Ollama
+    }
+
     // Get the chat model
-    const chatModel = await getChatModel(provider, model, apiKey, baseUrl);
+    const chatModel = await getChatModel(provider, model, effectiveApiKey, baseUrl);
 
     // Convert messages to Langchain format
     const langchainMessages = convertToLangchainMessages(messages);
