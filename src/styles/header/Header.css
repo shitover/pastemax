@@ -39,6 +39,36 @@
   font-size: var(--font-size-sm);
 }
 
+.llm-settings-button,
+.prompt-library-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s var(--animation-curve);
+}
+
+.llm-settings-button:hover,
+.prompt-library-button:hover {
+  background-color: var(--hover-color);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.llm-settings-button:active,
+.prompt-library-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
 .folder-info {
   display: flex;
   align-items: center;

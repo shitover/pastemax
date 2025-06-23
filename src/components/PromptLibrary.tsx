@@ -21,6 +21,10 @@ import {
   Hash,
   Clock,
   Brain,
+  Maximize2,
+  Minimize2,
+  X,
+  Expand,
 } from 'lucide-react';
 import {
   PromptLibraryEntry,
@@ -41,6 +45,8 @@ interface PromptLibraryProps {
   onUsePrompt: (entry: PromptLibraryEntry) => void;
   onCopyPrompt: (entry: PromptLibraryEntry) => void;
   isLoading?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 const PromptLibrary: React.FC<PromptLibraryProps> = ({
@@ -53,6 +59,8 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
   onUsePrompt,
   onCopyPrompt,
   isLoading = false,
+  isFullscreen = false,
+  onToggleFullscreen,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -65,6 +73,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
   });
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<LlmProvider | 'all'>('all');
+  const [expandedPrompt, setExpandedPrompt] = useState<PromptLibraryEntry | null>(null);
 
   // Get all unique tags from entries
   const allTags = useMemo(() => {
@@ -214,6 +223,16 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
           >
             <List size={16} />
           </button>
+
+          {onToggleFullscreen && (
+            <button
+              className="expand-btn"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Exit fullscreen' : 'Expand to fullscreen'}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          )}
 
           <button className="create-prompt-btn" onClick={onCreateEntry}>
             <Plus size={16} />
@@ -391,12 +410,130 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
                 onToggleFavorite={() => onToggleFavorite(entry.id)}
                 onUse={() => onUsePrompt(entry)}
                 onCopy={() => onCopyPrompt(entry)}
+                onClick={() => setExpandedPrompt(entry)}
                 formatDate={formatDate}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Expanded Prompt Modal */}
+      {expandedPrompt && (
+        <div className="expanded-prompt-overlay" onClick={() => setExpandedPrompt(null)}>
+          <div className="expanded-prompt-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="expanded-prompt-header">
+              <div className="expanded-prompt-title">
+                <h2>{expandedPrompt.title}</h2>
+                {expandedPrompt.isFavorite && <Star className="favorite-icon" size={16} />}
+              </div>
+              <button
+                className="close-expanded-btn"
+                onClick={() => setExpandedPrompt(null)}
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="expanded-prompt-content">
+              {expandedPrompt.description && (
+                <div className="expanded-section">
+                  <h3>Description</h3>
+                  <p>{expandedPrompt.description}</p>
+                </div>
+              )}
+
+              <div className="expanded-section">
+                <h3>Prompt</h3>
+                <div className="expanded-prompt-text scrollable">{expandedPrompt.prompt}</div>
+              </div>
+
+              {expandedPrompt.response && (
+                <div className="expanded-section">
+                  <h3>Response</h3>
+                  <div className="expanded-response-text scrollable">{expandedPrompt.response}</div>
+                </div>
+              )}
+
+              <div className="expanded-meta">
+                <div className="meta-row">
+                  <div className="meta-item">
+                    <Clock size={14} />
+                    <span>Updated: {formatDate(expandedPrompt.updatedAt)}</span>
+                  </div>
+                  {expandedPrompt.modelUsed && (
+                    <div className="meta-item">
+                      <Brain size={14} />
+                      <span>Model: {expandedPrompt.modelUsed}</span>
+                    </div>
+                  )}
+                  {expandedPrompt.tokenCount && (
+                    <div className="meta-item">
+                      <Hash size={14} />
+                      <span>{expandedPrompt.tokenCount.toLocaleString()} tokens</span>
+                    </div>
+                  )}
+                </div>
+
+                {expandedPrompt.tags.length > 0 && (
+                  <div className="expanded-tags">
+                    {expandedPrompt.tags.map((tag) => (
+                      <span key={tag} className="tag">
+                        <Tag size={10} />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="expanded-prompt-actions">
+              <button
+                className="action-btn favorite"
+                onClick={() => onToggleFavorite(expandedPrompt.id)}
+                title={expandedPrompt.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                {expandedPrompt.isFavorite ? <Star size={16} /> : <StarOff size={16} />}
+                {expandedPrompt.isFavorite ? 'Favorited' : 'Add to Favorites'}
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => onCopyPrompt(expandedPrompt)}
+                title="Copy prompt"
+              >
+                <Copy size={16} />
+                Copy Prompt
+              </button>
+              <button
+                className="action-btn use"
+                onClick={() => onUsePrompt(expandedPrompt)}
+                title="Use this prompt"
+              >
+                <Play size={16} />
+                Use Prompt
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => onEditEntry(expandedPrompt)}
+                title="Edit"
+              >
+                <Edit2 size={16} />
+                Edit
+              </button>
+              <button
+                className="action-btn delete"
+                onClick={() => onDeleteEntry(expandedPrompt.id)}
+                title="Delete"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -410,6 +547,7 @@ interface PromptCardProps {
   onToggleFavorite: () => void;
   onUse: () => void;
   onCopy: () => void;
+  onClick: () => void;
   formatDate: (timestamp: number) => string;
 }
 
@@ -421,12 +559,13 @@ const PromptCard: React.FC<PromptCardProps> = ({
   onToggleFavorite,
   onUse,
   onCopy,
+  onClick,
   formatDate,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className={`prompt-card ${viewMode}`}>
+    <div className={`prompt-card ${viewMode} clickable`} onClick={onClick}>
       <div className="prompt-card-header">
         <div className="prompt-card-title">
           <h3>{entry.title}</h3>
@@ -434,7 +573,7 @@ const PromptCard: React.FC<PromptCardProps> = ({
           {entry.isPrivate && <User className="private-icon" size={14} />}
         </div>
 
-        <div className="prompt-card-actions">
+        <div className="prompt-card-actions" onClick={(e) => e.stopPropagation()}>
           <button
             className="action-btn favorite"
             onClick={onToggleFavorite}
@@ -464,7 +603,13 @@ const PromptCard: React.FC<PromptCardProps> = ({
           <strong>Prompt:</strong>
           <div className={`prompt-text ${isExpanded ? 'expanded' : ''}`}>{entry.prompt}</div>
           {entry.prompt.length > 200 && (
-            <button className="expand-toggle" onClick={() => setIsExpanded(!isExpanded)}>
+            <button
+              className="expand-toggle"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+            >
               {isExpanded ? 'Show less' : 'Show more'}
             </button>
           )}
