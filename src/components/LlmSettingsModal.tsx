@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LlmProvider, ProviderSpecificConfig, AllLlmConfigs } from '../types/llmTypes';
-import { Edit, X, RefreshCw, Play, AlertCircle, CheckCircle } from 'lucide-react';
+import { Edit, X, RefreshCw, Play, AlertCircle, CheckCircle, Settings } from 'lucide-react';
 
 // Define a constant for the localStorage key
 const LAST_SAVED_PROVIDER_KEY = 'pastemax-last-saved-llm-provider';
@@ -354,9 +354,12 @@ const LlmSettingsModal: React.FC<LlmSettingsModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>LLM Settings</h3>
+          <h3>
+            <Settings size={24} />
+            LLM Settings
+          </h3>
           <button className="modal-close-button" onClick={onClose} aria-label="Close">
-            ×
+            <X size={20} />
           </button>
         </div>
 

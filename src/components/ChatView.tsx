@@ -7,7 +7,8 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '../context/ThemeContext';
-import { Maximize2, Minimize2, X, MessageSquare, Book, Save } from 'lucide-react';
+import { Maximize2, Minimize2, X, MessageSquare, Book, Save, BookOpen } from 'lucide-react';
+import QuickSaveModal from './QuickSaveModal';
 import '../styles/modals/ChatView.css';
 import '../styles/modals/ChatHistorySidebar.css';
 
@@ -31,6 +32,10 @@ interface ChatViewProps {
   selectedModelId?: string;
   onModelSelect?: (modelId: string) => void;
   onCancelLlmRequest?: () => void;
+  // Prompt Library props
+  promptCategories?: any[];
+  availablePromptTags?: string[];
+  onSaveToPromptLibrary?: (entry: any) => void;
 }
 
 // Define this interface for your code renderer props
@@ -62,6 +67,9 @@ const ChatView: React.FC<ChatViewProps> = ({
   selectedModelId,
   onModelSelect,
   onCancelLlmRequest,
+  promptCategories = [],
+  availablePromptTags = [],
+  onSaveToPromptLibrary,
 }) => {
   const [userMessage, setUserMessage] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -72,6 +80,20 @@ const ChatView: React.FC<ChatViewProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [expandedFileContexts, setExpandedFileContexts] = useState<Record<string, boolean>>({});
   const [expandedMainMessages, setExpandedMainMessages] = useState<Record<string, boolean>>({});
+
+  // Quick Save Modal state
+  const [isQuickSaveOpen, setIsQuickSaveOpen] = useState(false);
+  const [saveData, setSaveData] = useState({
+    selectedText: '',
+    fullResponse: '',
+    messageId: '',
+    isSelectedText: false,
+    modelUsed: '',
+    provider: undefined as any,
+  });
+
+  // Track selected text per message
+  const [messageSelections, setMessageSelections] = useState<Record<string, string>>({});
 
   // Determine the model ID for the current session, falling back to global if not set in session
   const activeSession = currentSessionId
@@ -91,6 +113,78 @@ const ChatView: React.FC<ChatViewProps> = ({
       ...prev,
       [messageId]: !prev[messageId],
     }));
+  };
+
+  // Handle text selection in messages
+  const handleTextSelection = (messageId: string) => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim() || '';
+
+    setMessageSelections((prev) => ({
+      ...prev,
+      [messageId]: selectedText,
+    }));
+  };
+
+  // Quick Save handlers
+  const handleSaveSelected = (messageId: string) => {
+    // Get stored selection for this message or current selection
+    let selectedText = messageSelections[messageId] || '';
+
+    if (!selectedText) {
+      // Try to get current selection
+      const selection = window.getSelection();
+      selectedText = selection?.toString().trim() || '';
+    }
+
+    if (!selectedText) {
+      // If still no text selected, show a helpful message
+      alert(
+        '📝 To save selected text:\n\n1. Highlight some text from the AI response\n2. Then click "Save Selected"\n\nOr use "Save All" to save the entire response.'
+      );
+      return;
+    }
+
+    const message = messages.find((m) => m.id === messageId);
+    if (!message) return;
+
+    setSaveData({
+      selectedText,
+      fullResponse: message.content,
+      messageId,
+      isSelectedText: true,
+      modelUsed: modelIdForThisSession || '',
+      provider: undefined, // Could be enhanced to track provider per message
+    });
+    setIsQuickSaveOpen(true);
+  };
+
+  const handleSaveFullResponse = (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId);
+    if (!message) return;
+
+    setSaveData({
+      selectedText: '',
+      fullResponse: message.content,
+      messageId,
+      isSelectedText: false,
+      modelUsed: modelIdForThisSession || '',
+      provider: undefined, // Could be enhanced to track provider per message
+    });
+    setIsQuickSaveOpen(true);
+  };
+
+  const handleQuickSaveComplete = async (entryData: any) => {
+    if (onSaveToPromptLibrary) {
+      await onSaveToPromptLibrary(entryData);
+    }
+    setIsQuickSaveOpen(false);
+  };
+
+  const handleQuickSaveClose = () => {
+    setIsQuickSaveOpen(false);
+    // Clear selection
+    window.getSelection()?.removeAllRanges();
   };
 
   // Auto-focus the input when the chat opens
@@ -374,29 +468,56 @@ const ChatView: React.FC<ChatViewProps> = ({
                                 </div>
                               </div>
                             ) : (
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={commonMarkdownComponents}
+                              <div
+                                className="assistant-message-content"
+                                onMouseUp={() => handleTextSelection(message.id)}
+                                onKeyUp={() => handleTextSelection(message.id)}
                               >
-                                {message.content}
-                              </ReactMarkdown>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={commonMarkdownComponents}
+                                >
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
                             )}
                           </>
                         )}
                       </div>
-                      {/* Only show copy button for completed assistant messages */}
+                      {/* Only show action buttons for completed assistant messages */}
                       {message.role === 'assistant' &&
-                        onCopyResponse &&
                         !message.isLoading &&
                         message.content.trim() && (
                           <div className="message-actions">
-                            <button
-                              className="copy-button"
-                              onClick={() => onCopyResponse(message.id)}
-                              title="Copy to clipboard"
-                            >
-                              Copy
-                            </button>
+                            {onCopyResponse && (
+                              <button
+                                className="copy-button"
+                                onClick={() => onCopyResponse(message.id)}
+                                title="Copy to clipboard"
+                              >
+                                Copy
+                              </button>
+                            )}
+                            {onSaveToPromptLibrary && (
+                              <>
+                                <button
+                                  className="save-selected-button"
+                                  onClick={() => handleSaveSelected(message.id)}
+                                  title="Save selection or full response to prompt library"
+                                >
+                                  <BookOpen size={14} />
+                                  Save Selected
+                                </button>
+                                <button
+                                  className="save-full-button"
+                                  onClick={() => handleSaveFullResponse(message.id)}
+                                  title="Save full response to prompt library"
+                                >
+                                  <Save size={14} />
+                                  Save All
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       {message.role === 'user' && onRetry && (
@@ -464,6 +585,20 @@ const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Quick Save Modal */}
+      <QuickSaveModal
+        isOpen={isQuickSaveOpen}
+        onClose={handleQuickSaveClose}
+        onSave={handleQuickSaveComplete}
+        categories={promptCategories}
+        availableTags={availablePromptTags}
+        selectedText={saveData.selectedText}
+        fullResponse={saveData.fullResponse}
+        isSelectedText={saveData.isSelectedText}
+        modelUsed={saveData.modelUsed}
+        provider={saveData.provider}
+      />
     </div>
   );
 };

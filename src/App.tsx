@@ -3836,6 +3836,9 @@ const App = (): JSX.Element => {
             onCreateNewSession={handleCreateNewChat}
             onRetry={handleRetrySendMessage}
             onCancelLlmRequest={handleCancelLlmRequest}
+            promptCategories={promptCategories}
+            availablePromptTags={availableTags}
+            onSaveToPromptLibrary={handleSavePromptEntry}
           />
         )}
         {isSystemPromptEditorOpen && (

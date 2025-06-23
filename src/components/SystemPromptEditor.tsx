@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SystemPrompt } from '../types/llmTypes';
 import { DEFAULT_SYSTEM_PROMPTS, NONE_PROMPT_ID } from '../config/defaultSystemPrompts'; // For reset and NONE_PROMPT_ID
+import { FileText, X } from 'lucide-react';
 import '../styles/modals/SystemPromptEditor.css';
 
 interface SystemPromptEditorProps {
@@ -135,9 +136,12 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({
     <div className="system-prompt-modal-overlay" onClick={onClose}>
       <div className="system-prompt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="system-prompt-modal-header">
-          <h3>System Prompt Editor</h3>
+          <h3>
+            <FileText size={24} />
+            System Prompt Editor
+          </h3>
           <button onClick={onClose} className="system-prompt-modal-close-button" aria-label="Close">
-            &times;
+            <X size={20} />
           </button>
         </div>
 
