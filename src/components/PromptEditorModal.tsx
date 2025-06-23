@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Tag, Plus, Minus, Star, User, Globe, Hash } from 'lucide-react';
+import { X, Save, Tag, Plus, Minus, Star, Globe, Hash, Edit3 } from 'lucide-react';
 import { PromptLibraryEntry, PromptCategory, LlmProvider } from '../types/llmTypes';
 import '../styles/modals/PromptEditorModal.css';
 
@@ -11,8 +11,6 @@ interface PromptEditorModalProps {
   categories: PromptCategory[];
   availableTags: string[];
   initialPrompt?: string;
-  initialResponse?: string;
-  initialModelUsed?: string;
   initialProvider?: LlmProvider;
 }
 
@@ -24,20 +22,15 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
   categories,
   availableTags,
   initialPrompt = '',
-  initialResponse = '',
-  initialModelUsed = '',
   initialProvider,
 }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     prompt: '',
-    response: '',
     tags: [] as string[],
     category: '',
     isFavorite: false,
-    isPrivate: false,
-    modelUsed: '',
     provider: undefined as LlmProvider | undefined,
     tokenCount: 0,
   });
@@ -53,12 +46,9 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
         title: editingEntry.title,
         description: editingEntry.description || '',
         prompt: editingEntry.prompt,
-        response: editingEntry.response || '',
         tags: [...editingEntry.tags],
         category: editingEntry.category || '',
         isFavorite: editingEntry.isFavorite || false,
-        isPrivate: editingEntry.isPrivate || false,
-        modelUsed: editingEntry.modelUsed || '',
         provider: editingEntry.provider,
         tokenCount: editingEntry.tokenCount || 0,
       });
@@ -67,24 +57,21 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
         title: '',
         description: '',
         prompt: initialPrompt,
-        response: initialResponse,
         tags: [],
         category: '',
         isFavorite: false,
-        isPrivate: false,
-        modelUsed: initialModelUsed,
         provider: initialProvider,
         tokenCount: 0,
       });
     }
-  }, [editingEntry, initialPrompt, initialResponse, initialModelUsed, initialProvider]);
+  }, [editingEntry, initialPrompt, initialProvider]);
 
-  // Calculate token count when prompt or response changes
+  // Calculate token count when prompt changes
   useEffect(() => {
     const calculateTokenCount = async () => {
-      if (formData.prompt || formData.response) {
+      if (formData.prompt) {
         try {
-          const content = `${formData.prompt}\n\n${formData.response}`;
+          const content = formData.prompt;
           // Use the same token counting method as the app
           if (window.electron?.countTokens) {
             const count = await window.electron.countTokens(content);
@@ -101,7 +88,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
     };
 
     calculateTokenCount();
-  }, [formData.prompt, formData.response]);
+  }, [formData.prompt]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -148,12 +135,9 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         prompt: formData.prompt.trim(),
-        response: formData.response.trim() || undefined,
         tags: formData.tags,
         category: formData.category || undefined,
         isFavorite: formData.isFavorite,
-        isPrivate: formData.isPrivate,
-        modelUsed: formData.modelUsed || undefined,
         provider: formData.provider,
         tokenCount: formData.tokenCount,
       });
@@ -182,9 +166,12 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
         onKeyDown={handleKeyDown}
       >
         <div className="prompt-editor-header">
-          <h2>{editingEntry ? 'Edit Prompt' : 'New Prompt'}</h2>
+          <h2>
+            <Edit3 size={24} />
+            {editingEntry ? 'Edit Prompt' : 'New Prompt'}
+          </h2>
           <button className="close-btn" onClick={onClose}>
-            <X size={20} />
+            <X size={24} />
           </button>
         </div>
 
@@ -233,19 +220,6 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
                 />
               </div>
             </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="response">Response</label>
-                <textarea
-                  id="response"
-                  value={formData.response}
-                  onChange={(e) => handleInputChange('response', e.target.value)}
-                  placeholder="AI response (if available)"
-                  rows={6}
-                />
-              </div>
-            </div>
           </div>
 
           <div className="form-section">
@@ -264,17 +238,6 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="modelUsed">Model Used</label>
-                <input
-                  type="text"
-                  id="modelUsed"
-                  value={formData.modelUsed}
-                  onChange={(e) => handleInputChange('modelUsed', e.target.value)}
-                  placeholder="e.g., gpt-4, claude-3-sonnet"
-                />
               </div>
             </div>
           </div>
@@ -366,16 +329,6 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
                 />
                 <Star size={16} />
                 Mark as favorite
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={formData.isPrivate}
-                  onChange={(e) => handleInputChange('isPrivate', e.target.checked)}
-                />
-                <User size={16} />
-                Private (visible only to you)
               </label>
             </div>
           </div>

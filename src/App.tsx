@@ -19,6 +19,7 @@ import {
   XCircle,
   RefreshCw,
   FilterX,
+  Book,
 } from 'lucide-react';
 import CustomTaskTypeModal from './components/CustomTaskTypeModal';
 import TaskTypeSelector from './components/TaskTypeSelector';
@@ -42,6 +43,8 @@ import {
   SystemPrompt,
 } from './types/llmTypes';
 import SystemPromptEditor from './components/SystemPromptEditor';
+import PromptLibrary from './components/PromptLibrary';
+import PromptEditorModal from './components/PromptEditorModal';
 import { ChatSession } from './components/ChatHistorySidebar';
 import { normalizePath, arePathsEqual, isSubPath, dirname } from './utils/pathUtils';
 import { formatBaseFileContent, formatUserInstructionsBlock } from './utils/contentFormatUtils';
@@ -79,6 +82,7 @@ const STORAGE_KEYS = {
   CURRENT_CHAT_SESSION: 'pastemax-current-chat-session',
   SYSTEM_PROMPTS: 'pastemax-system-prompts',
   SELECTED_SYSTEM_PROMPT_ID: 'pastemax-selected-system-prompt-id',
+  PROMPT_LIBRARY: 'pastemax-prompt-library',
 };
 
 const App = (): JSX.Element => {
@@ -323,11 +327,30 @@ const App = (): JSX.Element => {
   const [isSystemPromptEditorOpen, setIsSystemPromptEditorOpen] = useState(false);
 
   // Prompt Library State
-  const [promptLibraryEntries, setPromptLibraryEntries] = useState<any[]>([]);
+  const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
+  const [isPromptLibraryFullscreen, setIsPromptLibraryFullscreen] = useState(false);
+  const [isPromptEditorOpen, setIsPromptEditorOpen] = useState(false);
+  const [editingPromptEntry, setEditingPromptEntry] = useState<any | null>(null);
+  const [promptLibraryEntries, setPromptLibraryEntries] = useState<any[]>(() => {
+    try {
+      const savedPrompts = localStorage.getItem(STORAGE_KEYS.PROMPT_LIBRARY);
+      if (savedPrompts) {
+        const parsedPrompts = JSON.parse(savedPrompts);
+        if (Array.isArray(parsedPrompts)) {
+          return parsedPrompts;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading prompt library from localStorage:', error);
+    }
+    return [];
+  });
   const [promptCategories] = useState([
     { id: 'general', name: 'General', isDefault: true },
     { id: 'development', name: 'Development', isDefault: true },
     { id: 'analysis', name: 'Analysis', isDefault: true },
+    { id: 'research', name: 'Research', isDefault: true },
+    { id: 'system_prompt', name: 'System Prompt', isDefault: true },
   ]);
 
   // Prompt Library Handlers
@@ -346,10 +369,67 @@ const App = (): JSX.Element => {
     );
   };
   const handleUsePrompt = (entry: any) => {
-    if (entry.prompt) handleSendMessage(entry.prompt);
+    // Copy prompt to clipboard when used from main prompt library
+    if (entry.prompt) {
+      navigator.clipboard
+        .writeText(entry.prompt)
+        .then(() => {
+          console.log('Prompt copied to clipboard for use');
+        })
+        .catch((err) => {
+          console.error('Failed to copy prompt:', err);
+        });
+    }
   };
   const handleCopyPrompt = (entry: any) => {
     navigator.clipboard.writeText(entry.prompt || '');
+  };
+
+  // Prompt Library Modal Handlers
+  const handleOpenPromptLibrary = () => {
+    setIsPromptLibraryOpen(true);
+  };
+
+  const handleClosePromptLibrary = () => {
+    setIsPromptLibraryOpen(false);
+    setIsPromptLibraryFullscreen(false);
+    setIsPromptEditorOpen(false);
+    setEditingPromptEntry(null);
+  };
+
+  const handleTogglePromptLibraryFullscreen = () => {
+    setIsPromptLibraryFullscreen(!isPromptLibraryFullscreen);
+  };
+
+  const handleCreateNewPrompt = () => {
+    setEditingPromptEntry(null);
+    setIsPromptEditorOpen(true);
+  };
+
+  const handleEditPromptFromLibrary = (entry: any) => {
+    setEditingPromptEntry(entry);
+    setIsPromptEditorOpen(true);
+  };
+
+  const handleClosePromptEditor = () => {
+    setIsPromptEditorOpen(false);
+    setEditingPromptEntry(null);
+  };
+
+  const handleSavePromptEntry = async (entryData: any) => {
+    if (editingPromptEntry) {
+      // Update existing entry
+      const updatedEntry = {
+        ...editingPromptEntry,
+        ...entryData,
+        updatedAt: Date.now(),
+      };
+      handleEditPromptEntry(updatedEntry);
+    } else {
+      // Create new entry
+      handleCreatePromptEntry(entryData);
+    }
+    handleClosePromptEditor();
   };
 
   useEffect(() => {
@@ -377,6 +457,15 @@ const App = (): JSX.Element => {
     }
   };
 
+  // Get available tags from all entries
+  const availableTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    promptLibraryEntries.forEach((entry) => {
+      entry.tags?.forEach((tag: string) => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [promptLibraryEntries]);
+
   useEffect(() => {
     loadAllLlmConfigs();
     // ... any other initial loading logic like system prompt, etc.
@@ -386,6 +475,11 @@ const App = (): JSX.Element => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPTS, JSON.stringify(systemPrompts));
   }, [systemPrompts]);
+
+  // Persist promptLibraryEntries to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROMPT_LIBRARY, JSON.stringify(promptLibraryEntries));
+  }, [promptLibraryEntries]);
 
   // Persist selectedSystemPromptId to localStorage
   useEffect(() => {
@@ -3240,6 +3334,7 @@ const App = (): JSX.Element => {
 
       STORAGE_KEYS.SYSTEM_PROMPTS,
       STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID,
+      STORAGE_KEYS.PROMPT_LIBRARY, // Preserves user's saved prompts
       STORAGE_KEYS.CHAT_HISTORY, // Preserves the list of all chat sessions
       STORAGE_KEYS.RECENT_FOLDERS,
       // 'pastemax-selected-model' is not in STORAGE_KEYS and will be preserved by not touching it.
@@ -3344,6 +3439,14 @@ const App = (): JSX.Element => {
               disabled={!isAnyLlmConfigured()}
               title={isAnyLlmConfigured() ? 'Open AI Chat' : 'Configure LLM to enable Chat'}
             />
+            <button
+              className="prompt-library-button"
+              onClick={handleOpenPromptLibrary}
+              title="Open Prompt Library"
+            >
+              <Book size={16} />
+              <span>Prompt Library</span>
+            </button>
             <div className="folder-info">
               <div className="selected-folder">
                 {selectedFolder ? selectedFolder : 'No Folder Selected'}
@@ -3733,14 +3836,6 @@ const App = (): JSX.Element => {
             onCreateNewSession={handleCreateNewChat}
             onRetry={handleRetrySendMessage}
             onCancelLlmRequest={handleCancelLlmRequest}
-            promptLibraryEntries={promptLibraryEntries}
-            promptCategories={promptCategories}
-            onCreatePromptEntry={handleCreatePromptEntry}
-            onEditPromptEntry={handleEditPromptEntry}
-            onDeletePromptEntry={handleDeletePromptEntry}
-            onTogglePromptFavorite={handleTogglePromptFavorite}
-            onUsePrompt={handleUsePrompt}
-            onCopyPrompt={handleCopyPrompt}
           />
         )}
         {isSystemPromptEditorOpen && (
@@ -3757,6 +3852,44 @@ const App = (): JSX.Element => {
             // initialPrompt={systemPrompt} // REMOVED - Editor handles current prompt based on ID
             // onSave={handleSaveSystemPrompt} // REMOVED - Replaced by onSaveSystemPrompt
             // onResetToDefault={handleResetSystemPrompt} // REMOVED - Editor handles reset logic internally for its UI
+          />
+        )}
+
+        {/* Prompt Library Modal */}
+        {isPromptLibraryOpen && (
+          <div className="prompt-library-overlay" onClick={handleClosePromptLibrary}>
+            <div
+              className={`prompt-library-modal ${isPromptLibraryFullscreen ? 'fullscreen' : ''}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <PromptLibrary
+                entries={promptLibraryEntries}
+                categories={promptCategories}
+                onCreateEntry={handleCreateNewPrompt}
+                onEditEntry={handleEditPromptFromLibrary}
+                onDeleteEntry={handleDeletePromptEntry}
+                onToggleFavorite={handleTogglePromptFavorite}
+                onUsePrompt={handleUsePrompt}
+                onCopyPrompt={handleCopyPrompt}
+                isLoading={false}
+                isFullscreen={isPromptLibraryFullscreen}
+                onToggleFullscreen={handleTogglePromptLibraryFullscreen}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Prompt Editor Modal */}
+        {isPromptEditorOpen && (
+          <PromptEditorModal
+            isOpen={isPromptEditorOpen}
+            onClose={handleClosePromptEditor}
+            onSave={handleSavePromptEntry}
+            editingEntry={editingPromptEntry}
+            categories={promptCategories}
+            availableTags={availableTags}
+            initialPrompt=""
+            initialProvider={undefined}
           />
         )}
       </div>
